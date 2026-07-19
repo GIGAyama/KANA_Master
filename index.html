@@ -2,9 +2,21 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>ひらがな・カタカナかきかたマスター</title>
+  <meta name="description" content="小学1年生のための、ひらがな・カタカナの かきじゅん れんしゅう＆ことばあつめアプリ。書き順アニメ・なぞり書き・自動採点で、たのしく文字が身につきます。" />
   <link rel="icon" type="image/png" href="favicon.png" />
+
+  <!-- ===== PWA（ホーム画面に「アプリ」として追加できるように） ===== -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#f59e0b" />
+  <meta name="color-scheme" content="light" />
+  <!-- iOS（Safari）向け：フルスクリーン化とアイコン -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="かきかたマスター" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
   <!-- Tailwind CSS（CDN） -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -199,6 +211,13 @@
     .kkm-app-root {
       height: 100vh !important;
       height: 100dvh !important;
+      /* ノッチ／ホームインジケータ（iPhone 等）を避ける安全余白。
+         PWA スタンドアロン起動時に UI が隠れないようにする。 */
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      box-sizing: border-box;
     }
 
     /* キャンバス用：正方形だがコンテナの幅・高さどちらにも絶対にはみ出さない。
@@ -244,6 +263,7 @@
     /* ── 高さ ≤ 700px ── */
     @media (max-height: 700px) {
       .kkm-daily-wrap { display: none !important; }
+      .kkm-progress-row { display: none !important; }
       .kkm-practice-board { padding: 0.375rem !important; }
       .kkm-stepper-row > div > div:nth-child(2) { font-size: 9px !important; }
       .kkm-app-root > nav h1 { font-size: 0.875rem !important; }
@@ -281,5 +301,40 @@
 
   <!-- App.jsx を Babel で変換しながら読み込み -->
   <script type="text/babel" data-type="module" data-presets="react-classic" src="./App.jsx"></script>
+
+  <!-- ===== Service Worker 登録（オフライン対応 & インストール） ===== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').then(function (reg) {
+          // 新しい版が見つかったら待機中の SW をすぐ有効化する。
+          // ページの強制リロードはしない（お絵かき中の中断や初回二重読込を避けるため）。
+          // 新しい内容は次にアプリを開いたときに自然に反映される。
+          reg.addEventListener('updatefound', function () {
+            var nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', function () {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                nw.postMessage && nw.postMessage('SKIP_WAITING');
+              }
+            });
+          });
+        }).catch(function () { /* SW 非対応でもアプリは動く */ });
+      });
+    }
+
+    // 「ホーム画面に追加」できる状態になったらイベントを保持し、
+    // App 側（かきかたマスター）が案内ボタンを出せるようにする。
+    window.__kkmDeferredInstall = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.__kkmDeferredInstall = e;
+      window.dispatchEvent(new CustomEvent('kkm-installable'));
+    });
+    window.addEventListener('appinstalled', function () {
+      window.__kkmDeferredInstall = null;
+      window.dispatchEvent(new CustomEvent('kkm-installed'));
+    });
+  </script>
 </body>
 </html>
