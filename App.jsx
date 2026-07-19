@@ -918,6 +918,54 @@ function useDebouncedAction(fn, delay = 350) {
   }, [fn, delay]);
 }
 
+// メディアクエリの一致状態を購読する（レイアウト分岐に使う）。
+function useMediaQuery(query) {
+  const getMatch = () => (typeof window !== 'undefined' && window.matchMedia)
+    ? window.matchMedia(query).matches : false;
+  const [matches, setMatches] = useState(getMatch);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    // Safari 13 以前は addEventListener 非対応
+    mql.addEventListener ? mql.addEventListener('change', onChange) : mql.addListener(onChange);
+    return () => {
+      mql.removeEventListener ? mql.removeEventListener('change', onChange) : mql.removeListener(onChange);
+    };
+  }, [query]);
+  return matches;
+}
+
+// 「ホーム画面に追加（インストール）」の案内をアプリ内で出すためのフック。
+// index.html が beforeinstallprompt を横取りして window に保持しているので、
+// それを受け取り、ボタン押下で prompt() を呼べるようにする。
+function useInstallPrompt() {
+  const [canInstall, setCanInstall] = useState(() =>
+    typeof window !== 'undefined' && !!window.__kkmDeferredInstall);
+  useEffect(() => {
+    const onInstallable = () => setCanInstall(!!window.__kkmDeferredInstall);
+    const onInstalled = () => setCanInstall(false);
+    window.addEventListener('kkm-installable', onInstallable);
+    window.addEventListener('kkm-installed', onInstalled);
+    return () => {
+      window.removeEventListener('kkm-installable', onInstallable);
+      window.removeEventListener('kkm-installed', onInstalled);
+    };
+  }, []);
+  const promptInstall = useCallback(async () => {
+    const ev = window.__kkmDeferredInstall;
+    if (!ev) return;
+    try {
+      ev.prompt();
+      await ev.userChoice;
+    } catch (e) { /* 無視 */ }
+    window.__kkmDeferredInstall = null;
+    setCanInstall(false);
+  }, []);
+  return [canInstall, promptInstall];
+}
+
 /* ──────────────────────────────────────────────────────────────
    5. アイコン（lucide風）
    ────────────────────────────────────────────────────────────── */
@@ -989,7 +1037,7 @@ function StreakBadge({ streak }) {
 /* ──────────────────────────────────────────────────────────────
    8. <Header>
    ────────────────────────────────────────────────────────────── */
-function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceOn, setVoiceOn, earnedCount }) {
+function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceOn, setVoiceOn, earnedCount, canInstall, onInstall }) {
   return (
     <nav className="shrink-0 bg-white/90 backdrop-blur border-b-4 border-amber-500 px-3 md:px-6 py-1.5 md:py-2.5 flex justify-between items-center shadow-sm z-10 gap-2 relative overflow-hidden">
       {/* 装飾：背景に浮かぶ絵文字 */}
@@ -1022,6 +1070,14 @@ function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceO
 
       {/* 右：ステータス類 */}
       <div className="flex items-center gap-1.5 md:gap-2 shrink-0 relative z-10">
+        {canInstall && (
+          <button onClick={onInstall} title="ホームがめんに アプリを ついかする"
+            aria-label="ホームがめんに アプリを ついかする"
+            className="flex items-center gap-1 px-2.5 md:px-3 h-11 min-h-[44px] rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-xs md:text-sm font-black shadow-md border-2 border-emerald-500 transition-all active:scale-95 kkm-pop kkm-pulse-ring">
+            <span className="text-base" aria-hidden="true">📲</span>
+            <span className="hidden sm:inline">アプリにする</span>
+          </button>
+        )}
         <StreakBadge streak={streak}/>
         <LevelBadge masteredCount={mastered.length} onClick={onOpenBadges}/>
         <button onClick={onOpenBadges} title="ごほうびシール" aria-label="ごほうびシール ずかん を ひらく"
@@ -1115,6 +1171,13 @@ function DailyChallenge({ char, kanaMode, progress, onPick }) {
    ────────────────────────────────────────────────────────────── */
 function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, currentChar, onSelect, onSequence, onRandom }) {
   const table = getKanaTable(kanaMode, kanaKind);
+  // いま見ている表の「かんぺき（💮）」進捗（がんばりゲージ）
+  const { doneCount, totalCount, pct } = useMemo(() => {
+    const list = table.filter(Boolean);
+    const done = list.filter(c => getStage(progress, c) >= 4).length;
+    return { doneCount: done, totalCount: list.length, pct: list.length ? Math.round((done / list.length) * 100) : 0 };
+  }, [table, progress]);
+  const allDone = totalCount > 0 && doneCount === totalCount;
   return (
     <div className="bg-white/95 backdrop-blur rounded-2xl shadow-sm border-2 border-amber-100 p-2 md:p-4 flex flex-col h-full min-h-0">
       <div className="flex gap-1.5 md:gap-2 mb-1.5 md:mb-2 shrink-0">
@@ -1140,6 +1203,20 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
             <span className="block">{k.short}</span>
           </button>
         ))}
+      </div>
+
+      {/* がんばりゲージ：この表で 💮 になった数 */}
+      <div className="shrink-0 mb-1.5 md:mb-2 kkm-progress-row" aria-hidden="false">
+        <div className="flex items-center justify-between text-[10px] md:text-xs font-black text-amber-700 mb-0.5 px-0.5">
+          <span className="flex items-center gap-1">{allDone ? '🏆' : '💮'} かんぺき</span>
+          <span aria-live="polite">{doneCount}/{totalCount}{allDone ? ' ぜんぶ！' : ''}</span>
+        </div>
+        <div className="h-2.5 rounded-full bg-amber-100 border border-amber-200 overflow-hidden"
+          role="progressbar" aria-valuemin="0" aria-valuemax={totalCount} aria-valuenow={doneCount}
+          aria-label={`かんぺきに なった もじ ${doneCount} / ${totalCount}`}>
+          <div className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 kkm-shimmer' : 'bg-gradient-to-r from-emerald-400 to-teal-400'}`}
+            style={{ width: `${pct}%` }}/>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto bg-amber-50/40 rounded-xl p-1.5 md:p-3 border border-amber-100">
@@ -2903,27 +2980,116 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
     }
   }, [currentChar, stageObj?.stage, playMode]);
 
-  return (
-    <div className="flex-1 flex flex-col p-2 md:p-4 min-h-0 overflow-hidden gap-2 md:gap-3 kkm-main-pad">
-      <div className="shrink-0 kkm-daily-wrap">
-        <DailyChallenge char={dailyChar} kanaMode={kanaMode} progress={progress}
-          onPick={pickDaily}/>
+  // レイアウト分岐：
+  //   ・よこ向き、または画面幅 ≥1024px（PC・タブレット横）→ 表と練習を左右に並べる
+  //   ・たて向きのスマホ／タブレット → 練習キャンバスを画面いっぱいに大きく表示し、
+  //     文字の表は「もじをえらぶ」ボタンで開くドロワーにする
+  const wideLayout = useMediaQuery('(min-width: 1024px), (orientation: landscape)');
+  const [tableOpen, setTableOpen] = useState(false);
+
+  // たて向きモードで、まだ何も選んでいなければ最初に表を開いて選択をうながす
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (wideLayout) { setTableOpen(false); return; }
+    if (!autoOpenedRef.current && !currentChar) {
+      autoOpenedRef.current = true;
+      setTableOpen(true);
+    }
+  }, [wideLayout, currentChar]);
+
+  // ドロワー内での操作は、文字を選んだら自動で閉じる
+  const pickFromDrawer  = useCallback((c) => { selectChar(c, 'free'); setTableOpen(false); }, [selectChar]);
+  const seqFromDrawer   = useCallback(() => { startSequence(); setTableOpen(false); }, [startSequence]);
+  const randFromDrawer  = useCallback(() => { startRandom();   setTableOpen(false); }, [startRandom]);
+
+  const board = (
+    <PracticeBoard char={currentChar} paths={paths} stageObj={stageObj}
+      onAnimeViewed={onAnimeViewed}
+      onRoundComplete={onRoundComplete}
+      onMistakeStreakReset={onMistakeStreakReset}
+      onStrokeCountMismatch={onStrokeCountMismatch}
+      onNext={nextChar} playMode={playMode}
+      practiceCount={practiceCount} voiceOn={voiceOn}
+      onGoToWords={onGoToWords}
+      fetchError={fetchError} onRetryFetch={retryFetch}/>
+  );
+
+  if (wideLayout) {
+    return (
+      <div className="flex-1 flex flex-col p-2 md:p-4 min-h-0 overflow-hidden gap-2 md:gap-3 kkm-main-pad">
+        <div className="shrink-0 kkm-daily-wrap">
+          <DailyChallenge char={dailyChar} kanaMode={kanaMode} progress={progress}
+            onPick={pickDaily}/>
+        </div>
+        <div className="flex-1 grid grid-cols-2 gap-2 md:gap-4 min-h-0 overflow-hidden">
+          <KanaTable kanaMode={kanaMode} setKanaMode={setKanaMode}
+            kanaKind={kanaKind} setKanaKind={setKanaKind}
+            progress={progress} currentChar={currentChar}
+            onSelect={(c) => selectChar(c,'free')}
+            onSequence={startSequence} onRandom={startRandom}/>
+          {board}
+        </div>
       </div>
-      <div className="flex-1 grid grid-cols-2 gap-2 md:gap-4 min-h-0 overflow-hidden">
-        <KanaTable kanaMode={kanaMode} setKanaMode={setKanaMode}
-          kanaKind={kanaKind} setKanaKind={setKanaKind}
-          progress={progress} currentChar={currentChar}
-          onSelect={(c) => selectChar(c,'free')}
-          onSequence={startSequence} onRandom={startRandom}/>
-        <PracticeBoard char={currentChar} paths={paths} stageObj={stageObj}
-          onAnimeViewed={onAnimeViewed}
-          onRoundComplete={onRoundComplete}
-          onMistakeStreakReset={onMistakeStreakReset}
-          onStrokeCountMismatch={onStrokeCountMismatch}
-          onNext={nextChar} playMode={playMode}
-          practiceCount={practiceCount} voiceOn={voiceOn}
-          onGoToWords={onGoToWords}
-          fetchError={fetchError} onRetryFetch={retryFetch}/>
+    );
+  }
+
+  // ── たて向き：練習キャンバスを大きく、表はドロワー ──
+  return (
+    <div className="flex-1 flex flex-col p-2 min-h-0 overflow-hidden gap-2 kkm-main-pad">
+      {/* もじをえらぶバー（現在の文字＋表を開くボタン） */}
+      <div className="shrink-0 flex items-center gap-2">
+        <button onClick={() => setTableOpen(true)}
+          aria-haspopup="dialog" aria-expanded={tableOpen}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl font-black text-base bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow border-b-4 border-orange-600 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 kkm-pop min-h-[48px]">
+          <span className="text-xl" aria-hidden="true">🔤</span>
+          {currentChar ? 'べつの もじを えらぶ' : 'もじを えらぶ'}
+        </button>
+        {currentChar && (
+          <div className="shrink-0 flex items-center justify-center bg-white rounded-2xl w-12 h-12 border-2 border-amber-300 shadow-inner">
+            <span className="text-2xl font-black text-amber-700">{currentChar}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 練習キャンバスは のこりの たかさ・はば いっぱいに広げる（flex-1 min-h-0）。
+          PracticeBoard 自身が h-full なので、包む側で高さを確定させる。 */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {board}
+      </div>
+
+      {/* もじの表（ボトムシート・ドロワー） */}
+      {tableOpen && (
+        <KanaDrawer onClose={() => setTableOpen(false)}>
+          <KanaTable kanaMode={kanaMode} setKanaMode={setKanaMode}
+            kanaKind={kanaKind} setKanaKind={setKanaKind}
+            progress={progress} currentChar={currentChar}
+            onSelect={pickFromDrawer}
+            onSequence={seqFromDrawer} onRandom={randFromDrawer}/>
+        </KanaDrawer>
+      )}
+    </div>
+  );
+}
+
+/* もじ表を下から出すボトムシート（たて向きレイアウト用） */
+function KanaDrawer({ children, onClose }) {
+  const ref = useModal(onClose);
+  return (
+    <div className="fixed inset-0 z-[300] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="もじを えらぶ">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}/>
+      <div ref={ref}
+        className="relative w-full max-h-[86vh] bg-amber-50 rounded-t-3xl shadow-2xl border-t-4 border-amber-300 flex flex-col kkm-pop-in"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-1">
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-amber-300" aria-hidden="true"/>
+          <button onClick={onClose} aria-label="とじる"
+            className="absolute right-3 top-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-white/80 hover:bg-white text-amber-700 flex items-center justify-center shadow active:scale-95">
+            <IconX size={18}/>
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden p-3 pt-1">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -2932,8 +3098,17 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
 /* ──────────────────────────────────────────────────────────────
    22. <App> ── ルートコンポーネント
    ────────────────────────────────────────────────────────────── */
+// PWA ショートカット（manifest の ?view=...）や共有 URL から初期ビューを決める
+function getInitialView() {
+  try {
+    const v = new URLSearchParams(window.location.search).get('view');
+    if (v === 'words' || v === 'shiritori' || v === 'practice') return v;
+  } catch (e) {}
+  return 'practice';
+}
+
 function App() {
-  const [view, setView] = useState('practice');
+  const [view, setView] = useState(getInitialView);
   const [kanaMode, setKanaMode] = useState('hiragana');
   const [kanaKind, setKanaKind] = useState('seion');
   const [progress, setProgress] = useState(loadInitialProgress);
@@ -2949,6 +3124,7 @@ function App() {
   const [toastBadge, setToastBadge] = useState(null);
   const [wordCelebration, setWordCelebration] = useState(null); // { chars: [...] } ことばで💮になった文字
   const streak = useStreak();
+  const [canInstall, promptInstall] = useInstallPrompt();
 
   // 音声リスト読み込み（ブラウザによっては遅延発火）
   useEffect(() => {
@@ -3098,7 +3274,8 @@ function App() {
         onReset={() => setResetOpen(true)}
         onOpenBadges={() => setBadgesOpen(true)}
         streak={streak} voiceOn={voiceOn} setVoiceOn={setVoiceOn}
-        earnedCount={earned.length}/>
+        earnedCount={earned.length}
+        canInstall={canInstall} onInstall={promptInstall}/>
       <ModeTabsMobile view={view} setView={setView}/>
 
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">

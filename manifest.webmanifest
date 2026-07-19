@@ -1,0 +1,62 @@
+{
+  "name": "ひらがな・カタカナ かきかたマスター",
+  "short_name": "かきかたマスター",
+  "description": "小学1年生のための、ひらがな・カタカナの かきじゅん れんしゅう＆ことばあつめアプリ。書き順アニメ・なぞり書き・自動採点で、たのしく文字が身につきます。",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#fffbeb",
+  "theme_color": "#f59e0b",
+  "categories": ["education", "kids"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "もじをかく",
+      "short_name": "かく",
+      "description": "ひらがな・カタカナの かきかた れんしゅう",
+      "url": "./index.html?view=practice"
+    },
+    {
+      "name": "ことばずかん",
+      "short_name": "ことば",
+      "description": "おぼえた もじで ことばを あつめる",
+      "url": "./index.html?view=words"
+    },
+    {
+      "name": "しりとり",
+      "short_name": "しりとり",
+      "description": "コンピュータと しりとりで あそぶ",
+      "url": "./index.html?view=shiritori"
+    }
+  ]
+}
