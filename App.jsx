@@ -213,6 +213,10 @@ const BADGES = [
 ];
 
 // LocalStorage キー
+// localStorage は gigayama.github.io というサイト全体で共有されるため、
+// 同じサイトに置いた他のアプリと記録がぶつからないよう、キーは必ず
+// この接頭辞（kkm）で始めること。消すときもこの接頭辞で絞りこむ。
+const STORAGE_PREFIX = 'kkm';
 const KEY_MASTERED = 'kkm_v2_mastered';        // 旧データ（マイグレーション用）
 const KEY_PROGRESS = 'kkm_v3_progress';        // ★新：文字ごとの学習ステージ
 const KEY_WORDS    = 'kkm_v2_words';
@@ -3395,7 +3399,21 @@ function App() {
   const deleteWord = useCallback((id) => {
     setWords(prev => prev.filter(w => w.id !== id));
   }, [setWords]);
-  const resetAll = () => { localStorage.clear(); window.location.reload(); };
+  // 「さいしょから」＝このアプリの記録だけを消す。
+  // localStorage.clear() は gigayama.github.io というサイト全体の保存を消すので、
+  // 同じサイトに置いた他のアプリ（けいさんカードなど）の学習記録まで
+  // 巻きぞえで消えてしまう。必ず kkm 接頭辞の付いたキーだけを削除すること。
+  const resetAll = () => {
+    try {
+      const mine = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(STORAGE_PREFIX)) mine.push(k);
+      }
+      mine.forEach((k) => localStorage.removeItem(k));
+    } catch (e) { /* 消せなくても再読み込みはする */ }
+    window.location.reload();
+  };
 
   return (
     <div className="h-screen flex flex-col kkm-app-bg overflow-hidden relative kkm-app-root" style={{ fontFamily: "'UD デジタル 教科書体 N-R', 'UD Digi Kyokasho N-R', 'UD デジタル 教科書体 NK-R', 'UD Digi Kyokasho NK-R', 'Klee One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif", fontWeight: 600 }}>
