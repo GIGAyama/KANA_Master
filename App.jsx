@@ -937,33 +937,74 @@ function useMediaQuery(query) {
   return matches;
 }
 
-// 「ホーム画面に追加（インストール）」の案内をアプリ内で出すためのフック。
-// index.html が beforeinstallprompt を横取りして window に保持しているので、
-// それを受け取り、ボタン押下で prompt() を呼べるようにする。
+// 「アプリとしてインストール」用フック。
+//
+// 設計方針（Chromebook で ボタンが出ない問題への対策）:
+//  1. ボタンの表示条件を beforeinstallprompt に依存させない。
+//     このイベントは「ブラウザが未対応」「すでにインストール済みと判定された」
+//     「発火タイミングを取りこぼした」など、いろいろな理由で来ないことがある。
+//     来なかった場合でもボタンは出し、押されたら手順の案内を表示する。
+//  2. 隠すのは「スタンドアロン起動中（＝すでにアプリとして開いている）」の
+//     ときだけ。インストール済みフラグを保存しないので、アンインストール
+//     すればまたボタンが戻る。
 function useInstallPrompt() {
-  const [canInstall, setCanInstall] = useState(() =>
-    typeof window !== 'undefined' && !!window.__kkmDeferredInstall);
+  const read = () => {
+    const api = typeof window !== 'undefined' ? window.__kkmInstall : null;
+    return {
+      standalone: !!(api && api.isStandalone()),
+      canPrompt: !!(api && api.deferred),
+      platform: (api && api.platform) || 'desktop',
+    };
+  };
+  const [state, setState] = useState(read);
+
   useEffect(() => {
-    const onInstallable = () => setCanInstall(!!window.__kkmDeferredInstall);
-    const onInstalled = () => setCanInstall(false);
-    window.addEventListener('kkm-installable', onInstallable);
-    window.addEventListener('kkm-installed', onInstalled);
+    const sync = () => setState(read());
+    window.addEventListener('kkm-install-change', sync);
+    // 旧 index.html がキャッシュから提供された場合の保険
+    window.addEventListener('kkm-installable', sync);
+    window.addEventListener('kkm-installed', sync);
+    // 表示モードの変化（インストール後にアプリウィンドウで開いた等）も追う
+    const mqls = ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay']
+      .map((m) => (window.matchMedia ? window.matchMedia(`(display-mode: ${m})`) : null))
+      .filter(Boolean);
+    mqls.forEach((mql) => {
+      mql.addEventListener ? mql.addEventListener('change', sync) : mql.addListener(sync);
+    });
+    // 起動直後に beforeinstallprompt が来るまでの取りこぼし対策
+    const t = setTimeout(sync, 1200);
     return () => {
-      window.removeEventListener('kkm-installable', onInstallable);
-      window.removeEventListener('kkm-installed', onInstalled);
+      window.removeEventListener('kkm-install-change', sync);
+      window.removeEventListener('kkm-installable', sync);
+      window.removeEventListener('kkm-installed', sync);
+      mqls.forEach((mql) => {
+        mql.removeEventListener ? mql.removeEventListener('change', sync) : mql.removeListener(sync);
+      });
+      clearTimeout(t);
     };
   }, []);
+
+  // 戻り値: 'accepted' | 'dismissed' | 'unavailable'
   const promptInstall = useCallback(async () => {
-    const ev = window.__kkmDeferredInstall;
-    if (!ev) return;
+    const api = window.__kkmInstall;
+    const ev = api && api.deferred;
+    if (!ev) return 'unavailable';
+    let outcome = 'dismissed';
     try {
       ev.prompt();
-      await ev.userChoice;
-    } catch (e) { /* 無視 */ }
+      const choice = await ev.userChoice;
+      if (choice && choice.outcome === 'accepted') outcome = 'accepted';
+    } catch (e) {
+      outcome = 'unavailable';
+    }
+    // prompt() は 1 回しか使えない。使い終わったら捨てて状態を更新する。
+    api.deferred = null;
     window.__kkmDeferredInstall = null;
-    setCanInstall(false);
+    api.notify();
+    return outcome;
   }, []);
-  return [canInstall, promptInstall];
+
+  return { ...state, promptInstall };
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1037,7 +1078,7 @@ function StreakBadge({ streak }) {
 /* ──────────────────────────────────────────────────────────────
    8. <Header>
    ────────────────────────────────────────────────────────────── */
-function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceOn, setVoiceOn, earnedCount, canInstall, onInstall }) {
+function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceOn, setVoiceOn, earnedCount, showInstall, installReady, onInstall }) {
   return (
     <nav className="shrink-0 bg-white/90 backdrop-blur border-b-4 border-amber-500 px-3 md:px-6 py-1.5 md:py-2.5 flex justify-between items-center shadow-sm z-10 gap-2 relative overflow-hidden">
       {/* 装飾：背景に浮かぶ絵文字 */}
@@ -1070,10 +1111,10 @@ function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceO
 
       {/* 右：ステータス類 */}
       <div className="flex items-center gap-1.5 md:gap-2 shrink-0 relative z-10">
-        {canInstall && (
-          <button onClick={onInstall} title="ホームがめんに アプリを ついかする"
-            aria-label="ホームがめんに アプリを ついかする"
-            className="flex items-center gap-1 px-2.5 md:px-3 h-11 min-h-[44px] rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-xs md:text-sm font-black shadow-md border-2 border-emerald-500 transition-all active:scale-95 kkm-pop kkm-pulse-ring">
+        {showInstall && (
+          <button onClick={onInstall} title="この がめんを アプリとして ついかする"
+            aria-label="この がめんを アプリとして ついかする"
+            className={`flex items-center gap-1 px-2.5 md:px-3 h-11 min-h-[44px] rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-xs md:text-sm font-black shadow-md border-2 border-emerald-500 transition-all active:scale-95 kkm-pop ${installReady ? 'kkm-pulse-ring' : ''}`}>
             <span className="text-base" aria-hidden="true">📲</span>
             <span className="hidden sm:inline">アプリにする</span>
           </button>
@@ -2906,6 +2947,88 @@ function ResetModal({ onCancel, onConfirm }) {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   20-b. <InstallGuideModal> ── ブラウザが自動インストールを出せないとき
+   ────────────────────────────────────────────────────────────── */
+// beforeinstallprompt が取得できない環境（Chromebook で既に別アプリと
+// 判定された・Safari・イベント未発火 など）でも、必ず手動の手順を案内する。
+const INSTALL_STEPS = {
+  chromeos: {
+    title: 'Chromebook で アプリにする',
+    steps: [
+      'アドレスバーの みぎはしにある「⊕（インストール）」アイコンを クリック',
+      'なければ みぎうえの「⋮」→「キャスト、保存、共有」→「ページをアプリとしてインストール」',
+      '「インストール」を えらぶと、ランチャー（◯ボタン）に アイコンが できます',
+    ],
+  },
+  desktop: {
+    title: 'パソコン（Chrome）で アプリにする',
+    steps: [
+      'アドレスバーの みぎはしにある「⊕（インストール）」アイコンを クリック',
+      'なければ みぎうえの「⋮」→「キャスト、保存、共有」→「ページをアプリとしてインストール」',
+      '「インストール」を えらぶと、デスクトップに アイコンが できます',
+    ],
+  },
+  edge: {
+    title: 'パソコン（Edge）で アプリにする',
+    steps: [
+      'みぎうえの「…」を クリック',
+      '「アプリ」→「このサイトをアプリとしてインストール」を えらぶ',
+      '「インストール」を おすと アイコンが できます',
+    ],
+  },
+  android: {
+    title: 'Android で アプリにする',
+    steps: [
+      'みぎうえの「⋮」を タップ',
+      '「アプリをインストール」または「ホーム画面に追加」を えらぶ',
+      '「インストール」を おすと ホームがめんに アイコンが できます',
+    ],
+  },
+  ios: {
+    title: 'iPhone・iPad（Safari）で アプリにする',
+    steps: [
+      'したの「共有（⬆️）」ボタンを タップ',
+      'メニューを したに スクロールして「ホーム画面に追加」を えらぶ',
+      'みぎうえの「追加」を おすと アイコンが できます',
+    ],
+  },
+};
+
+function InstallGuideModal({ platform, onClose }) {
+  const dialogRef = useModal(onClose);
+  const guide = INSTALL_STEPS[platform] || INSTALL_STEPS.desktop;
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="アプリとして ついかする ほうほう"
+        className="bg-white rounded-3xl shadow-2xl border-4 border-emerald-300 p-5 md:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto flex flex-col gap-3"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
+          <span className="text-3xl" aria-hidden="true">📲</span>
+          <h2 className="text-base md:text-lg font-black text-emerald-700 flex-1">{guide.title}</h2>
+        </div>
+        <ol className="flex flex-col gap-2 mt-1">
+          {guide.steps.map((s, i) => (
+            <li key={i} className="flex gap-2 items-start bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
+              <span aria-hidden="true"
+                className="shrink-0 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-black flex items-center justify-center">{i + 1}</span>
+              <span className="text-sm font-bold text-slate-700 leading-relaxed">{s}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="text-xs text-slate-500 font-bold leading-relaxed">
+          すでに インストールずみの ときは、ボタンを おしても なにも おきません。
+          ランチャーや ホームがめんの アイコンから ひらいてください。
+        </p>
+        <button onClick={onClose} autoFocus
+          className="w-full py-2.5 rounded-xl font-black bg-emerald-500 text-white shadow border-b-4 border-emerald-700 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 min-h-[44px]">
+          わかった
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
    21. <MainBoard>
    ────────────────────────────────────────────────────────────── */
 function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mastered, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, practiceCount, voiceOn, onGoToWords }) {
@@ -3124,7 +3247,14 @@ function App() {
   const [toastBadge, setToastBadge] = useState(null);
   const [wordCelebration, setWordCelebration] = useState(null); // { chars: [...] } ことばで💮になった文字
   const streak = useStreak();
-  const [canInstall, promptInstall] = useInstallPrompt();
+  const install = useInstallPrompt();
+  const [installGuideOpen, setInstallGuideOpen] = useState(false);
+  // ブラウザの インストールダイアログが つかえるならそれを出し、
+  // だめなら 手順の案内モーダルを出す（＝ボタンが「無反応」にならない）。
+  const handleInstall = useCallback(async () => {
+    const outcome = await install.promptInstall();
+    if (outcome === 'unavailable') setInstallGuideOpen(true);
+  }, [install.promptInstall]);
 
   // 音声リスト読み込み（ブラウザによっては遅延発火）
   useEffect(() => {
@@ -3275,7 +3405,8 @@ function App() {
         onOpenBadges={() => setBadgesOpen(true)}
         streak={streak} voiceOn={voiceOn} setVoiceOn={setVoiceOn}
         earnedCount={earned.length}
-        canInstall={canInstall} onInstall={promptInstall}/>
+        showInstall={!install.standalone} installReady={install.canPrompt}
+        onInstall={handleInstall}/>
       <ModeTabsMobile view={view} setView={setView}/>
 
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -3305,6 +3436,7 @@ function App() {
 
       <Footer/>
 
+      {installGuideOpen && <InstallGuideModal platform={install.platform} onClose={() => setInstallGuideOpen(false)}/>}
       {resetOpen   && <ResetModal onCancel={() => setResetOpen(false)} onConfirm={resetAll}/>}
       {badgesOpen  && <AchievementsModal earned={earned} mastered={mastered} words={words} streak={streak}
                           onClose={() => setBadgesOpen(false)}/>}
