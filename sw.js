@@ -8,10 +8,16 @@
    ============================================================== */
 
 // App.jsx などを更新したら必ず数字を上げること（古いキャッシュを破棄するため）
-const VERSION = 'v4';
-const SHELL_CACHE   = `kkm-shell-${VERSION}`;
-const RUNTIME_CACHE = `kkm-runtime-${VERSION}`;
-const KANJI_CACHE   = 'kkm-kanjivg'; // 文字データは版に依存しないので使い回す
+const VERSION = 'v5';
+
+// このアプリ専用の目じるし。
+// キャッシュ置き場（CacheStorage）は gigayama.github.io というサイト全体で
+// 共有されており、同じサイトに置いた他のアプリの保存も一緒に見えてしまう。
+// 掃除するときは「自分の名札が付いた保存だけ」に限ること。
+const CACHE_PREFIX  = 'kkm-';
+const SHELL_CACHE   = `${CACHE_PREFIX}shell-${VERSION}`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${VERSION}`;
+const KANJI_CACHE   = `${CACHE_PREFIX}kanjivg`; // 文字データは版に依存しないので使い回す
 
 // 起動に最低限必要なアプリ本体。相対パスで登録し、GitHub Pages のサブパスでも動く。
 const SHELL_ASSETS = [
@@ -54,9 +60,14 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     // 現行以外の shell/runtime キャッシュを削除（KanjiVG は残す）
+    // ※ 対象は「kkm- で始まる＝このアプリの保存」だけ。ここで全部を消すと、
+    //   同じ gigayama.github.io に置いた他のアプリ（けいさんカードなど）の
+    //   オフライン用データまで巻きぞえで消えてしまう。
     const keep = new Set([SHELL_CACHE, RUNTIME_CACHE, KANJI_CACHE]);
     const names = await caches.keys();
-    await Promise.all(names.map((n) => keep.has(n) ? null : caches.delete(n)));
+    await Promise.all(names.map((n) =>
+      (n.startsWith(CACHE_PREFIX) && !keep.has(n)) ? caches.delete(n) : null
+    ));
     await self.clients.claim();
   })());
 });
@@ -136,11 +147,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4) 同一オリジンのアプリ本体 & CDN 依存：キャッシュ優先 → バックグラウンド更新
-  const sameOrigin = url.origin === self.location.origin;
-  if (sameOrigin || isCdnDependency(url)) {
+  // 4) このアプリのフォルダ（/hiragana_katakan_kakikatamaster/…）の中のファイル
+  //    & CDN 依存：キャッシュ優先 → バックグラウンド更新
+  //    ※ 同じサイトでも自分のフォルダの外＝他のアプリのファイルは触らない。
+  //      横取りしてキャッシュすると、他のアプリに古い中身を返してしまう。
+  const inScope = req.url.startsWith(self.registration.scope);
+  if (inScope || isCdnDependency(url)) {
     event.respondWith((async () => {
-      const cacheName = sameOrigin ? SHELL_CACHE : RUNTIME_CACHE;
+      const cacheName = inScope ? SHELL_CACHE : RUNTIME_CACHE;
       const cache = await caches.open(cacheName);
       const cached = await cache.match(req);
       if (cached) {
