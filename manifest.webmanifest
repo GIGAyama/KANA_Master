@@ -4,15 +4,20 @@
   "description": "小学1年生のための、ひらがな・カタカナの かきじゅん れんしゅう＆ことばあつめアプリ。書き順アニメ・なぞり書き・自動採点で、たのしく文字が身につきます。",
   "lang": "ja",
   "dir": "ltr",
+  "id": "/hiragana_katakan_kakikatamaster/",
   "start_url": "./index.html",
   "scope": "./",
-  "id": "./",
   "display": "standalone",
-  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#fffbeb",
   "theme_color": "#f59e0b",
   "categories": ["education", "kids"],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
   "icons": [
     {
       "src": "icon-192.png",

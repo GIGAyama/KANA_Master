@@ -8,7 +8,7 @@
    ============================================================== */
 
 // App.jsx などを更新したら必ず数字を上げること（古いキャッシュを破棄するため）
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL_CACHE   = `kkm-shell-${VERSION}`;
 const RUNTIME_CACHE = `kkm-runtime-${VERSION}`;
 const KANJI_CACHE   = 'kkm-kanjivg'; // 文字データは版に依存しないので使い回す
@@ -69,6 +69,9 @@ self.addEventListener('message', (event) => {
 function isKanjiVG(url) {
   return url.hostname === 'cdn.jsdelivr.net' && url.pathname.includes('/KanjiVG/');
 }
+function isManifest(url) {
+  return url.origin === self.location.origin && url.pathname.endsWith('/manifest.webmanifest');
+}
 function isCdnDependency(url) {
   return (
     url.hostname === 'cdn.tailwindcss.com' ||
@@ -115,7 +118,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3) 同一オリジンのアプリ本体 & CDN 依存：キャッシュ優先 → バックグラウンド更新
+  // 3) マニフェスト：ネットワーク優先（オフライン時のみキャッシュ）。
+  //    ブラウザはこの内容でインストール可否とアプリの識別子（id）を判定する。
+  //    キャッシュ優先にすると古い id を返してしまい、「アプリにする」が
+  //    出ない・別アプリと同一視される、といった不具合の原因になる。
+  if (isManifest(url)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(SHELL_CACHE);
+      try {
+        const fresh = await fetch(req);
+        if (fresh && fresh.ok) cache.put(req, fresh.clone()).catch(() => {});
+        return fresh;
+      } catch (e) {
+        return (await cache.match(req)) || (await cache.match('./manifest.webmanifest')) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // 4) 同一オリジンのアプリ本体 & CDN 依存：キャッシュ優先 → バックグラウンド更新
   const sameOrigin = url.origin === self.location.origin;
   if (sameOrigin || isCdnDependency(url)) {
     event.respondWith((async () => {

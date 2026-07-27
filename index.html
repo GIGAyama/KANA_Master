@@ -18,6 +18,65 @@
   <meta name="apple-mobile-web-app-title" content="かきかたマスター" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
+  <!-- ===== インストール状態の監視（必ず <head> の最上流で登録する） =====
+       beforeinstallprompt は「ページ読み込み直後」に一度だけ発火する。
+       この登録が <body> の末尾や React の描画後だと、発火に間に合わず
+       イベントを取りこぼして「アプリにする」ボタンが二度と出せなくなる。
+       そのため CDN や App.jsx より前、同期スクリプトとして登録する。 -->
+  <script>
+    (function () {
+      var api = window.__kkmInstall = {
+        deferred: null,   // 保持した beforeinstallprompt イベント
+      };
+
+      // インストール済みのウィンドウ（スタンドアロン起動）かどうか。
+      // ここが true のときだけ「アプリにする」ボタンを隠す。
+      // ＝ localStorage 等に「インストール済み」を焼き付けないので、
+      //   アンインストール後はまたボタンが出る。
+      api.isStandalone = function () {
+        try {
+          if (navigator.standalone === true) return true; // iOS Safari
+          if (!window.matchMedia) return false;
+          var modes = ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'];
+          for (var i = 0; i < modes.length; i++) {
+            if (window.matchMedia('(display-mode: ' + modes[i] + ')').matches) return true;
+          }
+        } catch (e) {}
+        return false;
+      };
+
+      // 端末の種類（案内文の出し分け用）
+      api.platform = (function () {
+        var ua = navigator.userAgent || '';
+        if (/CrOS/.test(ua)) return 'chromeos';
+        if (/Android/.test(ua)) return 'android';
+        if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
+        if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return 'ios'; // iPadOS
+        if (/Edg\//.test(ua)) return 'edge';
+        return 'desktop';
+      })();
+
+      // 状態が変わったことを App 側へ通知する
+      api.notify = function () {
+        try { window.dispatchEvent(new CustomEvent('kkm-install-change')); } catch (e) {}
+      };
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        // 既定のミニ情報バーを抑止し、アプリ内のボタンから任意のタイミングで出す
+        e.preventDefault();
+        api.deferred = e;
+        window.__kkmDeferredInstall = e; // 旧版 App.jsx との互換用
+        api.notify();
+      });
+
+      window.addEventListener('appinstalled', function () {
+        api.deferred = null;
+        window.__kkmDeferredInstall = null;
+        api.notify();
+      });
+    })();
+  </script>
+
   <!-- Tailwind CSS（CDN） -->
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -322,19 +381,8 @@
         }).catch(function () { /* SW 非対応でもアプリは動く */ });
       });
     }
-
-    // 「ホーム画面に追加」できる状態になったらイベントを保持し、
-    // App 側（かきかたマスター）が案内ボタンを出せるようにする。
-    window.__kkmDeferredInstall = null;
-    window.addEventListener('beforeinstallprompt', function (e) {
-      e.preventDefault();
-      window.__kkmDeferredInstall = e;
-      window.dispatchEvent(new CustomEvent('kkm-installable'));
-    });
-    window.addEventListener('appinstalled', function () {
-      window.__kkmDeferredInstall = null;
-      window.dispatchEvent(new CustomEvent('kkm-installed'));
-    });
+    // ※ beforeinstallprompt / appinstalled の監視は <head> の
+    //   window.__kkmInstall で行っている（取りこぼし防止のため）。
   </script>
 </body>
 </html>
