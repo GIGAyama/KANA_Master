@@ -353,8 +353,620 @@ function loadInitialProgress() {
   } catch { return {}; }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   1.5. 「おと」と「もじ」をつなぐ しくみ（あたらしい学習モデルの土台）
+
+   1年生が いちばん つまずくのは 字の形ではなく、
+   「耳できいた おと」を「かみに書く もじ」に なおすところ。
+     ・きって  … つまる おと（っ）が 聞こえても 書きおとす
+     ・きゃ    … 2 もじで 1 つの おと（拗音）
+     ・おとうさん … のばす おとを「お」と書いてしまう
+     ・わたしは … 「わ」と読むのに「は」と書く
+   ここでは この「おと（拍）」と「マス（文字）」の関係を、アプリ全体で
+   ただ 1 か所の関数として定義する。画面はすべてこれを見る。
+   ══════════════════════════════════════════════════════════════ */
+
+// 小書き（ちいさく書く）かな。拗音の ゃゅょ、促音の っ、外来語の ぁぃぅぇぉ。
+const SMALL_KANA = 'ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ';
+const CHOUON_MARK = 'ー';
+function isSmallKana(c) { return !!c && SMALL_KANA.indexOf(c) >= 0; }
+function isSokuon(c)    { return c === 'っ' || c === 'ッ'; }
+function isYouonSmall(c){ return 'ゃゅょャュョ'.indexOf(c) >= 0; }
+function isDakuonChar(c){ return HIRA_DAKUON_LIST.includes(c) || KATA_DAKUON_LIST.includes(c); }
+
+// マス（原稿用紙の ます）＝ 1 文字 1 マス。小さい字も 1 マスを つかう。
+function splitCells(w) { return Array.from(w || ''); }
+
+// 拍（はく）＝ 手を たたく かず。
+//   ・小さい ゃゅょ だけが 前の字と いっしょで 1 つ（きゃ ＝ 2 もじ 1 拍）
+//   ・小さい っ・ん・のばす ー は、それぞれ それだけで 1 つ
+// 例：きゃ→1、きって→3、おかあさん→5、ケーキ→3、でんしゃ→3
+//
+// ★ のばす ー を 前の字に くっつけては いけない。
+//   ひらがなの「おとうさん」は「う」を 1 拍と かぞえるのに、
+//   カタカナの「ケーキ」だけ 2 拍に なってしまい、
+//   子どもに 教える きまりが 表と裏で くいちがう。
+function splitMora(w) {
+  const out = [];
+  for (const c of splitCells(w)) {
+    if (out.length > 0 && isSmallKana(c) && !isSokuon(c)) {
+      out[out.length - 1] += c;
+    } else {
+      out.push(c);
+    }
+  }
+  return out;
+}
+function moraCount(w) { return splitMora(w).length; }
+
 /* ──────────────────────────────────────────────────────────────
-   1.9. 画面の色（キャンバス用）
+   1.6. とくべつな おと（特殊音節）の カリキュラム
+
+   1年生の つまずきを 6 つの ユニットに 分けて、
+   「なにが むずかしいのか」を 子どもの ことばで 言いきる。
+   ことばは すべて 1年生が 知っている ものだけ。
+
+   ・key    … 保存につかう名まえ
+   ・title  … 子どもに見せる名まえ
+   ・rule   … おぼえかたの ひとこと（これが この単元の すべて）
+   ・words  … れんしゅうに つかう ことば
+   ・bad    … ことばごとの「よくある まちがい」（1年生が じっさいに 書く形）
+   ────────────────────────────────────────────────────────────── */
+
+// ん・っ・ゃゅょ・のばす・てん/まる・は へ を の 6 ユニット。
+const SPECIAL_UNITS = [
+  {
+    key: 'dakuten', title: 'てん と まる', mark: '゛゜', tone: 'ai', icon: 'pen',
+    lead: 'にごる おと', rule: 'みぎうえに てんてん「゛」や まる「゜」を つけると、おとが かわるよ。',
+    tips: ['か → が（てんてん）', 'は → ば（てんてん）', 'は → ぱ（まる）'],
+    words: [
+      { w:'かぎ',   p:'tool',    bad:['かき'] },
+      { w:'めがね', p:'tool',    bad:['めかね'] },
+      { w:'ぶどう', p:'fruit',   bad:['ふどう','ぶとう'] },
+      { w:'でんわ', p:'tool',    bad:['てんわ'] },
+      { w:'ぞう',   p:'animal',  bad:['そう'] },
+      { w:'だんご', p:'sweet',   bad:['たんご','だんこ'] },
+      { w:'ひげ',   p:'person',  bad:['ひけ'] },
+      { w:'かばん', p:'bag',     bad:['かはん'] },
+      { w:'えんぴつ', p:'pencil', bad:['えんひつ','えんびつ'] },
+      { w:'たんぽぽ', p:'flower', bad:['たんぼぼ','たんほほ'] },
+      { w:'ぱんだ', p:'animal',  bad:['ばんだ','はんだ'] },
+      { w:'てんぷら', p:'rice',  bad:['てんぶら'] },
+    ],
+  },
+  {
+    key: 'hatsuon', title: 'はねる おと', mark: 'ん', tone: 'midori', icon: 'maru',
+    lead: 'ん', rule: '「ん」も、ひとつぶんの おと。てを 1 かい たたくよ。',
+    tips: ['みかん → み・か・ん（3つ）', 'ん は ことばの はじめには こない'],
+    words: [
+      { w:'みかん',   p:'fruit',    bad:['みか'] },
+      { w:'りんご',   p:'fruit',    bad:['りご'] },
+      { w:'ぱん',     p:'rice',     bad:['ぱ'] },
+      { w:'えんぴつ', p:'pencil',   bad:['えぴつ'] },
+      { w:'せんせい', p:'person',   bad:['せせい'] },
+      { w:'しんぶん', p:'book',     bad:['しぶん','しんぶ'] },
+      { w:'でんしゃ', p:'train',    bad:['でしゃ'] },
+      { w:'にんじん', p:'vegetable',bad:['にじん','にんじ'] },
+      { w:'ほん',     p:'book',     bad:['ほ'] },
+      { w:'かんばん', p:'shop',     bad:['かばん'] },
+    ],
+  },
+  {
+    key: 'sokuon', title: 'つまる おと', mark: 'っ', tone: 'shu', icon: 'brush',
+    lead: 'ちいさい っ', rule: '「っ」は ちいさく 書いて、いちど とまる おと。マスは ちゃんと 1 つ つかうよ。',
+    tips: ['きって → き・っ・て（3つ）', 'ちいさい っ は みぎしたに 小さく', 'こえに 出さないけれど、たしかに ある おと'],
+    words: [
+      { w:'きって',   p:'tool',   bad:['きて','きつて'] },
+      { w:'がっこう', p:'school', bad:['がこう','がつこう'] },
+      { w:'らっぱ',   p:'music',  bad:['らぱ','らつぱ'] },
+      { w:'コップ',   p:'drink',  bad:['コプ','コツプ'] },
+      { w:'きっぷ',   p:'train',  bad:['きぷ','きつぷ'] },
+      { w:'しっぽ',   p:'cat',    bad:['しぽ','しつぽ'] },
+      { w:'まっち',   p:'light',  bad:['まち','まつち'] },
+      { w:'ラッコ',   p:'octopus',bad:['ラコ','ラツコ'] },
+      { w:'せっけん', p:'tool',   bad:['せけん','せつけん'] },
+      { w:'なっとう', p:'rice',   bad:['なとう','なつとう'] },
+      { w:'ポケット', p:'cloth',  bad:['ポケト','ポケツト'] },
+      { w:'いっぱい', p:'drink',  bad:['いぱい','いつぱい'] },
+    ],
+  },
+  {
+    key: 'youon', title: 'ねじれる おと', mark: 'ゃゅょ', tone: 'fuji', icon: 'pencil',
+    lead: 'ちいさい ゃ ゅ ょ', rule: '「きゃ」は 2 もじで、おとは 1 つ。ちいさい ゃゅょ は 小さく 書くよ。',
+    tips: ['きゃ・きゅ・きょ は てを 1 かい たたく', 'ちいさい ゃ と おおきい や は べつの もの', 'でんしゃ → で・ん・しゃ（3つ）'],
+    words: [
+      { w:'でんしゃ',   p:'train',  bad:['でんしや'] },
+      { w:'きんぎょ',   p:'fish',   bad:['きんぎよ'] },
+      { w:'ちょう',     p:'bug',    bad:['ちよう'] },
+      { w:'しゃぼんだま', p:'ball', bad:['しやぼんだま'] },
+      { w:'おもちゃ',   p:'ball',   bad:['おもちや'] },
+      { w:'きゅうしょく',p:'rice',  bad:['きゆうしょく','きゅうしよく'] },
+      { w:'チョコ',     p:'sweet',  bad:['チヨコ'] },
+      { w:'ジュース',   p:'drink',  bad:['ジユース'] },
+      { w:'びょういん', p:'house',  bad:['びよういん'] },
+      { w:'しゅくだい', p:'pencil', bad:['しゆくだい'] },
+      { w:'にんぎょう', p:'person', bad:['にんぎよう'] },
+      { w:'キャベツ',   p:'vegetable', bad:['キヤベツ'] },
+    ],
+  },
+  {
+    key: 'chouon', title: 'のばす おと', mark: 'ー', tone: 'yamabuki', icon: 'star',
+    lead: 'のばして よむ おと', rule: 'ひらがなは「う」や「あ」で のばす。カタカナは ぼう「ー」で のばすよ。',
+    tips: ['おとうさん は「お」ではなく「う」', 'おかあさん は「あ」', 'おねえさん は「え」', 'カタカナは ぜんぶ「ー」'],
+    words: [
+      { w:'おとうさん', p:'person', bad:['おとおさん'] },
+      { w:'おかあさん', p:'person', bad:['おかーさん','おかわさん'] },
+      { w:'おねえさん', p:'person', bad:['おねいさん'] },
+      { w:'とけい',     p:'tool',   bad:['とけえ'] },
+      { w:'せんせい',   p:'person', bad:['せんせえ'] },
+      { w:'ほうき',     p:'tool',   bad:['ほおき'] },
+      { w:'ひこうき',   p:'plane',  bad:['ひこおき'] },
+      { w:'こおり',     p:'snow',   bad:['こうり'] },
+      { w:'おおきい',   p:'mountain', bad:['おうきい'] },
+      { w:'とおい',     p:'mountain', bad:['とうい'] },
+      { w:'ケーキ',     p:'sweet',  bad:['ケエキ','ケーキー'] },
+      { w:'ノート',     p:'book',   bad:['ノオト'] },
+      { w:'ラーメン',   p:'rice',   bad:['ラアメン'] },
+      { w:'スキー',     p:'snow',   bad:['スキイ'] },
+      { w:'コーヒー',   p:'drink',  bad:['コオヒイ'] },
+    ],
+  },
+  {
+    key: 'joshi', title: 'くっつきの ことば', mark: 'はへを', tone: 'sumi', icon: 'book',
+    lead: 'は・へ・を', rule: 'ことばと ことばを くっつける「は・へ・を」は、「わ・え・お」と 読むよ。',
+    tips: ['わたしは → 「わ」と よむけど「は」と かく', 'がっこうへ → 「え」と よむけど「へ」と かく', 'ほんを → 「お」と よむけど「を」と かく'],
+    // くっつきの ことばは 文で おぼえる（? のところを えらぶ）
+    sentences: [
+      { s:'わたし◯ いちねんせいです。', a:'は', c:['は','わ'], p:'person' },
+      { s:'ぼく◯ げんきです。',       a:'は', c:['は','わ'], p:'person' },
+      { s:'がっこう◯ いきます。',     a:'へ', c:['へ','え'], p:'school' },
+      { s:'こうえん◯ あるく。',       a:'へ', c:['へ','え'], p:'tree' },
+      { s:'ほん◯ よむ。',             a:'を', c:['を','お'], p:'book' },
+      { s:'ごはん◯ たべる。',         a:'を', c:['を','お'], p:'rice' },
+      { s:'えんぴつ◯ もつ。',         a:'を', c:['を','お'], p:'pencil' },
+      { s:'うみ◯ いく。',             a:'へ', c:['へ','え'], p:'water' },
+      { s:'これ◯ ぼくの かさです。',  a:'は', c:['は','わ'], p:'rain' },
+      { s:'いえ◯ かえる。',           a:'へ', c:['へ','え'], p:'house' },
+    ],
+    words: [],
+  },
+];
+const SPECIAL_UNIT_MAP = {};
+SPECIAL_UNITS.forEach(u => { SPECIAL_UNIT_MAP[u.key] = u; });
+
+// ことばの なかで「とくべつな おと」に あたる マスを 見つける。
+// ここが 出題の 穴（ブランク）に なる。
+function specialCellsOf(word, unitKey) {
+  const cells = splitCells(word);
+  const idx = [];
+  cells.forEach((c, i) => {
+    if (unitKey === 'sokuon'  && isSokuon(c)) idx.push(i);
+    if (unitKey === 'youon'   && isYouonSmall(c)) idx.push(i);
+    if (unitKey === 'hatsuon' && (c === 'ん' || c === 'ン')) idx.push(i);
+    if (unitKey === 'dakuten' && (isDakuonChar(c) || HIRA_HANDAKUON_LIST.includes(c) || KATA_HANDAKUON_LIST.includes(c))) idx.push(i);
+    if (unitKey === 'chouon'  && (c === CHOUON_MARK || (i > 0 && 'あいうえおアイウエオ'.indexOf(c) >= 0))) idx.push(i);
+  });
+  return idx.length > 0 ? idx : [Math.max(0, cells.length - 1)];
+}
+
+// 穴に入れる まちがい候補（にた形・にた おと）をつくる。
+const KANA_SMALL_BIG = {
+  'ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ','ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お',
+  'ャ':'ヤ','ュ':'ユ','ョ':'ヨ','ッ':'ツ','ァ':'ア','ィ':'イ','ゥ':'ウ','ェ':'エ','ォ':'オ',
+};
+// おおきい字 → その ちいさい字（「おおきい／ちいさい」の 見わけ表示に つかう）
+const KANA_SMALL_BIG_REV = {};
+Object.keys(KANA_SMALL_BIG).forEach(s => { KANA_SMALL_BIG_REV[KANA_SMALL_BIG[s]] = s; });
+const KANA_DAKU_PLAIN = {
+  'が':'か','ぎ':'き','ぐ':'く','げ':'け','ご':'こ','ざ':'さ','じ':'し','ず':'す','ぜ':'せ','ぞ':'そ',
+  'だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と','ば':'は','び':'ひ','ぶ':'ふ','べ':'へ','ぼ':'ほ',
+  'ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ',
+  'ガ':'カ','ギ':'キ','グ':'ク','ゲ':'ケ','ゴ':'コ','ザ':'サ','ジ':'シ','ズ':'ス','ゼ':'セ','ゾ':'ソ',
+  'ダ':'タ','ヂ':'チ','ヅ':'ツ','デ':'テ','ド':'ト','バ':'ハ','ビ':'ヒ','ブ':'フ','ベ':'ヘ','ボ':'ホ',
+  'パ':'ハ','ピ':'ヒ','プ':'フ','ペ':'ヘ','ポ':'ホ',
+};
+const KANA_HANDAKU_PAIR = { 'ば':'ぱ','び':'ぴ','ぶ':'ぷ','べ':'ぺ','ぼ':'ぽ','ぱ':'ば','ぴ':'び','ぷ':'ぶ','ぺ':'べ','ぽ':'ぼ',
+  'バ':'パ','ビ':'ピ','ブ':'プ','ベ':'ペ','ボ':'ポ','パ':'バ','ピ':'ビ','プ':'ブ','ペ':'ベ','ポ':'ボ' };
+const CHOUON_SWAP = { 'う':'お','お':'う','あ':'わ','え':'い','い':'え','ー':'ー' };
+
+function cellChoicesFor(correct, unitKey) {
+  const out = [correct];
+  const push = (c) => { if (c && !out.includes(c)) out.push(c); };
+  if (isSmallKana(correct)) {
+    push(KANA_SMALL_BIG[correct]);            // ちいさい字が正解 → おおきい字を まちがい候補に
+  } else {
+    const small = Object.keys(KANA_SMALL_BIG).find(k => KANA_SMALL_BIG[k] === correct);
+    push(small);                              // おおきい字が正解 → ちいさい字を まちがい候補に
+  }
+  if (unitKey === 'dakuten') { push(KANA_DAKU_PLAIN[correct]); push(KANA_HANDAKU_PAIR[correct]); }
+  if (unitKey === 'chouon')  { push(CHOUON_SWAP[correct]); push('ー'); }
+  if (unitKey === 'hatsuon') { push('ん'); push('つ'); }
+  const filler = 'あいうえおつやゆよんー';
+  for (let i = 0; out.length < 3 && i < filler.length; i++) push(filler[i]);
+  return out.slice(0, 4);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   1.7. にた かたちの もじ（弁別）
+
+   「ぬ／め」「シ／ツ」のように、1年生が いちばん まちがえる 組みあわせ。
+   ここを 見わける れんしゅうを 用意しないと、書けても 読めない ままになる。
+   ────────────────────────────────────────────────────────────── */
+const CONFUSABLE_SETS = [
+  { kana:'hiragana', chars:['ぬ','め'] },
+  { kana:'hiragana', chars:['は','ほ','ま'] },
+  { kana:'hiragana', chars:['わ','ね','れ'] },
+  { kana:'hiragana', chars:['さ','き','ち'] },
+  { kana:'hiragana', chars:['る','ろ'] },
+  { kana:'hiragana', chars:['い','り'] },
+  { kana:'hiragana', chars:['つ','し','く'] },
+  { kana:'hiragana', chars:['あ','お','む'] },
+  { kana:'hiragana', chars:['こ','い','に'] },
+  { kana:'katakana', chars:['シ','ツ'] },
+  { kana:'katakana', chars:['ソ','ン'] },
+  { kana:'katakana', chars:['ク','ワ','ケ'] },
+  { kana:'katakana', chars:['ノ','メ','ヌ'] },
+  { kana:'katakana', chars:['ス','ヌ'] },
+  { kana:'katakana', chars:['マ','ム'] },
+  { kana:'katakana', chars:['チ','テ'] },
+  { kana:'katakana', chars:['ア','マ'] },
+  { kana:'katakana', chars:['コ','ユ'] },
+];
+function confusablesOf(char) {
+  const hit = CONFUSABLE_SETS.find(s => s.chars.includes(char));
+  return hit ? hit.chars.filter(c => c !== char) : [];
+}
+
+/* ──────────────────────────────────────────────────────────────
+   1.8. まなぶ じゅんばん（やさしい もじ から）
+
+   五十音表は「あ」から ならんでいるが、書きやすさの じゅんでは ない。
+   はじめの 1 文字で つまずかせないため、画数の すくない やさしい 字から
+   すすめる。表示は 教科書どおり 五十音のまま、すすめる順だけを かえる。
+   ────────────────────────────────────────────────────────────── */
+const LEARN_ORDER_HIRA = [
+  // 1 画
+  'く','し','つ','て','の','へ','ひ','る','ろ','ん','そ',
+  // 2 画
+  'い','う','え','こ','ち','と','ぬ','ね','み','め','ゆ','よ','ら','り','れ','わ','す',
+  // 3 画
+  'あ','お','か','け','さ','せ','に','は','ま','む','も','や','を',
+  // 4 画
+  'き','た','な','ふ','ほ',
+];
+const LEARN_ORDER_KATA = [
+  'ノ','フ','ヘ','レ',
+  'ア','イ','カ','ク','コ','ス','セ','ソ','ト','ナ','ニ','ヌ','ハ','ヒ','マ','ム','メ','ヤ','ユ','ラ','リ','ル','ワ','ン',
+  'ウ','エ','オ','キ','ケ','サ','シ','タ','チ','ツ','テ','ミ','モ','ヨ','ロ','ヲ',
+  'ネ','ホ',
+];
+function learnOrderOf(kanaMode) {
+  return kanaMode === 'katakana' ? LEARN_ORDER_KATA : LEARN_ORDER_HIRA;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   1.85. あたまの おと の ことば（読みの れんしゅうに つかう）
+
+   「あ」→ どの え？ のように、もじと おとを つなぐ 出題に つかう。
+   ひらがなは しりとりの ことばを そのまま つかう（1年生が 知っている
+   ものだけを えらんである）。
+   ────────────────────────────────────────────────────────────── */
+const HEAD_WORDS_KATA = [
+  {w:'アイス',p:'sweet'},{w:'イルカ',p:'fish'},{w:'ウサギ',p:'rabbit'},{w:'エプロン',p:'cloth'},{w:'オルガン',p:'music'},
+  {w:'カバ',p:'animal'},{w:'キリン',p:'animal'},{w:'クマ',p:'animal'},{w:'ケーキ',p:'sweet'},{w:'コアラ',p:'animal'},
+  {w:'サメ',p:'fish'},{w:'シマウマ',p:'animal'},{w:'スイカ',p:'fruit'},{w:'セーター',p:'cloth'},{w:'ソファ',p:'house'},
+  {w:'タオル',p:'cloth'},{w:'チーズ',p:'rice'},{w:'ツリー',p:'tree'},{w:'テレビ',p:'tool'},{w:'トマト',p:'vegetable'},
+  {w:'ナイフ',p:'tool'},{w:'ニンジン',p:'vegetable'},{w:'ヌイグルミ',p:'rabbit'},{w:'ネコ',p:'cat'},{w:'ノート',p:'book'},
+  {w:'ハサミ',p:'tool'},{w:'ヒコウキ',p:'plane'},{w:'フネ',p:'ship'},{w:'ヘリコプター',p:'plane'},{w:'ホウキ',p:'tool'},
+  {w:'マスク',p:'cloth'},{w:'ミルク',p:'drink'},{w:'ムシ',p:'bug'},{w:'メロン',p:'fruit'},{w:'モモ',p:'fruit'},
+  {w:'ヤカン',p:'drink'},{w:'ユニフォーム',p:'cloth'},{w:'ヨット',p:'ship'},
+  {w:'ライオン',p:'animal'},{w:'リボン',p:'cloth'},{w:'ルーペ',p:'tool'},{w:'レモン',p:'fruit'},{w:'ロボット',p:'tool'},
+  {w:'ワニ',p:'animal'},
+];
+// 先頭の文字 → ことば の 索引をつくる（もじ ↔ え の 出題に つかう）
+const HEAD_WORD_INDEX = (() => {
+  const map = {};
+  const add = (list) => list.forEach(x => {
+    const c = x.w[0];
+    if (!map[c]) map[c] = [];
+    map[c].push(x);
+  });
+  add(SHIRITORI_CPU_WORDS);
+  add(HEAD_WORDS_KATA);
+  return map;
+})();
+function headWordsOf(char) { return HEAD_WORD_INDEX[char] || []; }
+// その文字が ひらがな／カタカナ どちらの なかまか。
+// 出題の えらびかたを そろえるために つかう（ひらがなの もんだいに
+// カタカナの ことばが まじると、1年生には むずかしすぎる）。
+function scriptOf(char) { return KATA_ALL_LIST.includes(char) ? 'katakana' : 'hiragana'; }
+function headWordCharsOf(script) {
+  return Object.keys(HEAD_WORD_INDEX).filter(c => scriptOf(c) === script);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   1.86. 多層指導モデル MIM の 考えかたを 入れる
+
+   MIM（Multilayer Instruction Model／海津亜希子）は、読みの つまずきを
+   「顕在化する前」に つかまえて、子どもごとに 指導の あつさを かえる
+   モデル。とくに 特殊音節（っ・ゃゅょ・のばす おと）に 焦点を あてている
+   点が、このアプリの ねらいと そのまま かさなる。
+
+   このアプリに 取り入れたのは 次の 4 つ。
+
+   ① 視覚化（ドット）
+      目に見えない「おと」を ●（ドット）で 見えるようにする。
+        ねこ  → ● ●
+        ねっこ → ● ・ ●   （小さい ● ＝ 音を出さない ところ）
+      拗音は 2 もじで ● 1 つ、長音は ● どうしを 線でつなぐ。
+
+   ② 動作化（リズム）
+      ・清音・濁音・半濁音 … 手を 1 かい たたく
+      ・小さい っ         … 両手を グーに にぎって 音を出さない
+      ・のばす おと       … 手を よこに ひっぱる
+      道具を使わず 自分の体で ルールを 確かめられるようにする。
+
+   ③ 進みぐあいの ものさし（MIM-PM 型の ちからだめし）
+      2 分（1 分 × 2 つ）の みじかい 課題を くりかえし 受けて、
+      「正しい ことばを 見つける 速さ」の 変化を 折れ線で 追う。
+
+   ④ 3 つの ステージ（層）で 指導を かえる
+      ちからだめしの 結果から、その子に 合う あつさの 指導を 出す。
+        1st … みんなと同じ量。ヒントなし
+        2nd … 量をしぼり、ドットを つねに出す。2 たくにする
+        3rd … さらにしぼり、まず 動作化を 見せてから といてもらう
+
+   ※ ステージの さかいめ（点数）は このアプリ独自の めやすで、
+     MIM の正式な標準得点では ありません。あくまで
+     「いま どのくらいの 手あつさが 要りそうか」の 目じるしです。
+   ══════════════════════════════════════════════════════════════ */
+
+// かなの「だん（母音）」。長音（のばす おと）かどうかの 判定に つかう。
+const VOWEL_ROWS = {
+  a: 'あかさたなはまやらわがざだばぱゃァカサタナハマヤラワガザダバパャ',
+  i: 'いきしちにひみりぎじぢびぴィキシチニヒミリギジヂビピ',
+  u: 'うくすつぬふむゆるぐずづぶぷゅゥクスツヌフムユルグズヅブプュ',
+  e: 'えけせてねへめれげぜでべぺェケセテネヘメレゲゼデベペ',
+  o: 'おこそとのほもよろごぞどぼぽょォコソトノホモヨロゴゾドボポョ',
+};
+function vowelOf(kana) {
+  for (const v in VOWEL_ROWS) if (VOWEL_ROWS[v].indexOf(kana) >= 0) return v;
+  return null;
+}
+// 「のばす おと」になる くみあわせ（お＋う、え＋い など）
+const CHOUON_PAIRS = { a: 'あ', i: 'い', u: 'う', e: 'えい', o: 'おう' };
+
+/* 1 拍ぶんの しゅるいを きめる。ドットの 形と 手の うごきは これで きまる。
+     'plain'   … ふつうの おと（手を 1 かい たたく）
+     'sokuon'  … つまる おと（グーに にぎる。音は 出さない）
+     'youon'   … ねじれる おと（2 もじで 1 かい）
+     'chouon'  … のばす おと（手を よこに ひっぱる）
+     'hatsuon' … はねる おと（ん。1 かい たたく） */
+function moraKinds(word) {
+  const moras = splitMora(word);
+  return moras.map((m, i) => {
+    const chars = splitCells(m);
+    const last = chars[chars.length - 1];
+    if (isSokuon(m)) return 'sokuon';
+    if (m === 'ん' || m === 'ン') return 'hatsuon';
+    if (last === CHOUON_MARK) return 'chouon';
+    if (chars.length > 1 && isYouonSmall(last)) return 'youon';
+    // ひらがなの のばす おと：まえの だんと 合っていれば 長音
+    if (chars.length === 1 && i > 0) {
+      const prev = moras[i - 1];
+      const pv = vowelOf(splitCells(prev)[splitCells(prev).length - 1]);
+      if (pv && (CHOUON_PAIRS[pv] || '').indexOf(m) >= 0) return 'chouon';
+    }
+    return 'plain';
+  });
+}
+const MORA_KIND_INFO = {
+  plain:   { label: 'たたく',   hand: 'clap', hint: '手を 1 かい たたく' },
+  hatsuon: { label: 'たたく',   hand: 'clap', hint: '「ん」も 1 かい たたく' },
+  youon:   { label: 'まとめて', hand: 'clap', hint: '2 もじ まとめて 1 かい' },
+  sokuon:  { label: 'にぎる',   hand: 'fist', hint: 'グーに にぎって 音を出さない' },
+  chouon:  { label: 'ひっぱる', hand: 'pull', hint: '手を よこに ひっぱって のばす' },
+};
+
+/* ──────────────────────────────────────────────────────────────
+   1.56. ちからだめし（MIM-PM 型）の もんだい
+
+   MIM-PM の テスト①「絵に合うことば探し」に ならって、
+     清音 → 濁音・半濁音 → 長音 → 促音 → 拗音 → 拗長音 → カタカナ
+   の じゅんを 1 サイクルとして 5 回 くりかえす。
+   まちがい選択肢は MIM と同じく
+     形が にている／濁点の 有無／語順の 入れかえ／音が にている／
+     長音・促音・拗音の あやまり
+   から つくる。
+   ────────────────────────────────────────────────────────────── */
+const MIM_PM_ITEMS = [
+  // ── サイクル 1 ──
+  { w:'ねこ',        p:'cat',       k:'seion',   bad:['こね','ぬこ'] },
+  { w:'めがね',      p:'tool',      k:'dakuon',  bad:['めかね','めがれ'] },
+  { w:'おかあさん',  p:'person',    k:'chouon',  bad:['おかさん','おかわさん'] },
+  { w:'きって',      p:'tool',      k:'sokuon',  bad:['きて','きつて'] },
+  { w:'でんしゃ',    p:'train',     k:'youon',   bad:['でんしや','でしゃ'] },
+  { w:'きゅうしょく',p:'rice',      k:'youchou', bad:['きゆうしょく','きゅしょく'] },
+  { w:'ケーキ',      p:'sweet',     k:'kata',    bad:['ケエキ','ケーキー'] },
+  // ── サイクル 2 ──
+  { w:'くるま',      p:'car',       k:'seion',   bad:['るくま','くろま'] },
+  { w:'ぱんだ',      p:'animal',    k:'dakuon',  bad:['ばんだ','はんだ'] },
+  { w:'とけい',      p:'tool',      k:'chouon',  bad:['とけえ','とけ'] },
+  { w:'がっこう',    p:'school',    k:'sokuon',  bad:['がこう','がつこう'] },
+  { w:'きんぎょ',    p:'fish',      k:'youon',   bad:['きんぎよ','きぎょ'] },
+  { w:'びょういん',  p:'house',     k:'youchou', bad:['びよういん','びょいん'] },
+  { w:'ノート',      p:'book',      k:'kata',    bad:['ノオト','ノトー'] },
+  // ── サイクル 3 ──
+  { w:'たいこ',      p:'music',     k:'seion',   bad:['こいた','たいご'] },
+  { w:'ぶどう',      p:'fruit',     k:'dakuon',  bad:['ふどう','ぶとう'] },
+  { w:'おとうさん',  p:'person',    k:'chouon',  bad:['おとおさん','おとさん'] },
+  { w:'らっぱ',      p:'music',     k:'sokuon',  bad:['らぱ','らつぱ'] },
+  { w:'おもちゃ',    p:'ball',      k:'youon',   bad:['おもちや','おもちゅ'] },
+  { w:'ちょうちょ',  p:'bug',       k:'youchou', bad:['ちようちょ','ちょちょ'] },
+  { w:'ラーメン',    p:'rice',      k:'kata',    bad:['ラアメン','ラメーン'] },
+  // ── サイクル 4 ──
+  { w:'さかな',      p:'fish',      k:'seion',   bad:['かさな','さがな'] },
+  { w:'えんぴつ',    p:'pencil',    k:'dakuon',  bad:['えんひつ','えんびつ'] },
+  { w:'こおり',      p:'snow',      k:'chouon',  bad:['こうり','こり'] },
+  { w:'しっぽ',      p:'cat',       k:'sokuon',  bad:['しぽ','しつぽ'] },
+  { w:'しゅくだい',  p:'pencil',    k:'youon',   bad:['しゆくだい','しくだい'] },
+  { w:'きょうしつ',  p:'school',    k:'youchou', bad:['きようしつ','きょしつ'] },
+  { w:'コップ',      p:'drink',     k:'kata',    bad:['コプ','コツプ'] },
+  // ── サイクル 5 ──
+  { w:'はさみ',      p:'tool',      k:'seion',   bad:['さはみ','はざみ'] },
+  { w:'だんご',      p:'sweet',     k:'dakuon',  bad:['たんご','だんこ'] },
+  { w:'おねえさん',  p:'person',    k:'chouon',  bad:['おねいさん','おねさん'] },
+  { w:'なっとう',    p:'rice',      k:'sokuon',  bad:['なとう','なつとう'] },
+  { w:'しゃぼんだま',p:'ball',      k:'youon',   bad:['しやぼんだま','しゃぼだま'] },
+  { w:'にんぎょう',  p:'person',    k:'youchou', bad:['にんぎよう','にんぎょ'] },
+  { w:'スキー',      p:'snow',      k:'kata',    bad:['スキイ','スキ'] },
+];
+
+/* テスト②「3つの ことば さがし」。
+   くぎりの ない かなの ならびを 見て、ことばの きれめに 線を いれる。
+   まとまりで 読む ちから（流暢性）を みる。 */
+const MIM_PM_CHUNKS = [
+  ['あかい','かさ','とけい'],
+  ['ねこ','がっこう','ほん'],
+  ['でんしゃ','みかん','そら'],
+  ['おかあさん','りんご','うみ'],
+  ['きって','さかな','やま'],
+  ['ちょうちょ','はな','いぬ'],
+  ['せんせい','つくえ','まど'],
+  ['らっぱ','たいこ','うた'],
+  ['おもちゃ','はこ','いす'],
+  ['ゆき','こおり','さむい'],
+  ['あめ','かさ','ながぐつ'],
+  ['きゅうしょく','ぎゅうにゅう','パン'],
+];
+
+/* ──────────────────────────────────────────────────────────────
+   1.57. ステージ（層）の 判定
+
+   ちからだめしの 点数と、ふだんの とくべつな おとの 正答ぐあいから、
+   いま その子に 合う 指導の あつさを きめる。
+   ※ さかいめの 数字は このアプリ独自の めやす。
+   ────────────────────────────────────────────────────────────── */
+const KEY_MIM = 'kkm_v4_mim';   // ちからだめしの きろく
+const MIM_TIER_INFO = {
+  1: { key:1, name:'1st ステージ', short:'ふつう',   tone:'midori',
+       desc:'みんなと おなじ すすみかたで だいじょうぶ。',
+       teacher:'通常の量で進めます。ヒントは出さず、まちがえたぶんだけ復習に回します。' },
+  2: { key:2, name:'2nd ステージ', short:'すこし ていねい', tone:'ai',
+       desc:'ドットを つねに 出して、えらぶ かずを へらすよ。',
+       teacher:'語数をしぼり、ドット（視覚化）を常時表示、選択肢を2つに減らします。' },
+  3: { key:3, name:'3rd ステージ', short:'とても ていねい', tone:'shu',
+       desc:'まず リズムを 見てから、ゆっくり といて いこう。',
+       teacher:'語数をさらにしぼり、毎問ドット＋動作化（リズム）を先に見せてから解答させます。' },
+};
+// ちからだめし 1 かいぶんの 点数から ステージを きめる
+function tierFromScore(total) {
+  if (total >= 12) return 1;
+  if (total >= 6)  return 2;
+  return 3;
+}
+// いまの ステージ。ちからだめしが まだなら、ふだんの 正答ぐあいから 見る。
+function currentTier(mim, skill) {
+  const last = (mim?.log || [])[(mim?.log || []).length - 1];
+  if (last) return last.tier;
+  // まだ 受けていないときは、とくべつな おとの 成績から おおまかに
+  let ok = 0, ng = 0;
+  for (const id in (skill || {})) {
+    if (id.indexOf('s:') !== 0) continue;
+    ok += skill[id].ok || 0; ng += skill[id].ng || 0;
+  }
+  if (ok + ng < 10) return 1;              // データが すくないうちは ふつう
+  const rate = ok / (ok + ng);
+  if (rate >= 0.8) return 1;
+  if (rate >= 0.55) return 2;
+  return 3;
+}
+// ステージごとの 出題の あつさ
+function tierPlan(tier) {
+  if (tier >= 3) return { count: 4, words: 2, maxChoices: 2, dots: true,  rhythm: true  };
+  if (tier === 2) return { count: 5, words: 4, maxChoices: 2, dots: true,  rhythm: false };
+  return              { count: 6, words: 12, maxChoices: 3, dots: false, rhythm: false };
+}
+// ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
+const MIM_CHECK_INTERVAL_DAYS = 14;
+function mimCheckDue(mim) {
+  const log = mim?.log || [];
+  if (log.length === 0) return true;
+  return dayNumber() - (log[log.length - 1].day || 0) >= MIM_CHECK_INTERVAL_DAYS;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   1.9. わすれないための しくみ（かんかくを あけて ふくしゅう）
+
+   おぼえた ことは 何もしないと わすれる。だから このアプリは
+   「1 かい できた」で 終わりにせず、日を あけて もういちど 出す。
+
+     はこ 0 → きょう       （まちがえた ものは ここに もどる）
+     はこ 1 → あした
+     はこ 2 → 2 日ご
+     はこ 3 → 4 日ご
+     はこ 4 → 1 しゅうかんご
+     はこ 5 → 2 しゅうかんご
+     はこ 6 → 1 かげつご（もう だいじょうぶ）
+
+   できたら はこが 1 つ すすみ、まちがえたら はこ 0 に もどる。
+   これを「よむ ちから」と「とくべつな おと」の りょうほうに つかう。
+   ══════════════════════════════════════════════════════════════ */
+const KEY_SKILL   = 'kkm_v4_skill';    // ふくしゅうの はこ（SRS）
+const KEY_DAYLOG  = 'kkm_v4_daylog';   // 日ごとの がんばり（はんこカレンダー）
+
+const SRS_INTERVALS = [0, 1, 2, 4, 7, 14, 30];   // はこ → 何日あける
+const SRS_MAX_BOX = SRS_INTERVALS.length - 1;
+
+// item id のつけかた（アプリ全体で これだけ）
+//   よむ：      'r:あ'
+//   とくべつ：  's:sokuon:きって'
+//   にたもの：  'c:ぬ'
+function srsIdRead(char)          { return 'r:' + char; }
+function srsIdSpecial(unit, word) { return 's:' + unit + ':' + word; }
+function srsIdConfuse(char)       { return 'c:' + char; }
+
+function dayNumber(d = new Date()) {
+  // ローカル時間の「日」を通し番号にする（時刻のずれで前後しないように）
+  return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
+}
+function srsNew() { return { box: 0, due: dayNumber(), ok: 0, ng: 0 }; }
+function srsAnswer(rec, correct) {
+  const cur = rec || srsNew();
+  const box = correct ? Math.min(SRS_MAX_BOX, (cur.box || 0) + 1) : 0;
+  return {
+    box,
+    due: dayNumber() + SRS_INTERVALS[box],
+    ok: (cur.ok || 0) + (correct ? 1 : 0),
+    ng: (cur.ng || 0) + (correct ? 0 : 1),
+  };
+}
+function srsIsDue(rec) { return !rec || (rec.due ?? 0) <= dayNumber(); }
+// おぼえた（もう しばらく 出さなくてよい）と 言える はこ
+const SRS_LEARNED_BOX = 3;
+function srsIsLearned(rec) { return (rec?.box || 0) >= SRS_LEARNED_BOX; }
+// にがて＝まちがえた かずが おおく、まだ はこが すすんでいない もの
+function srsIsWeak(rec) { return !!rec && (rec.ng || 0) >= 1 && (rec.box || 0) <= 1; }
+
+/* ──────────────────────────────────────────────────────────────
+   1.95. きょうの めあて（3 つだけ）
+
+   「なにを どこまで やれば おわりか」が 見えないと、子どもは 自分から
+   はじめられない。毎日 おなじ 3 つ、5 分で おわる 量にする。
+   ────────────────────────────────────────────────────────────── */
+const MISSIONS = [
+  { key: 'review',  goal: 6, title: 'ふくしゅう',       sub: 'まえに やった もんだい',   view: 'sound',   tone: 'midori', icon: 'check' },
+  { key: 'write',   goal: 2, title: 'もじを かく',       sub: 'あたらしい じ を 1つ',     view: 'write',   tone: 'ai',     icon: 'pen' },
+  { key: 'special', goal: 6, title: 'とくべつな おと',   sub: 'っ ゃゅょ ん のばす',      view: 'special', tone: 'shu',    icon: 'brush' },
+];
+function emptyDayRecord() { return { review: 0, write: 0, special: 0, words: 0, check: 0, done: false }; }
+function isDayComplete(rec) {
+  if (!rec) return false;
+  return MISSIONS.every(m => (rec[m.key] || 0) >= m.goal);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   2.0. 画面の色（キャンバス用）
 
    色の定義は index.html の CSS 変数ただ 1 か所。ここでは読み出すだけにして、
    キャンバス（お手本・書いた線）と HTML で ぜったいに ちがう色にならない
@@ -1139,6 +1751,73 @@ function useAchievements({ mastered, words, streak, earned, setEarned, onNew }) 
   }, [mastered, words, streak]);
 }
 
+/* ──────────────────────────────────────────────────────────────
+   4.5. ふくしゅうの はこ（SRS）と きょうの きろく
+
+   おぼえたことを わすれないための しくみ。ここが 学習の 心臓部なので、
+   保存も 更新も この 2 つの フックだけを 通す。
+   ────────────────────────────────────────────────────────────── */
+function useSkill() {
+  const [skill, setSkill] = useLocalStorage(KEY_SKILL, {});
+  // 1 もんだいに こたえた → はこを すすめる／もどす
+  const answer = useCallback((id, correct) => {
+    if (!id) return;
+    setSkill(prev => ({ ...prev, [id]: srsAnswer(prev[id], correct) }));
+  }, [setSkill]);
+  return { skill, answerSkill: answer, setSkill };
+}
+
+// きょう どれだけ やったか（はんこカレンダーと きょうの めあて に つかう）
+function useDayLog() {
+  const [log, setLog] = useLocalStorage(KEY_DAYLOG, {});
+  const today = todayKey();
+  const bump = useCallback((key, n = 1) => {
+    setLog(prev => {
+      const k = todayKey();
+      const cur = prev[k] || emptyDayRecord();
+      const next = { ...cur, [key]: (cur[key] || 0) + n };
+      next.done = isDayComplete(next);
+      // 4 か月より前の きろくは 捨てる（保存容量を まもる）
+      const out = { ...prev, [k]: next };
+      const keys = Object.keys(out).sort();
+      while (keys.length > 130) delete out[keys.shift()];
+      return out;
+    });
+  }, [setLog]);
+  const todayRec = log[today] || emptyDayRecord();
+  return { log, todayRec, bumpMission: bump };
+}
+
+// きょう ふくしゅうすべき もの（はこの きげんが きた もの）を かぞえる
+function countDue(skill, prefix) {
+  let n = 0;
+  for (const id in (skill || {})) {
+    if (prefix && id.indexOf(prefix) !== 0) continue;
+    if (srsIsDue(skill[id])) n++;
+  }
+  return n;
+}
+// にがて（まちがえた ままの もの）を あつめる
+function weakItems(skill, prefix) {
+  const out = [];
+  for (const id in (skill || {})) {
+    if (prefix && id.indexOf(prefix) !== 0) continue;
+    if (srsIsWeak(skill[id])) out.push(id);
+  }
+  return out;
+}
+
+/* 配列を まぜる（出題の じゅんばんを 毎回かえる） */
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pickSome(arr, n) { return shuffled(arr).slice(0, n); }
+
 // 共有モーダル用フック：Escape、フォーカストラップ、body スクロールロック
 // onClose を渡せば Escape 押下で閉じる。dialog ノードの ref を返す。
 function useModal(onClose) {
@@ -1531,12 +2210,21 @@ function StreakBadge({ streak }) {
 /* ──────────────────────────────────────────────────────────────
    8. <Header>
    ────────────────────────────────────────────────────────────── */
-// 上下のタブ（もじをかく／ことばずかん／しりとり）はここ 1 か所で定義する。
-// パソコンのヘッダーと スマホの下タブで、順番も名まえも かならず そろう。
+/* 画面（タブ）はここ 1 か所で定義する。
+   パソコンのヘッダーと スマホの下タブで、順番も名まえも かならず そろう。
+
+   ならびは「学びの じゅんばん」そのもの。
+     ホーム   … きょう なにを やるかを きめる（まよわせない）
+     かく     … 手で 書いて 形を おぼえる
+     よむ     … もじと おとを むすびつける
+     とくべつ … っ ゃゅょ ん のばす は へ を（1年生の やま）
+     ずかん   … あつめた ことばで あそぶ（ごほうび） */
 const VIEW_TABS = [
-  { key: 'practice',  label: 'もじをかく',   Icon: IconPencil },
-  { key: 'words',     label: 'ことばずかん', Icon: IconBook   },
-  { key: 'shiritori', label: 'しりとり',     Icon: IconLink   },
+  { key: 'home',    label: 'ホーム',   short: 'ホーム',   Icon: IconTarget },
+  { key: 'write',   label: 'かく',     short: 'かく',     Icon: IconPencil },
+  { key: 'sound',   label: 'よむ',     short: 'よむ',     Icon: IconSearch },
+  { key: 'special', label: 'とくべつ', short: 'とくべつ', Icon: IconBrush  },
+  { key: 'words',   label: 'ずかん',   short: 'ずかん',   Icon: IconBook   },
 ];
 
 /* アプリのしるし＝朱印（しゅいん）。教科書の おわりに押してある はんこのイメージ。 */
@@ -1636,10 +2324,10 @@ function ModeTabsMobile({ view, setView }) {
         const on = view === t.key;
         return (
           <button key={t.key} onClick={() => setView(t.key)} aria-current={on ? 'page' : undefined}
-            className={`kkm-btn relative flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold ${
+            className={`kkm-btn relative flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-semibold ${
               on ? 'text-shu-700 bg-shu-50' : 'text-sumi-500'
             }`}>
-            <t.Icon size={14}/> {t.label}
+            <t.Icon size={16}/> {t.short}
             {on && <span aria-hidden="true" className="kkm-underline absolute left-3 right-3 bottom-0 h-[3px] rounded-full bg-shu-600"/>}
           </button>
         );
@@ -1830,7 +2518,7 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
       <div className="flex gap-1.5 mt-2 shrink-0">
         <button onClick={onSequence}
           className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-700 border border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-1.5 min-h-[40px]">
-          <IconArrow size={15}/> あいうえお<span className="hidden md:inline">じゅん</span>
+          <IconArrow size={15}/> やさしい<span className="hidden md:inline">じゅん</span>
         </button>
         <button onClick={onRandom}
           className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-700 border border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-1.5 min-h-[40px]">
@@ -3690,7 +4378,7 @@ function InstallGuideModal({ platform, onClose }) {
 /* ──────────────────────────────────────────────────────────────
    21. <MainBoard>
    ────────────────────────────────────────────────────────────── */
-function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mastered, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, practiceCount, voiceOn, onGoToWords }) {
+function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mastered, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, practiceCount, voiceOn, onGoToWords, requestedChar, onConsumeRequested }) {
   const [currentChar, setCurrentChar] = useState(null);
   const [paths, setPaths] = useState(null);
   const [fetchError, setFetchError] = useState(false);
@@ -3719,9 +4407,28 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
     selectChar(c, 'free');
   }
 
+  // ホームの「つぎの もじ」から とんできたときは、その文字をすぐ ひらく
+  useEffect(() => {
+    if (!requestedChar) return;
+    const kind = getKindOfChar(requestedChar);
+    if (kind !== kanaKind) setKanaKind(kind);
+    const isKata = KATA_ALL_LIST.includes(requestedChar);
+    if (isKata && kanaMode !== 'katakana') setKanaMode('katakana');
+    if (!isKata && kanaMode !== 'hiragana') setKanaMode('hiragana');
+    selectChar(requestedChar, 'free');
+    onConsumeRequested && onConsumeRequested();
+    // eslint-disable-next-line
+  }, [requestedChar]);
+
+  /* まとめて れんしゅうする ときの じゅんばん。
+     五十音の「あ」からではなく、画数の すくない やさしい 字から すすめる。
+     はじめの 1 文字で つまずかせないための ならびで、表の 見た目
+     （教科書どおりの 五十音）は かえない。 */
   function startSequence() {
     const list = getKanaList(kanaMode, kanaKind);
-    const target = list.find(c => getStage(progress, c) < 4) || list[0];
+    const order = learnOrderOf(kanaMode).filter(c => list.includes(c));
+    const seq = order.length > 0 ? order : list;
+    const target = seq.find(c => getStage(progress, c) < 4) || seq[0];
     selectChar(target, 'sequential');
   }
   function startRandom() {
@@ -3737,10 +4444,12 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
     if (!currentChar) return;
     const list = getKanaList(kanaMode, kanaKind);
     if (playMode === 'random') return startRandom();
-    const idx = list.indexOf(currentChar);
-    if (idx < 0) { return selectChar(list[0], playMode); }
-    const nx  = list[(idx+1) % list.length];
-    selectChar(nx, playMode);
+    // じゅんばん練習も「やさしい じゅん」でつなぐ
+    const order = learnOrderOf(kanaMode).filter(c => list.includes(c));
+    const seq = order.length > 0 ? order : list;
+    const idx = seq.indexOf(currentChar);
+    if (idx < 0) { return selectChar(seq[0], playMode); }
+    selectChar(seq[(idx+1) % seq.length], playMode);
   }
   // 表のしゅるい／かなが切り替わったとき、いまの文字がその表にないなら選択解除
   useEffect(() => {
@@ -3876,16 +4585,1743 @@ function KanaDrawer({ children, onClose }) {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════
+   18.4. MIM の 視覚化（ドット）と 動作化（リズム）
+
+   目に見えない「おと」を、● と 手の うごきで つかめるようにする。
+   このアプリで 特殊音節を あつかう ところは、ぜんぶ ここを 通す。
+   ══════════════════════════════════════════════════════════════ */
+
+/* 手の うごきの えほんアイコン。
+   なるべく 小さくても わかるよう、実物そっくりではなく 記号にしている。 */
+const IconClap     = (p) => <SvgIcon {...p}><rect x="7" y="9" width="10" height="10" rx="3"/><path d="M9.5 9V6.6M12 9V5.6M14.5 9V6.6"/><path d="M4 5.6 5.9 7.2M20 5.6 18.1 7.2"/></SvgIcon>;
+const IconFist     = (p) => <SvgIcon {...p}><rect x="6" y="7.5" width="12" height="11" rx="4"/><path d="M9 11.5h6M9 14.5h6"/></SvgIcon>;
+const IconPullSide = (p) => <SvgIcon {...p}><rect x="3.5" y="7.5" width="8" height="10" rx="3"/><path d="M13.5 12.5h7M17.5 9.5l3 3-3 3"/></SvgIcon>;
+const HAND_ICONS = { clap: IconClap, fist: IconFist, pull: IconPullSide };
+
+/* 拍（おと）を ● で あらわす 1 行。マスの ま下に そろえて出す。
+     ふつうの おと … ぬりつぶした ●
+     つまる おと   … 小さい 白い ○（音を 出さない）
+     ねじれる おと … ● 1 つ ＋ 2 マスを つなぐ かっこ
+     のばす おと   … ● ＋ まえの ● とを つなぐ よこ線 */
+function MimDots({ word, cellSize = 52, gap = 6, activeMora = -1, className = '' }) {
+  const moras = splitMora(word);
+  const kinds = moraKinds(word);
+  return (
+    <div className={`flex ${className}`} style={{ gap }} aria-hidden="true">
+      {moras.map((m, i) => {
+        const span = splitCells(m).length;
+        const width = span * cellSize + (span - 1) * gap;
+        const kind = kinds[i];
+        const on = i === activeMora;
+        // まえの 拍の ● の まん中まで 線を のばす（拗長音でも ずれないように）
+        const prevSpan = i > 0 ? splitCells(moras[i - 1]).length : 1;
+        const prevHalf = (prevSpan * cellSize + (prevSpan - 1) * gap) / 2;
+        return (
+          <span key={i} className="relative flex items-center justify-center shrink-0" style={{ width, height: 20 }}>
+            {/* のばす おと：まえの ● とを 線でつなぐ */}
+            {kind === 'chouon' && i > 0 && (
+              <span className="absolute top-1/2 -translate-y-1/2 border-t-2 border-shu-500"
+                style={{ right: '50%', width: (width / 2) + gap + prevHalf }}/>
+            )}
+            {/* ねじれる おと：2 マスぶんを かっこで まとめる */}
+            {kind === 'youon' && (
+              <span className="absolute inset-x-1 top-0 h-2 border-t-2 border-x-2 border-fuji-400 rounded-t-md"/>
+            )}
+            <span className={`relative rounded-full transition-all duration-150 ${
+              kind === 'sokuon'
+                ? `border-2 border-dashed ${on ? 'border-shu-600 bg-shu-100' : 'border-sumi-400 bg-white'}`
+                : `${on ? 'bg-shu-600' : 'bg-sumi-500'}`
+            }`}
+              style={kind === 'sokuon'
+                ? { width: 10, height: 10 }
+                : { width: on ? 16 : 13, height: on ? 16 : 13 }}/>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/* 動作化：リズムに あわせて 手を うごかす。
+   ・ふつうの おと … たたく（音が 鳴る）
+   ・つまる おと   … にぎる（音を 鳴らさない）← ここが いちばん 大事
+   ・のばす おと   … よこに ひっぱる */
+function RhythmPlayer({ word, cellSize = 46, autoPlay = false, voiceOn = true, compact = false }) {
+  const [active, setActive] = useState(-1);
+  const [playing, setPlaying] = useState(false);
+  const timersRef = useRef([]);
+  const kinds = useMemo(() => moraKinds(word), [word]);
+  const moras = useMemo(() => splitMora(word), [word]);
+
+  const clearTimers = useCallback(() => { timersRef.current.forEach(clearTimeout); timersRef.current = []; }, []);
+  useEffect(() => clearTimers, [clearTimers]);
+
+  const play = useCallback(() => {
+    clearTimers();
+    setPlaying(true);
+    initAudio();
+    const step = 620;
+    moras.forEach((m, i) => {
+      timersRef.current.push(setTimeout(() => {
+        setActive(i);
+        hapticTick();
+        // つまる おと は 音を 出さない（グーに にぎる ところ）
+        if (kinds[i] === 'sokuon') return;
+        if (kinds[i] === 'chouon') playTone(587.33, 'sine', 0.42, 0.09);
+        else playTone(783.99, 'sine', 0.12, 0.09);
+      }, i * step));
+    });
+    timersRef.current.push(setTimeout(() => {
+      setActive(-1); setPlaying(false);
+      if (voiceOn) speakText(word, voiceOn);
+    }, moras.length * step + 250));
+  }, [moras, kinds, word, voiceOn, clearTimers]);
+
+  useEffect(() => {
+    setActive(-1); setPlaying(false); clearTimers();
+    if (autoPlay) { const t = setTimeout(play, 350); return () => clearTimeout(t); }
+    // eslint-disable-next-line
+  }, [word, autoPlay]);
+
+  const info = active >= 0 ? MORA_KIND_INFO[kinds[active]] : null;
+  const Hand = info ? HAND_ICONS[info.hand] : IconClap;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="inline-flex flex-col items-center gap-1">
+        <div className="flex" style={{ gap: 6 }}>
+          {splitCells(word).map((c, i) => <KanaCell key={i} char={c} size={cellSize}/>)}
+        </div>
+        <MimDots word={word} cellSize={cellSize} gap={6} activeMora={active}/>
+      </div>
+
+      {!compact && (
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border min-h-[42px] ${
+          info ? 'bg-shu-50 border-shu-300 text-shu-700' : 'bg-washi-100 border-sumi-200 text-sumi-400'
+        }`}>
+          <span className={info ? 'kkm-pop-in' : ''}><Hand size={22}/></span>
+          <span className="text-sm font-semibold">{info ? info.hint : '「リズム」を おしてね'}</span>
+        </div>
+      )}
+
+      <button onClick={play} disabled={playing}
+        className="kkm-btn kkm-ripple px-4 py-2 rounded-md bg-shu-600 text-white font-semibold text-sm border border-shu-700 flex items-center justify-center gap-2 disabled:opacity-60 min-h-[42px]">
+        <IconClap size={17}/> {playing ? 'てを たたこう…' : 'リズムで やってみる'}
+      </button>
+    </div>
+  );
+}
+
+/* 手の うごきの きまり（まなぶ画面で 見せる はやみ表） */
+function RhythmLegend() {
+  const rows = [
+    { kind:'plain',  ex:'か' },
+    { kind:'sokuon', ex:'っ' },
+    { kind:'chouon', ex:'う' },
+    { kind:'youon',  ex:'ゃ' },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {rows.map(r => {
+        const info = MORA_KIND_INFO[r.kind];
+        const Hand = HAND_ICONS[info.hand];
+        return (
+          <div key={r.kind} className="flex items-center gap-2 rounded-md border border-sumi-200 bg-washi-100 px-2 py-1.5">
+            <span className="kkm-glyph text-lg leading-none text-sumi-700 w-5 text-center">{r.ex}</span>
+            <span className="text-shu-600 shrink-0"><Hand size={18}/></span>
+            <span className="text-[11px] font-semibold text-sumi-600 leading-tight">{info.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.45. <MimCheckView> ── ちからだめし「よみめいじん」
+
+   MIM-PM に ならった 2 分（1 分 × 2）の みじかい 課題。
+   点数そのものより、**まえの じぶんと くらべて のびているか** を見る。
+   結果から その子に 合う ステージ（指導の あつさ）を きめる。
+   ══════════════════════════════════════════════════════════════ */
+const MIM_TEST_SECONDS = 60;
+
+/* のこり時間の わっか */
+function CountDown({ left, total }) {
+  return (
+    <div className="flex items-center gap-2">
+      <ProgressRing pct={(left / total) * 100} size={38} stroke={4}
+        color={left <= 10 ? 'var(--kkm-shu)' : '#40608a'}>
+        <span className={`text-[11px] font-semibold tabular-nums ${left <= 10 ? 'text-shu-700' : 'text-ai-700'}`}>{left}</span>
+      </ProgressRing>
+      <span className="text-[11px] font-semibold text-sumi-500">びょう</span>
+    </div>
+  );
+}
+
+/* テスト②「3つの ことば さがし」の 1 もん。
+   もじと もじの あいだを タップして、ことばの きれめに 線を いれる。 */
+function ChunkQuestion({ chunk, onDone }) {
+  const text = chunk.join('');
+  const chars = splitCells(text);
+  const answer = useMemo(() => {
+    const out = []; let acc = 0;
+    for (let i = 0; i < chunk.length - 1; i++) { acc += splitCells(chunk[i]).length; out.push(acc); }
+    return out;
+  }, [chunk]);
+  const [cuts, setCuts] = useState([]);
+
+  function toggle(pos) {
+    setCuts(prev => {
+      const next = prev.includes(pos) ? prev.filter(p => p !== pos) : [...prev, pos].sort((a, b) => a - b);
+      if (next.length === answer.length) {
+        const ok = next.every((p, i) => p === answer[i]);
+        setTimeout(() => onDone(ok), 260);
+      }
+      return next;
+    });
+  }
+  const size = chars.length > 8 ? 34 : 42;
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="text-xs md:text-sm font-semibold text-sumi-600">3 つの ことばに 線で わけよう</div>
+      <div className="flex items-center flex-wrap justify-center">
+        {chars.map((c, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && (
+              <button onClick={() => toggle(i)} aria-label={`${i}ばんめの あとで きる`}
+                className="kkm-btn relative flex items-center justify-center shrink-0"
+                style={{ width: 16, height: size }}>
+                <span className={`block rounded-full transition-all ${
+                  cuts.includes(i) ? 'bg-shu-600 w-1' : 'bg-sumi-200 w-0.5'
+                }`} style={{ height: cuts.includes(i) ? size : size * 0.5 }}/>
+              </button>
+            )}
+            <KanaCell char={c} size={size}/>
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="text-[11px] font-medium text-sumi-400">もじの あいだを タップすると 線が ひけるよ</div>
+    </div>
+  );
+}
+
+function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked }) {
+  const [phase, setPhase] = useState('intro');   // intro / test1 / rest / test2 / result
+  const [left, setLeft] = useState(MIM_TEST_SECONDS);
+  const [idx, setIdx] = useState(0);
+  const [t1, setT1] = useState(0);
+  const [t2, setT2] = useState(0);
+  const [flash, setFlash] = useState(null);
+  const items1 = useMemo(() => shuffled(MIM_PM_ITEMS), []);
+  const items2 = useMemo(() => shuffled(MIM_PM_CHUNKS), []);
+
+  // タイマー
+  useEffect(() => {
+    if (phase !== 'test1' && phase !== 'test2') return;
+    setLeft(MIM_TEST_SECONDS);
+    const id = setInterval(() => {
+      setLeft(l => {
+        if (l <= 1) {
+          clearInterval(id);
+          setPhase(p => (p === 'test1' ? 'rest' : 'result'));
+          return 0;
+        }
+        return l - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // 結果を きろくする
+  const savedRef = useRef(false);
+  useEffect(() => {
+    if (phase !== 'result' || savedRef.current) return;
+    savedRef.current = true;
+    const total = t1 + t2;
+    const tier = tierFromScore(total);
+    setMim(prev => {
+      const log = [...((prev && prev.log) || []), { day: dayNumber(), date: todayKey(), t1, t2, total, tier }];
+      while (log.length > 24) log.shift();
+      return { ...(prev || {}), log };
+    });
+    onChecked && onChecked();
+    playFanfare(); burstConfetti(); hapticTriumph();
+    // eslint-disable-next-line
+  }, [phase]);
+
+  function answer1(choice, item) {
+    const ok = choice === item.w;
+    if (ok) { setT1(v => v + 1); playPingPong(); } else { playBuzzer(); }
+    setFlash(ok ? 'ok' : 'ng');
+    setTimeout(() => { setFlash(null); setIdx(i => i + 1); }, 260);
+  }
+  function answer2(ok) {
+    if (ok) { setT2(v => v + 1); playPingPong(); } else { playBuzzer(); }
+    setFlash(ok ? 'ok' : 'ng');
+    setTimeout(() => { setFlash(null); setIdx(i => i + 1); }, 320);
+  }
+
+  /* ── はじめの あんない ── */
+  if (phase === 'intro') {
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4">
+        <div className="max-w-xl mx-auto flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} aria-label="もどる"
+              className="kkm-btn w-9 h-9 shrink-0 rounded-md bg-white border border-sumi-300 text-sumi-500 flex items-center justify-center">
+              <IconX size={16}/>
+            </button>
+            <SectionTitle>ちからだめし「よみめいじん」</SectionTitle>
+          </div>
+          <div className="kkm-sheet rounded-lg p-4 flex items-center gap-3 border-l-4 border-l-ai-600">
+            <MascotFace size={48} mood="cheer"/>
+            <div className="text-sm md:text-base font-semibold text-sumi-800 leading-snug">
+              1 ぷんずつ、2 かい。<br/>
+              どれだけ はやく ただしい ことばを 見つけられるか ためしてみよう。
+            </div>
+          </div>
+          <ol className="flex flex-col gap-2">
+            {[
+              { n:'１', t:'えに あう ことば さがし', s:'えを見て、ただしい かきかたを えらぶ（1ぷん）' },
+              { n:'２', t:'3 つの ことば さがし',   s:'つながった もじを 3 つの ことばに わける（1ぷん）' },
+            ].map(x => (
+              <li key={x.n} className="kkm-sheet rounded-lg p-3 flex items-center gap-3">
+                <span className="kkm-glyph shrink-0 w-9 h-9 rounded-md bg-ai-50 border border-ai-300 text-ai-700 flex items-center justify-center text-lg">{x.n}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-sumi-800">{x.t}</span>
+                  <span className="block text-[11px] font-medium text-sumi-600">{x.s}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <div className="text-[11px] font-medium text-sumi-500 leading-relaxed kkm-sheet rounded-lg p-3">
+            まちがえても だいじょうぶ。この けっかで「いま どのくらい ていねいに
+            すすめると いいか」を きめるだけだよ。
+          </div>
+          <button onClick={() => { setIdx(0); setPhase('test1'); }}
+            className="kkm-btn kkm-ripple py-3.5 rounded-md bg-ai-600 text-white font-semibold text-base border border-ai-700 flex items-center justify-center gap-2 min-h-[52px]">
+            <IconPlay size={18}/> はじめる
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── 1 と 2 の あいだ ── */
+  if (phase === 'rest') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <MascotFace size={56} mood="wow"/>
+        <div className="text-xl font-semibold text-sumi-800">1 つめ おわり！</div>
+        <div className="text-sm font-medium text-sumi-600">
+          ただしく えらべたのは <span className="text-shu-700 font-semibold tabular-nums">{t1}</span> こ
+        </div>
+        <button onClick={() => { setIdx(0); setPhase('test2'); }}
+          className="kkm-btn kkm-ripple px-6 py-3 rounded-md bg-ai-600 text-white font-semibold border border-ai-700 min-h-[48px]">
+          つぎへ（3 つの ことば さがし）
+        </button>
+      </div>
+    );
+  }
+
+  /* ── 結果 ── */
+  if (phase === 'result') {
+    const total = t1 + t2;
+    const tier = tierFromScore(total);
+    const info = MIM_TIER_INFO[tier];
+    const t = TONES[info.tone];
+    const log = (mim?.log || []);
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4">
+        <div className="max-w-xl mx-auto flex flex-col gap-3 text-center">
+          <span className={`kkm-stamp mx-auto w-24 h-24 rounded-lg border-2 flex items-center justify-center ${t.solid} text-white`}>
+            <span className="text-4xl font-semibold tabular-nums">{total}</span>
+          </span>
+          <div className="text-xl font-semibold text-sumi-800">よく がんばりました！</div>
+          <div className="text-sm font-medium text-sumi-600">
+            えに あう ことば {t1} こ ・ 3 つの ことば {t2} もん
+          </div>
+          <div className={`kkm-sheet rounded-lg p-3 border-l-4 ${t.leftRule} text-left`}>
+            <div className={`text-sm font-semibold ${t.text}`}>これからの すすめかた：{info.short}</div>
+            <div className="text-xs font-medium text-sumi-600 mt-1 leading-snug">{info.desc}</div>
+          </div>
+          {/* きろくは 上の useEffect で すでに 足してある。ここで もう一度
+              足すと 同じ点が 2 つ ならぶので、そのまま 見せる。 */}
+          <MimHistoryChart log={log}/>
+          <button onClick={onClose}
+            className="kkm-btn kkm-ripple py-3 rounded-md bg-shu-600 text-white font-semibold border border-shu-700 min-h-[48px]">
+            おわる
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── テスト中 ── */
+  const isT1 = phase === 'test1';
+  const item = isT1 ? items1[idx % items1.length] : items2[idx % items2.length];
+  const choices = isT1 ? shuffled([item.w, ...item.bad]) : null;
+  return (
+    <div className={`flex-1 min-h-0 flex flex-col p-2 md:p-4 transition-colors duration-150 ${
+      flash === 'ok' ? 'bg-midori-50' : flash === 'ng' ? 'bg-shu-50' : ''
+    }`}>
+      <div className="shrink-0 flex items-center justify-between gap-2 px-1 pb-2">
+        <span className="text-xs font-semibold text-sumi-600 truncate">
+          {isT1 ? '① えに あう ことば さがし' : '② 3 つの ことば さがし'}
+        </span>
+        <span className="flex items-center gap-3 shrink-0">
+          <span className="text-xs font-semibold text-shu-700 tabular-nums">{isT1 ? t1 : t2} こ</span>
+          <CountDown left={left} total={MIM_TEST_SECONDS}/>
+        </span>
+      </div>
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4">
+        {isT1 ? (
+          <>
+            <div className="flex items-center justify-center w-24 h-24 rounded-lg bg-washi-100 border border-sumi-200 text-sumi-700">
+              <Pict name={item.p} size={58}/>
+            </div>
+            <div className="w-full max-w-md grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {choices.map((c, i) => (
+                <button key={i} onClick={() => answer1(c, item)}
+                  className="kkm-btn kkm-ripple rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 py-3 px-2 min-h-[56px] flex items-center justify-center">
+                  <span className="kkm-glyph text-lg md:text-xl text-sumi-800 leading-none">{c}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <ChunkQuestion key={idx} chunk={item} onDone={answer2}/>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ちからだめしの のびを 折れ線で 見せる（まえの じぶんとの くらべ） */
+function MimHistoryChart({ log }) {
+  const data = (log || []).slice(-8);
+  if (data.length === 0) return null;
+  const w = 280, h = 84, pad = 10;
+  const max = Math.max(20, ...data.map(d => d.total));
+  const pts = data.map((d, i) => {
+    const x = data.length === 1 ? w / 2 : pad + (i * (w - pad * 2)) / (data.length - 1);
+    const y = h - pad - ((d.total / max) * (h - pad * 2));
+    return { x, y, d };
+  });
+  return (
+    <div className="kkm-sheet rounded-lg p-3">
+      <div className="text-xs font-semibold text-sumi-600 mb-1 text-left">ちからだめしの のび</div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="ちからだめしの てんすうの うつりかわり">
+        <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="#ded8cd" strokeWidth="1.5"/>
+        {pts.length > 1 && (
+          <polyline fill="none" stroke="var(--kkm-shu)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
+            points={pts.map(p => `${p.x},${p.y}`).join(' ')}/>
+        )}
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="4" fill="#fff" stroke="var(--kkm-shu)" strokeWidth="2.5"/>
+            <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="10" fill="#5c554c" fontWeight="600">{p.d.total}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.5. マス（原稿用紙）で 見せる しくみ
+
+   このアプリの あたらしい 主役。「おと」と「マス」の 関係を、
+   どの画面でも おなじ 見た目で 見せる。
+     ・1 もじ ＝ 1 マス（ちいさい っ ゃゅょ も かならず 1 マス）
+     ・おと（拍）の くぎりは マスの したに 朱色の 弧で 見せる
+   ══════════════════════════════════════════════════════════════ */
+
+/* もじ 1 つぶんの マス。ちいさい字には うっすら「ちいさく かく」めやすを出す。 */
+function KanaCell({ char, size = 56, state = 'plain', onClick, ariaLabel }) {
+  // state: plain（ふつう）/ blank（あな）/ target（いま こたえる あな）/ ok / ng / hint
+  const styles = {
+    plain:  'bg-white border-sumi-300 text-sumi-800',
+    blank:  'bg-washi-100 border-dashed border-sumi-300 text-sumi-300',
+    target: 'bg-shu-50 border-dashed border-shu-500 text-shu-400 kkm-pulse-ring',
+    ok:     'bg-midori-50 border-midori-500 text-midori-700',
+    ng:     'bg-shu-50 border-shu-500 text-shu-700',
+    hint:   'bg-yamabuki-50 border-yamabuki-400 text-yamabuki-700',
+  };
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag onClick={onClick} aria-label={ariaLabel}
+      className={`relative shrink-0 rounded-md border-2 flex items-center justify-center ${styles[state] || styles.plain} ${onClick ? 'kkm-btn' : ''}`}
+      style={{ width: size, height: size }}>
+      {/* 原稿用紙の 十字の めやす */}
+      <span aria-hidden="true" className="absolute inset-0 pointer-events-none">
+        <span className="absolute top-1/2 left-1 right-1 border-t border-dashed border-sumi-200"/>
+        <span className="absolute left-1/2 top-1 bottom-1 border-l border-dashed border-sumi-200"/>
+      </span>
+      {char
+        ? <span className="kkm-glyph relative leading-none" style={{ fontSize: size * 0.62 }}>{char}</span>
+        : <span className="relative leading-none font-semibold" style={{ fontSize: size * 0.4 }}>?</span>}
+      {isSmallKana(char) && (
+        <span aria-hidden="true"
+          className="absolute right-1 bottom-1 text-[9px] font-semibold text-shu-500 leading-none">小</span>
+      )}
+    </Tag>
+  );
+}
+
+/* ことばを マスに ならべて 見せる。あな（blanks）は こたえる ところ。 */
+function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1, judged = null, showMora = false, activeMora = -1, onTapCell }) {
+  const cells = splitCells(word);
+  const moraNum = splitMora(word).length;
+  return (
+    <div className="inline-flex flex-col items-center gap-1">
+      <div className="flex gap-1.5 flex-wrap justify-center">
+        {cells.map((c, i) => {
+          const isBlank = blanks.includes(i);
+          const put = filled[i];
+          let state = 'plain', shown = c;
+          if (isBlank) {
+            if (judged) { state = put === c ? 'ok' : 'ng'; shown = put || c; }
+            else if (put) { state = 'hint'; shown = put; }
+            else { state = (i === activeBlank) ? 'target' : 'blank'; shown = ''; }
+          }
+          return <KanaCell key={i} char={shown} size={size} state={state}
+                    onClick={onTapCell ? () => onTapCell(i) : undefined}
+                    ariaLabel={isBlank ? `${i+1}ばんめ の あな` : `${i+1}ばんめ ${c}`}/>;
+        })}
+      </div>
+      {/* MIM の 視覚化：おと（拍）を ● で 見せる。
+          小さい ○ は「音を出さない」ところ（つまる おと）。 */}
+      {showMora && <MimDots word={word} cellSize={size} gap={6} activeMora={activeMora} className="mt-0.5"/>}
+      {showMora && (
+        <div className="text-[11px] md:text-xs font-semibold text-shu-700 tabular-nums">
+          おと {moraNum} つ ・ マス {cells.length} つ
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.6. もんだいの かたち（アプリじゅうで 1 つだけ）
+
+   よむ・とくべつな おと・ふくしゅう は、ぜんぶ この 1 つの
+   もんだいカードで 出す。子どもは 画面が かわっても まよわない。
+
+   もんだい（question）の かたち：
+     kind 'choice' … えらぶ（ことば・もじ・え）
+     kind 'cells'  … マスの あなを うめる
+     kind 'count'  … おとの かずを こたえる
+   ══════════════════════════════════════════════════════════════ */
+const COUNT_CHOICES = [1, 2, 3, 4, 5, 6];
+
+function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
+  const [filled, setFilled] = useState({});
+  const [judged, setJudged] = useState(null);   // { correct, chosen }
+  const answeredRef = useRef(false);
+
+  useEffect(() => { setFilled({}); setJudged(null); answeredRef.current = false; }, [q.uid]);
+
+  // よみあげ（つかえる 端末だけ。なくても もんだいは とける）
+  useEffect(() => {
+    if (q.say && voiceOn) { const t = setTimeout(() => speakText(q.say, voiceOn), 250); return () => clearTimeout(t); }
+  }, [q.uid, q.say, voiceOn]);
+
+  const blanks = q.blanks || [];
+  const activeBlank = blanks.find(i => !filled[i]);
+  // 「ちいさい／おおきい」の めやすは、その ちがいが 出題の ポイントに
+  // なっているとき（ちいさい字が えらべる とき）だけ 出す。
+  const showSizeHint = !!(q.choices && q.choices.some(c => isSmallKana(c.label)));
+
+  function finish(correct, chosen) {
+    if (answeredRef.current) return;
+    answeredRef.current = true;
+    setJudged({ correct, chosen });
+    if (correct) { playPingPong(); hapticOk(); }
+    else { playBuzzer(); hapticErr(); }
+    if (voiceOn && q.answerSay) setTimeout(() => speakText(q.answerSay, voiceOn), 350);
+    onAnswer(correct);
+  }
+
+  function tapChoice(v) {
+    if (judged) return;
+    if (q.kind === 'cells') {
+      if (activeBlank === undefined) return;
+      const next = { ...filled, [activeBlank]: v };
+      setFilled(next);
+      const rest = blanks.find(i => !next[i]);
+      if (rest === undefined) {
+        const cells = splitCells(q.word);
+        finish(blanks.every(i => next[i] === cells[i]), next);
+      }
+    } else if (q.kind === 'count') {
+      finish(v === q.answer, v);
+    } else {
+      finish(v === q.answer, v);
+    }
+  }
+  function undo() {
+    if (judged) return;
+    const done = blanks.filter(i => filled[i]);
+    if (done.length === 0) return;
+    const last = done[done.length - 1];
+    const next = { ...filled }; delete next[last];
+    setFilled(next);
+  }
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 md:gap-4 px-1">
+      {/* といかけ */}
+      <div className="text-center shrink-0">
+        <div className="text-[11px] md:text-sm font-semibold text-shu-700">{q.lead}</div>
+        <div className="text-sm md:text-lg font-semibold text-sumi-800 mt-0.5">{q.ask}</div>
+      </div>
+
+      {/* もんだいの ほんたい */}
+      <div className="shrink-0 flex flex-col items-center gap-2">
+        {q.pict && (
+          <div className="flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-lg bg-washi-100 border border-sumi-200 text-sumi-700">
+            <Pict name={q.pict} size={54}/>
+          </div>
+        )}
+        {q.glyph && (
+          <div className="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-lg bg-white border-2 border-shu-400">
+            <span className="kkm-glyph text-6xl md:text-7xl text-shu-700 leading-none">{q.glyph}</span>
+          </div>
+        )}
+        {q.sentence && (
+          <div className="kkm-glyph text-xl md:text-3xl text-sumi-800 text-center leading-relaxed px-2">
+            {q.sentence.split('◯').map((part, i) => (
+              <React.Fragment key={i}>
+                {part}
+                {i === 0 && (
+                  <span className={`inline-flex items-center justify-center align-middle mx-1 w-9 h-9 md:w-12 md:h-12 rounded-md border-2 ${
+                    judged ? (judged.correct ? 'border-midori-500 bg-midori-50 text-midori-700' : 'border-shu-500 bg-shu-50 text-shu-700')
+                           : 'border-dashed border-shu-500 bg-shu-50 text-shu-400'
+                  }`}>
+                    {judged ? q.answer : '？'}
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+        {q.word && (
+          <WordCells word={q.word} blanks={blanks} filled={filled}
+            activeBlank={activeBlank === undefined ? -1 : activeBlank}
+            judged={judged}
+            /* MIM：2nd・3rd ステージでは ドットを つねに 出しておく。
+               1st ステージでは こたえあわせの ときだけ 出す。 */
+            showMora={!!support?.dots || (!!judged && q.kind === 'count')}
+            size={splitCells(q.word).length > 5 ? 40 : 52}/>
+        )}
+        {/* MIM の 動作化：3rd ステージでは といた あとに かならず
+            リズムで もう いちど 体に 入れてから つぎへ すすむ。 */}
+        {support?.rhythm && judged && q.word && (
+          <div className="kkm-sheet rounded-lg p-2 md:p-3 kkm-pop-in">
+            <RhythmPlayer word={q.word} cellSize={38} autoPlay voiceOn={voiceOn} compact/>
+          </div>
+        )}
+      </div>
+
+      {/* こたえの えらびかた */}
+      {!judged && (
+        <div className={`shrink-0 w-full max-w-lg grid gap-2 ${
+          q.kind === 'count' ? 'grid-cols-3 md:grid-cols-6'
+          : q.choiceLayout === 'word' ? 'grid-cols-2'
+          : q.choices.length <= 2 ? 'grid-cols-2'
+          : q.choices.length === 3 ? 'grid-cols-3'
+          : 'grid-cols-4'
+        }`}>
+          {q.kind === 'count'
+            ? COUNT_CHOICES.map(n => (
+                <button key={n} onClick={() => tapChoice(n)}
+                  className="kkm-btn kkm-ripple aspect-square md:aspect-auto md:py-4 rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 text-2xl md:text-3xl font-semibold text-sumi-800 tabular-nums">
+                  {n}
+                </button>
+              ))
+            : q.choices.map((c, i) => (
+                <button key={i} onClick={() => tapChoice(c.value)}
+                  className="kkm-btn kkm-ripple rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 flex flex-col items-center justify-center gap-1 p-2 min-h-[64px]">
+                  {c.pict && <Pict name={c.pict} size={30}/>}
+                  <span className={`kkm-glyph leading-none text-sumi-800 ${c.pict ? 'text-base md:text-lg' : 'text-3xl md:text-4xl'}`}>{c.label}</span>
+                  {/* ちいさい字と おおきい字は 形が おなじで 大きさだけ ちがう。
+                      見た目だけでは まよいやすいので、ことばでも 言いきる。 */}
+                  {showSizeHint && !c.pict && c.label.length === 1 && (isSmallKana(c.label) || KANA_SMALL_BIG_REV[c.label]) && (
+                    <span className={`text-[10px] font-semibold leading-none ${isSmallKana(c.label) ? 'text-shu-600' : 'text-sumi-400'}`}>
+                      {isSmallKana(c.label) ? 'ちいさい' : 'おおきい'}
+                    </span>
+                  )}
+                </button>
+              ))}
+        </div>
+      )}
+
+      {/* あなを 1 つ もどす */}
+      {!judged && q.kind === 'cells' && blanks.length > 1 && Object.keys(filled).length > 0 && (
+        <button onClick={undo}
+          className="kkm-btn shrink-0 px-3 py-1.5 rounded-md bg-white border border-sumi-300 text-xs font-semibold text-sumi-600 flex items-center gap-1.5">
+          <IconRotate size={14}/> ひとつ もどす
+        </button>
+      )}
+
+      {/* こたえあわせ */}
+      {judged && (
+        <div className={`shrink-0 w-full max-w-lg rounded-lg border-2 p-3 text-center kkm-pop-in ${
+          judged.correct ? 'bg-midori-50 border-midori-400' : 'bg-shu-50 border-shu-400'
+        }`}>
+          <div className="flex items-center justify-center gap-2">
+            {judged.correct
+              ? <span className="text-shu-600"><Hanamaru size={30} draw/></span>
+              : <span className="text-shu-600"><IconX size={26}/></span>}
+            <span className={`text-lg md:text-xl font-semibold ${judged.correct ? 'text-midori-700' : 'text-shu-700'}`}>
+              {judged.correct ? 'せいかい！' : 'おしい！'}
+            </span>
+          </div>
+          {!judged.correct && q.answerText && (
+            <div className="mt-1 text-sm md:text-base font-semibold text-sumi-800">
+              こたえは <span className="kkm-glyph text-shu-700">{q.answerText}</span>
+            </div>
+          )}
+          {q.why && <div className="mt-1 text-xs md:text-sm font-medium text-sumi-600 leading-snug">{q.why}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* もんだいを ならべて 出す「れんしゅう 1 セット」。
+   おわると 花丸の せいせきが 出て、まちがえた ものは あしたの
+   ふくしゅうに もどる（SRS）。 */
+function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFinish, onQuit, support = null }) {
+  const [idx, setIdx] = useState(0);
+  const [okCount, setOkCount] = useState(0);
+  const [done, setDone] = useState(false);
+  const [wrongs, setWrongs] = useState([]);
+  const t = TONES[tone] || TONES.shu;
+  const q = questions[idx];
+
+  const handleAnswer = useCallback((correct) => {
+    if (correct) setOkCount(c => c + 1);
+    else setWrongs(w => [...w, questions[idx]]);
+    onAnswered && onAnswered(questions[idx], correct);
+    const last = idx + 1 >= questions.length;
+    // MIM の 3rd ステージでは、こたえあわせの あとに リズム（動作化）を
+    // 見せるので、つぎへ すすむまでを ゆっくりにする。
+    const wait = support?.rhythm ? (correct ? 4200 : 5200) : (correct ? 1100 : 2200);
+    setTimeout(() => {
+      if (last) { setDone(true); playFanfare(); burstConfetti(); }
+      else setIdx(i => i + 1);
+    }, wait);
+  }, [idx, questions, onAnswered, support]);
+
+  useEffect(() => {
+    if (!done) return;
+    hapticTriumph();
+    onFinish && onFinish(okCount, questions.length);
+    // eslint-disable-next-line
+  }, [done]);
+
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+        <MascotFace size={54} mood="happy"/>
+        <div className="text-base font-semibold text-sumi-700">いまは もんだいが ないよ</div>
+        <div className="text-xs font-medium text-sumi-500">もじを かく れんしゅうを すると、もんだいが ふえるよ</div>
+        <button onClick={onQuit} className="kkm-btn kkm-ripple mt-2 px-5 py-2.5 rounded-md bg-shu-600 text-white font-semibold border border-shu-700">もどる</button>
+      </div>
+    );
+  }
+
+  if (done) {
+    const pct = Math.round((okCount / questions.length) * 100);
+    const perfect = okCount === questions.length;
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-5 text-center kkm-pop-in">
+        <span className={`kkm-stamp w-20 h-20 rounded-lg border-2 flex items-center justify-center ${t.solid} text-white`}>
+          {perfect ? <Hanamaru size={48} color="#fff" draw/> : <span className="text-3xl font-semibold tabular-nums">{pct}</span>}
+        </span>
+        <div className="text-xl md:text-2xl font-semibold text-sumi-800">
+          {perfect ? 'ぜんもん せいかい！' : `${questions.length}もん ちゅう ${okCount}もん せいかい`}
+        </div>
+        <Mascot mood={perfect ? 'wow' : 'cheer'}
+          message={perfect ? 'かんぺき！ すごいね' : wrongs.length > 0 ? 'まちがえた ところは あした もういちど 出るよ' : 'よく がんばりました'}/>
+        {wrongs.length > 0 && (
+          <div className="w-full max-w-md rounded-lg border border-shu-300 bg-shu-50 p-3">
+            <div className="text-xs font-semibold text-shu-700 mb-1.5">もういちど みておこう</div>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {wrongs.map((w, i) => (
+                <span key={i} className="kkm-glyph px-2 py-1 rounded-md bg-white border border-shu-300 text-sumi-800 text-sm">
+                  {w.answerText || w.word || w.answer}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        <button onClick={onQuit}
+          className="kkm-btn kkm-ripple mt-1 px-6 py-3 rounded-md bg-shu-600 text-white font-semibold text-base border border-shu-700 min-h-[48px]">
+          おわる
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col">
+      {/* すすみぐあい */}
+      <div className="shrink-0 flex items-center gap-2 px-1 pb-2">
+        <button onClick={onQuit} aria-label="やめる"
+          className="kkm-btn w-9 h-9 shrink-0 rounded-md bg-white border border-sumi-300 text-sumi-500 flex items-center justify-center">
+          <IconX size={16}/>
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between text-[10px] md:text-xs font-semibold text-sumi-600 mb-1">
+            <span className="truncate">{title}</span>
+            <span className="tabular-nums shrink-0">{idx + 1} / {questions.length}</span>
+          </div>
+          <div className="h-2 rounded-full bg-washi-300 overflow-hidden">
+            <div className="h-full rounded-full bg-shu-500 transition-all duration-300"
+              style={{ width: `${(idx / questions.length) * 100}%` }}/>
+          </div>
+        </div>
+        <span className="shrink-0 flex items-center gap-1 text-shu-700 text-xs font-semibold tabular-nums">
+          <Hanamaru size={15}/>{okCount}
+        </span>
+      </div>
+      <QuestionCard q={q} onAnswer={handleAnswer} voiceOn={voiceOn} support={support}/>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.7. もんだいを つくる（出題エンジン）
+
+   ここが「なにを 出すか」を きめる ゆいいつの 場所。
+   ・まだ ならっていない ものは 出さない
+   ・ふくしゅうの きげんが きた ものを 先に 出す
+   ・まちがえた ものは つぎの 日に かならず 出る
+   ══════════════════════════════════════════════════════════════ */
+let __quizUid = 0;
+function nextUid() { return ++__quizUid; }
+
+/* ① あたまの おと：「あ」から はじまる ことばは どれ？ */
+function makeHeadSoundQuestion(char) {
+  const mine = headWordsOf(char);
+  if (mine.length === 0) return null;
+  const target = mine[Math.floor(Math.random() * mine.length)];
+  const others = [];
+  // まちがい候補は おなじ なかま（ひらがな どうし／カタカナ どうし）から えらぶ
+  const pool = shuffled(headWordCharsOf(scriptOf(char)).filter(c => c !== char));
+  for (const c of pool) {
+    if (others.length >= 3) break;
+    const list = headWordsOf(c);
+    if (list.length === 0) continue;
+    const cand = list[Math.floor(Math.random() * list.length)];
+    if (cand.p === target.p) continue;                       // 同じ さしえは まぎらわしい
+    if (others.some(o => o.p === cand.p)) continue;
+    others.push(cand);
+  }
+  if (others.length < 3) return null;
+  return {
+    uid: nextUid(), id: srsIdRead(char), kind: 'choice', choiceLayout: 'word',
+    lead: 'あたまの おと', ask: `「${char}」から はじまる ことばは どれ？`,
+    glyph: char,
+    choices: shuffled([target, ...others]).map(w => ({ value: w.w, label: w.w, pict: w.p })),
+    answer: target.w, answerText: target.w, answerSay: target.w,
+    why: `${target.w} は「${char}」から はじまるね`,
+  };
+}
+
+/* ② ことばの なかの もじ：にた かたちの もじと 見わける */
+function makeCellQuestion(wordObj, blankIdx, char, extraChoices, lead, ask, why, srsId) {
+  const wrong = (extraChoices && extraChoices.length > 0) ? extraChoices : confusablesOf(char);
+  const fillerSrc = scriptOf(char) === 'katakana' ? 'アイウエオカキクケコ' : 'あいうえおかきくけこ';
+  const filler = fillerSrc.split('').filter(c => c !== char);
+  const choices = [char];
+  for (const c of wrong) if (choices.length < 4 && !choices.includes(c)) choices.push(c);
+  for (const c of shuffled(filler)) if (choices.length < 4 && !choices.includes(c)) choices.push(c);
+  return {
+    uid: nextUid(), id: srsId, kind: 'cells',
+    lead, ask, pict: wordObj.p, word: wordObj.w, blanks: [blankIdx],
+    choices: shuffled(choices).map(c => ({ value: c, label: c })),
+    answer: char, answerText: wordObj.w, answerSay: wordObj.w, why,
+  };
+}
+function makeWordCharQuestion(char) {
+  const mine = headWordsOf(char);
+  const conf = confusablesOf(char);
+  // にた かたちの もじが ある字は「ことばの なかで 見わける」もんだいにする
+  const list = mine.length > 0 ? mine : null;
+  if (!list) return null;
+  const w = list[Math.floor(Math.random() * list.length)];
+  return makeCellQuestion(w, 0, char, conf,
+    'ことばの はじめ', 'あいた マスに はいる もじは どれ？',
+    conf.length > 0 ? `「${char}」と「${conf[0]}」は にているね。よく 見くらべよう` : `${w.w} の はじめは「${char}」`,
+    srsIdRead(char));
+}
+/* ③ にたもの さがし：ことばの まんなかで 見わける */
+function makeConfuseQuestion(char) {
+  const conf = confusablesOf(char);
+  if (conf.length === 0) return null;
+  // その字を ふくむ ことばを さがす（おなじ なかまの ことばだけ）
+  const all = scriptOf(char) === 'katakana' ? HEAD_WORDS_KATA : SHIRITORI_CPU_WORDS;
+  const hits = all.filter(x => x.w.indexOf(char) > 0);
+  const w = hits.length > 0 ? hits[Math.floor(Math.random() * hits.length)] : null;
+  if (!w) return null;
+  return makeCellQuestion(w, w.w.indexOf(char), char, conf,
+    'にた もじ さがし', 'あいた マスに はいる もじは どれ？',
+    `「${char}」と「${conf.join('」「')}」は かたちが にているよ`,
+    srsIdConfuse(char));
+}
+
+/* ④ とくべつな おと：どっちが ただしい かきかた？ */
+function makeSpellingQuestion(unit, wordObj, maxChoices = 3) {
+  // MIM の 2nd・3rd ステージでは えらぶ かずを へらして、
+  // 「ちがいは どこか」だけに 気もちを 向けられるようにする。
+  const bads = (wordObj.bad || []).slice(0, Math.max(1, maxChoices - 1));
+  if (bads.length === 0) return null;
+  return {
+    uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'choice', choiceLayout: 'word',
+    lead: unit.title, ask: 'ただしい かきかたは どっち？',
+    pict: wordObj.p,
+    choices: shuffled([wordObj.w, ...bads]).map(w => ({ value: w, label: w })),
+    answer: wordObj.w, answerText: wordObj.w, answerSay: wordObj.w,
+    why: unit.rule,
+  };
+}
+/* ⑤ とくべつな おと：マスに いれよう */
+function makeFillQuestion(unit, wordObj, maxChoices = 4) {
+  const idx = specialCellsOf(wordObj.w, unit.key).slice(0, 1);
+  const cells = splitCells(wordObj.w);
+  const correct = cells[idx[0]];
+  const choices = cellChoicesFor(correct, unit.key).slice(0, Math.max(2, maxChoices));
+  return {
+    uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'cells',
+    lead: unit.title, ask: 'あいた マスに はいる もじは どれ？',
+    pict: wordObj.p, word: wordObj.w, blanks: idx,
+    choices: shuffled(choices).map(c => ({ value: c, label: c })),
+    answer: correct, answerText: wordObj.w, answerSay: wordObj.w,
+    why: unit.rule,
+  };
+}
+/* ⑥ とくべつな おと：おとは いくつ？（手を たたく かず） */
+function makeCountQuestion(unit, wordObj) {
+  return {
+    uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'count',
+    lead: 'てを たたこう', ask: 'この ことばの おとは いくつ？',
+    pict: wordObj.p, word: wordObj.w,
+    answer: moraCount(wordObj.w), answerText: String(moraCount(wordObj.w)), answerSay: wordObj.w,
+    why: `${splitMora(wordObj.w).join('・')} で ${moraCount(wordObj.w)}つ`,
+  };
+}
+/* ⑦ くっつきの ことば（は・へ・を）は 文で 出す */
+function makeJoshiQuestion(unit, sentObj) {
+  return {
+    uid: nextUid(), id: srsIdSpecial(unit.key, sentObj.s), kind: 'choice',
+    lead: unit.title, ask: 'あいた ところに はいる もじは？',
+    pict: sentObj.p, sentence: sentObj.s,
+    choices: shuffled(sentObj.c).map(c => ({ value: c, label: c })),
+    answer: sentObj.a, answerText: sentObj.a,
+    answerSay: sentObj.s.replace('◯', sentObj.a),
+    why: unit.tips[0],
+  };
+}
+
+/* ある ユニットの もんだいを つくる（ふくしゅう ゆうせん）。
+
+   plan は MIM の ステージ（層）から きまる 指導の あつさ。
+     count      … 何もん 出すか
+     words      … 何この ことばを つかうか（少ないほど くりかえす）
+     maxChoices … えらぶ かず（少ないほど やさしい）
+   ステージが 上がる（＝手あつくする）ほど、あつかう ことばを しぼって
+   おなじ ものを くりかえす。これが MIM の 2nd・3rd ステージの 考えかた。 */
+function buildSpecialQuestions(unitKey, n, skill, plan) {
+  const unit = SPECIAL_UNIT_MAP[unitKey];
+  if (!unit) return [];
+  const p = plan || tierPlan(1);
+  const count = n || p.count;
+  if (unit.sentences) {
+    const sorted = shuffled(unit.sentences).sort((a, b) => {
+      const da = srsIsDue(skill?.[srsIdSpecial(unit.key, a.s)]) ? 0 : 1;
+      const db = srsIsDue(skill?.[srsIdSpecial(unit.key, b.s)]) ? 0 : 1;
+      return da - db;
+    });
+    const pool = sorted.slice(0, Math.max(2, Math.min(sorted.length, p.words)));
+    const out = [];
+    for (let i = 0; out.length < count; i++) out.push(makeJoshiQuestion(unit, pool[i % pool.length]));
+    return out;
+  }
+  const sorted = shuffled(unit.words).sort((a, b) => {
+    const da = srsIsDue(skill?.[srsIdSpecial(unit.key, a.w)]) ? 0 : 1;
+    const db = srsIsDue(skill?.[srsIdSpecial(unit.key, b.w)]) ? 0 : 1;
+    return da - db;
+  });
+  const pool = sorted.slice(0, Math.max(2, Math.min(sorted.length, p.words)));
+  const makers = [
+    (u, w) => makeSpellingQuestion(u, w, p.maxChoices),
+    (u, w) => makeFillQuestion(u, w, p.maxChoices + 1),
+    makeCountQuestion,
+  ];
+  const out = [];
+  for (let i = 0; out.length < count && i < pool.length * 4; i++) {
+    const q = makers[i % makers.length](unit, pool[i % pool.length]);
+    if (q) out.push(q);
+  }
+  return out.slice(0, count);
+}
+
+/* よむ ちからの もんだいを n もん つくる。
+   じぶんで 書いたことの ある もじ（なぞり以上）から 出す。 */
+function readableChars(progress, kanaMode) {
+  const list = kanaMode === 'katakana' ? KATA_LIST : HIRA_LIST;
+  const learned = list.filter(c => getStage(progress, c) >= 1);
+  // まだ 何も 書いていない子には、やさしい じゅんの さいしょの 10 文字を出す
+  // （五十音の あたまから 出すと、いきなり むずかしい「あ」に なってしまう）
+  return learned.length >= 4 ? learned : learnOrderOf(kanaMode).filter(c => list.includes(c)).slice(0, 10);
+}
+function buildReadQuestions(n, progress, skill, kanaMode) {
+  const chars = readableChars(progress, kanaMode);
+  const sorted = shuffled(chars).sort((a, b) => {
+    const da = srsIsDue(skill?.[srsIdRead(a)]) ? 0 : 1;
+    const db = srsIsDue(skill?.[srsIdRead(b)]) ? 0 : 1;
+    return da - db;
+  });
+  const makers = [makeHeadSoundQuestion, makeWordCharQuestion, makeConfuseQuestion];
+  const out = [];
+  for (let i = 0; out.length < n && i < sorted.length * 3; i++) {
+    const c = sorted[i % sorted.length];
+    const q = makers[i % makers.length](c);
+    if (q) out.push(q);
+  }
+  // 足りないぶんは あたまの おと で うめる
+  for (let i = 0; out.length < n && i < sorted.length; i++) {
+    const q = makeHeadSoundQuestion(sorted[i]);
+    if (q) out.push(q);
+  }
+  return out.slice(0, n);
+}
+
+/* ふくしゅう：きげんの きた ものを 種類を まぜて 出す */
+function buildReviewQuestions(n, progress, skill, kanaMode) {
+  const due = Object.keys(skill || {}).filter(id => srsIsDue(skill[id]));
+  // まちがえた ものから 先に
+  due.sort((a, b) => (skill[b].ng || 0) - (skill[a].ng || 0));
+  const out = [];
+  for (const id of due) {
+    if (out.length >= n) break;
+    const [kind, a, b] = id.split(':');
+    let q = null;
+    if (kind === 'r') q = Math.random() < 0.5 ? makeHeadSoundQuestion(a) : makeWordCharQuestion(a);
+    else if (kind === 'c') q = makeConfuseQuestion(a);
+    else if (kind === 's') {
+      const unit = SPECIAL_UNIT_MAP[a];
+      if (unit) {
+        if (unit.sentences) {
+          const s = unit.sentences.find(x => x.s === b);
+          if (s) q = makeJoshiQuestion(unit, s);
+        } else {
+          const w = unit.words.find(x => x.w === b);
+          if (w) q = [makeSpellingQuestion, makeFillQuestion, makeCountQuestion][Math.floor(Math.random() * 3)](unit, w);
+        }
+      }
+    }
+    if (q) out.push(q);
+  }
+  // まだ足りなければ あたらしい もんだいを たす
+  if (out.length < n) out.push(...buildReadQuestions(n - out.length, progress, skill, kanaMode));
+  if (out.length < n) out.push(...buildSpecialQuestions('hatsuon', n - out.length, skill));
+  return shuffled(out).slice(0, n);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.8. <SoundView> ── よむ ちからを そだてる
+
+   書けるだけでは 読めない。ここでは「もじ ↔ おと ↔ ことば」を
+   むすびつける れんしゅうを する。にた かたちの もじの 見わけも ここ。
+   ══════════════════════════════════════════════════════════════ */
+const SOUND_COURSES = [
+  { key:'head',    title:'あたまの おと',   sub:'この もじから はじまる ことばは？', tone:'ai',     icon:'star'  },
+  { key:'inword',  title:'ことばの なかの もじ', sub:'あいた マスに はいる もじは？', tone:'midori', icon:'book'  },
+  { key:'confuse', title:'にた もじ さがし', sub:'ぬ と め、シ と ツ を 見わける',   tone:'fuji',   icon:'pencil'},
+  { key:'mix',     title:'ぜんぶ まぜて',    sub:'ふくしゅうも いっしょに',          tone:'shu',    icon:'check' },
+];
+function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMission, voiceOn }) {
+  const [running, setRunning] = useState(null);   // { key, title, tone, questions }
+  const dueCount = useMemo(() => countDue(skill, ''), [skill]);
+
+  function start(course) {
+    let qs = [];
+    const chars = readableChars(progress, kanaMode);
+    const sorted = shuffled(chars).sort((a, b) =>
+      (srsIsDue(skill?.[srsIdRead(a)]) ? 0 : 1) - (srsIsDue(skill?.[srsIdRead(b)]) ? 0 : 1));
+    if (course.key === 'head')    qs = sorted.map(makeHeadSoundQuestion).filter(Boolean).slice(0, 8);
+    if (course.key === 'inword')  qs = sorted.map(makeWordCharQuestion).filter(Boolean).slice(0, 8);
+    if (course.key === 'confuse') {
+      const conf = shuffled(CONFUSABLE_SETS.filter(s => s.kana === kanaMode).flatMap(s => s.chars));
+      qs = conf.map(makeConfuseQuestion).filter(Boolean).slice(0, 8);
+      if (qs.length < 4) qs = qs.concat(sorted.map(makeWordCharQuestion).filter(Boolean).slice(0, 8 - qs.length));
+    }
+    if (course.key === 'mix')     qs = buildReviewQuestions(8, progress, skill, kanaMode);
+    playPickup();
+    setRunning({ ...course, questions: qs });
+  }
+
+  if (running) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col p-2 md:p-4 kkm-main-pad">
+        <div className="kkm-sheet rounded-lg p-2 md:p-3 flex-1 min-h-0 flex flex-col">
+          <QuizRunner title={running.title} tone={running.tone} questions={running.questions} voiceOn={voiceOn}
+            onAnswered={(q, ok) => { answerSkill(q.id, ok); bumpMission('review'); }}
+            onFinish={() => {}}
+            onQuit={() => setRunning(null)}/>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto p-2 md:p-4 kkm-main-pad">
+      <div className="max-w-3xl mx-auto flex flex-col gap-3">
+        <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
+        <div className="kkm-sheet rounded-lg p-3 flex items-center gap-3">
+          <MascotFace size={44} mood="cheer"/>
+          <div className="min-w-0">
+            <div className="text-sm md:text-base font-semibold text-sumi-800">よんで こたえる れんしゅう</div>
+            <div className="text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5">
+              かける だけでは よめない。おとと もじを むすびつけよう。
+              {dueCount > 0 && <span className="text-shu-700 font-semibold"> ふくしゅう {dueCount}こ たまってるよ</span>}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
+          {SOUND_COURSES.map(c => {
+            const t = TONES[c.tone];
+            const Icon = ICONS[c.icon] || IconMaru;
+            return (
+              <button key={c.key} onClick={() => start(c)}
+                className={`kkm-btn kkm-lift kkm-sheet rounded-lg p-3 md:p-4 text-left border-l-4 ${t.leftRule} flex items-center gap-3`}>
+                <span className={`shrink-0 w-11 h-11 rounded-md border flex items-center justify-center ${t.chip}`}>
+                  <Icon size={22}/>
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className={`block text-sm md:text-base font-semibold ${t.text}`}>{c.title}</span>
+                  <span className="block text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5">{c.sub}</span>
+                </span>
+                <IconArrow size={18} className="shrink-0 text-sumi-400"/>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ひらがな／カタカナの 切りかえ（画面ごとに おなじ形で 出す） */
+function KanaModeSwitch({ kanaMode, setKanaMode }) {
+  return (
+    <div className="flex gap-1.5 shrink-0">
+      <button onClick={() => setKanaMode('hiragana')} aria-pressed={kanaMode === 'hiragana'}
+        className={`kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-sm md:text-base border ${
+          kanaMode === 'hiragana' ? 'bg-shu-600 text-white border-shu-700' : 'bg-white text-sumi-500 border-sumi-200 hover:bg-washi-100'
+        }`}>ひらがな</button>
+      <button onClick={() => setKanaMode('katakana')} aria-pressed={kanaMode === 'katakana'}
+        className={`kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-sm md:text-base border ${
+          kanaMode === 'katakana' ? 'bg-ai-600 text-white border-ai-700' : 'bg-white text-sumi-500 border-sumi-200 hover:bg-washi-100'
+        }`}>カタカナ</button>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.9. <SpecialView> ── とくべつな おと
+
+   このアプリで いちばん 大事な 画面。
+   っ・ゃゅょ・ん・のばす おと・てん まる・は へ を の 6 つを、
+   「まなぶ → といてみる」の 2 だんかいで しっかり 身につける。
+   ══════════════════════════════════════════════════════════════ */
+function unitProgressOf(unit, skill) {
+  const items = unit.sentences ? unit.sentences.map(s => s.s) : unit.words.map(w => w.w);
+  if (items.length === 0) return { done: 0, total: 0, pct: 0 };
+  const done = items.filter(x => srsIsLearned(skill?.[srsIdSpecial(unit.key, x)])).length;
+  return { done, total: items.length, pct: Math.round((done / items.length) * 100) };
+}
+
+/* 拗音（ねじれる おと）の いちらん表。
+   「き＋ゃ」で 1 つの おとに なることを、表の形で いっぺんに つかむ。 */
+const YOUON_BASE = ['き','し','ち','に','ひ','み','り','ぎ','じ','び','ぴ'];
+const YOUON_SMALL = ['ゃ','ゅ','ょ'];
+function YouonTable() {
+  return (
+    <div className="kkm-sheet rounded-lg p-3">
+      <div className="text-xs font-semibold text-fuji-700 mb-2 flex items-center gap-1.5">
+        <IconGrid size={15}/> ねじれる おとの いちらん（どれも おとは 1 つ）
+      </div>
+      <div className="overflow-x-auto">
+        <div className="inline-grid gap-1" style={{ gridTemplateColumns: `repeat(${YOUON_SMALL.length}, minmax(0, 1fr))` }}>
+          {YOUON_BASE.map(b => YOUON_SMALL.map(s => (
+            <span key={b + s}
+              className="kkm-glyph inline-flex items-center justify-center px-2 py-1.5 rounded-md bg-washi-100 border border-fuji-200 text-sumi-800 text-lg leading-none whitespace-nowrap">
+              {b}{s}
+            </span>
+          )))}
+        </div>
+      </div>
+      <div className="text-[11px] font-medium text-sumi-600 mt-2 leading-snug">
+        カタカナも おなじ（キャ・キュ・キョ …）。マスは 2 つ、おとは 1 つ だよ。
+      </div>
+    </div>
+  );
+}
+
+/* 「まなぶ」カード：この おとの きまりを ひとことで つたえる */
+function UnitLesson({ unit, onStart, onBack, onWrite, voiceOn, tier = 1 }) {
+  const t = TONES[unit.tone] || TONES.shu;
+  const sample = unit.words[0] || (unit.sentences ? null : null);
+  const tierInfo = MIM_TIER_INFO[tier] || MIM_TIER_INFO[1];
+  // この単元で 手で 書けるように しておきたい 小さい字
+  const writeChars = unit.key === 'sokuon' ? ['っ'] : unit.key === 'youon' ? ['ゃ','ゅ','ょ'] : [];
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="max-w-2xl mx-auto flex flex-col gap-3 p-1">
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} aria-label="もどる"
+            className="kkm-btn w-9 h-9 shrink-0 rounded-md bg-white border border-sumi-300 text-sumi-500 flex items-center justify-center">
+            <IconX size={16}/>
+          </button>
+          <SectionTitle>{unit.title}（{unit.lead}）</SectionTitle>
+        </div>
+
+        <div className={`kkm-sheet rounded-lg p-4 border-l-4 ${t.leftRule} text-center`}>
+          <div className="kkm-glyph text-5xl md:text-6xl leading-none mb-2" style={{ color: 'var(--kkm-shu)' }}>{unit.mark}</div>
+          <div className="text-sm md:text-lg font-semibold text-sumi-800 leading-snug">{unit.rule}</div>
+        </div>
+
+        {/* MIM の 中心：おとを ● で 見せて（視覚化）、
+            手の うごきで 体に 入れる（動作化）。 */}
+        {sample && (
+          <div className="kkm-sheet rounded-lg p-3 flex flex-col items-center gap-2.5">
+            <div className="text-xs font-semibold text-sumi-500">おとを ● で 見て、手で たしかめよう</div>
+            <RhythmPlayer word={sample.w} cellSize={46} voiceOn={voiceOn}/>
+            <div className="text-[11px] md:text-xs font-medium text-sumi-600 text-center leading-snug">
+              マスは 1 もじに 1 つ。ちいさい じも かならず 1 マス つかうよ。<br/>
+              小さい ○ の ところは、口を とじて 音を 出さない ところ。
+            </div>
+            <RhythmLegend/>
+          </div>
+        )}
+
+        <div className="kkm-sheet rounded-lg p-3">
+          <div className="text-xs font-semibold text-shu-700 mb-2 flex items-center gap-1.5"><IconBulb size={15}/> おぼえかた</div>
+          <ul className="flex flex-col gap-1.5">
+            {unit.tips.map((tip, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs md:text-sm font-medium text-sumi-700">
+                <span className="shrink-0 mt-0.5 text-shu-600"><IconCheck size={14}/></span>
+                <span className="kkm-glyph">{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {unit.key === 'youon' && <YouonTable/>}
+
+        {writeChars.length > 0 && onWrite && (
+          <div className="kkm-sheet rounded-lg p-3">
+            <div className="text-xs font-semibold text-sumi-600 mb-2">この ちいさい じを 手で かいて みる</div>
+            <div className="flex gap-2">
+              {writeChars.map(c => (
+                <button key={c} onClick={() => onWrite(c)}
+                  className="kkm-btn kkm-ripple flex-1 py-2.5 rounded-md bg-white border border-fuji-300 text-fuji-700 font-semibold flex items-center justify-center gap-2">
+                  <span className="kkm-glyph text-xl leading-none">{c}</span>
+                  <IconPen size={15}/>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tier > 1 && (
+          <div className={`rounded-lg border p-2.5 text-[11px] font-medium leading-snug ${TONES[tierInfo.tone].chip}`}>
+            {tierInfo.desc}
+          </div>
+        )}
+
+        <button onClick={onStart}
+          className="kkm-btn kkm-ripple py-3.5 rounded-md bg-shu-600 text-white font-semibold text-base border border-shu-700 flex items-center justify-center gap-2 min-h-[52px]">
+          <IconPlay size={18}/> といて みる（{tierPlan(tier).count} もん）
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, onConsumeInitial, onGoWrite, tier = 1 }) {
+  const [openUnit, setOpenUnit] = useState(null);   // ユニットの key
+  const [running, setRunning] = useState(null);
+  // MIM：ちからだめしの けっかから きまる「指導の あつさ」
+  const plan = useMemo(() => tierPlan(tier), [tier]);
+
+  useEffect(() => {
+    if (initialUnit) { setOpenUnit(initialUnit); onConsumeInitial && onConsumeInitial(); }
+    // eslint-disable-next-line
+  }, [initialUnit]);
+
+  function startUnit(key) {
+    const qs = buildSpecialQuestions(key, plan.count, skill, plan);
+    playPickup();
+    setRunning({ key, questions: qs });
+  }
+
+  if (running) {
+    const unit = SPECIAL_UNIT_MAP[running.key];
+    return (
+      <div className="flex-1 min-h-0 flex flex-col p-2 md:p-4 kkm-main-pad">
+        <div className="kkm-sheet rounded-lg p-2 md:p-3 flex-1 min-h-0 flex flex-col">
+          <QuizRunner title={unit.title} tone={unit.tone} questions={running.questions} voiceOn={voiceOn}
+            support={{ dots: plan.dots, rhythm: plan.rhythm }}
+            onAnswered={(q, ok) => { answerSkill(q.id, ok); bumpMission('special'); }}
+            onQuit={() => { setRunning(null); setOpenUnit(null); }}/>
+        </div>
+      </div>
+    );
+  }
+
+  if (openUnit) {
+    const unit = SPECIAL_UNIT_MAP[openUnit];
+    return (
+      <div className="flex-1 min-h-0 flex flex-col p-2 md:p-4 kkm-main-pad">
+        <UnitLesson unit={unit} onStart={() => startUnit(openUnit)} onBack={() => setOpenUnit(null)}
+          onWrite={onGoWrite} voiceOn={voiceOn} tier={tier}/>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto p-2 md:p-4 kkm-main-pad">
+      <div className="max-w-3xl mx-auto flex flex-col gap-3">
+        <div className="kkm-sheet rounded-lg p-3 flex items-center gap-3">
+          <MascotFace size={44} mood="wow"/>
+          <div className="min-w-0">
+            <div className="text-sm md:text-base font-semibold text-sumi-800">とくべつな おと</div>
+            <div className="text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5 leading-snug">
+              「がっこう」「でんしゃ」「おとうさん」…… ここが 1ねんせいの いちばんの やま。
+              おとの かずと マスの かずを あわせて おぼえよう。
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
+          {SPECIAL_UNITS.map(u => {
+            const t = TONES[u.tone] || TONES.shu;
+            const pr = unitProgressOf(u, skill);
+            return (
+              <button key={u.key} onClick={() => { playPickup(); setOpenUnit(u.key); }}
+                className={`kkm-btn kkm-lift kkm-sheet rounded-lg p-3 text-left border-l-4 ${t.leftRule}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`shrink-0 w-12 h-12 rounded-md border flex items-center justify-center ${t.chip}`}>
+                    <span className="kkm-glyph text-xl leading-none">{u.mark}</span>
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-sm md:text-base font-semibold ${t.text}`}>{u.title}</span>
+                    <span className="block text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5 truncate">{u.lead}</span>
+                  </span>
+                  {pr.pct >= 100
+                    ? <span className="shrink-0 text-shu-600"><Hanamaru size={24}/></span>
+                    : <span className="shrink-0 text-[11px] font-semibold text-sumi-500 tabular-nums">{pr.done}/{pr.total}</span>}
+                </div>
+                <div className="h-1.5 rounded-full bg-washi-300 overflow-hidden mt-2">
+                  <div className="h-full rounded-full bg-shu-500 transition-all duration-500" style={{ width: `${pr.pct}%` }}/>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.95. <HomeView> ── きょうの めあて
+
+   「なにを どこまで やれば おわりか」を 1 画面で 見せる。
+   毎日 おなじ 3 つ。おわると カレンダーに はんこが おされる。
+   ══════════════════════════════════════════════════════════════ */
+function ProgressRing({ pct, size = 46, stroke = 5, color = 'var(--kkm-shu)', children }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <span className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="absolute inset-0 -rotate-90" aria-hidden="true">
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#eae2d2" strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, pct / 100))}
+          style={{ transition: 'stroke-dashoffset .6s cubic-bezier(.4,1,.4,1)' }}/>
+      </svg>
+      <span className="relative">{children}</span>
+    </span>
+  );
+}
+
+/* はんこカレンダー：やった日に 朱色の はんこが つく */
+function StampCalendar({ log }) {
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const first = new Date(year, month, 1);
+  const days = new Date(year, month + 1, 0).getDate();
+  const lead = first.getDay();
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) cells.push(d);
+  const today = now.getDate();
+  return (
+    <div className="kkm-sheet rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs md:text-sm font-semibold text-sumi-700 flex items-center gap-1.5">
+          <IconCalendar size={15}/> {month + 1}がつの がんばり
+        </span>
+        <span className="text-[11px] font-semibold text-shu-700 tabular-nums">
+          はんこ {cells.filter(d => d && log[todayKey(new Date(year, month, d))]?.done).length}こ
+        </span>
+      </div>
+      <div className="grid grid-cols-7 gap-1 max-w-[19rem] mx-auto">
+        {['日','月','火','水','木','金','土'].map(w => (
+          <div key={w} className="text-center text-[9px] font-semibold text-sumi-400">{w}</div>
+        ))}
+        {cells.map((d, i) => {
+          if (!d) return <div key={i}/>;
+          const rec = log[todayKey(new Date(year, month, d))];
+          const stamped = rec?.done;
+          const touched = rec && !stamped && (rec.review || rec.write || rec.special || rec.check);
+          return (
+            <div key={i} className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-semibold border ${
+              stamped ? 'bg-shu-50 border-shu-300 text-shu-700'
+              : touched ? 'bg-washi-100 border-sumi-200 text-sumi-500'
+              : 'bg-white border-sumi-100 text-sumi-300'
+            } ${d === today ? 'ring-2 ring-shu-400' : ''}`}>
+              {stamped ? <Hanamaru size={16}/> : d}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* おうちのひと・せんせい むけの まとめ。
+
+   子どもの画面を じゃましないよう、たたんである。ここだけは 大人の
+   ことばで、「いま どこで つまずいているか」を はっきり書く。 */
+function GuardianPanel({ progress, skill, log, words, mim, tier, onCheck }) {
+  const info = useMemo(() => {
+    // この 30 日で れんしゅうした 日数
+    let days = 0;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const r = log[todayKey(d)];
+      if (r && (r.review || r.write || r.special || r.words || r.check)) days++;
+    }
+    // にがて（まちがえた ままの もの）を 単元ごとに かぞえる
+    const byUnit = {};
+    const weakChars = [];
+    for (const id in (skill || {})) {
+      if (!srsIsWeak(skill[id])) continue;
+      const [kind, a, b] = id.split(':');
+      if (kind === 's') byUnit[a] = (byUnit[a] || 0) + 1;
+      else weakChars.push(a);
+    }
+    const worstUnit = Object.keys(byUnit).sort((x, y) => byUnit[y] - byUnit[x])[0];
+    const due = countDue(skill, '');
+    const writeDone = HIRA_LIST.concat(KATA_LIST).filter(c => getStage(progress, c) >= 3).length;
+    return { days, byUnit, weakChars: weakChars.slice(0, 12), worstUnit, due, writeDone };
+  }, [progress, skill, log]);
+
+  const advice = info.worstUnit
+    ? `いま いちばん つまずいているのは「${SPECIAL_UNIT_MAP[info.worstUnit]?.title || info.worstUnit}」です。この単元を いっしょに 音読しながら もう一度どうぞ。`
+    : info.weakChars.length > 0
+      ? '形の にた文字（ぬ／め、シ／ツ など）で つまずいています。「よむ」の「にた もじ さがし」が ききます。'
+      : tier >= 3
+        ? 'ちからだめしの結果から、いまは手あつい支援が要る段階です。「とくべつ」の各単元を、リズム（動作化）をいっしょにやりながら少しずつ進めてください。'
+        : tier === 2
+          ? 'ちからだめしの結果から、少していねいに進める段階です。ドットを見せながら、同じことばをくり返し扱うのが有効です。'
+          : '大きな つまずきは ありません。1日 5分の 3つのめあてを つづけてください。';
+
+  return (
+    <details className="kkm-sheet rounded-lg overflow-hidden">
+      <summary className="cursor-pointer select-none px-3 py-2.5 text-xs md:text-sm font-semibold text-sumi-600 flex items-center gap-1.5">
+        <IconSearch size={15}/> おうちの方・先生へ（学習のようす）
+      </summary>
+      <div className="px-3 pb-3 pt-1 flex flex-col gap-2 text-xs md:text-sm">
+        {/* 多層指導モデル MIM の考え方にならった「いまの指導の層」 */}
+        <div className={`rounded-md border p-2.5 ${TONES[(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).tone].stat}`}>
+          <div className="flex items-center justify-between gap-2">
+            <span className={`font-semibold ${TONES[(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).tone].statValue}`}>
+              いまの指導ステージ：{(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).name}
+            </span>
+            <button onClick={onCheck}
+              className="kkm-btn shrink-0 px-2 py-1 rounded border border-sumi-300 bg-white text-[11px] font-semibold text-sumi-600">
+              ちからだめしを する
+            </button>
+          </div>
+          <div className="text-[11px] font-medium text-sumi-600 mt-1 leading-relaxed">
+            {(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).teacher}
+          </div>
+          <div className="text-[10px] font-medium text-sumi-400 mt-1 leading-relaxed">
+            ※ 多層指導モデル MIM の考え方（アセスメントと指導の連動）にならった、
+            このアプリ独自の目安です。MIM-PM の正式な標準得点ではありません。
+          </div>
+        </div>
+        {(mim?.log || []).length > 0 && <MimHistoryChart log={mim.log}/>}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { label:'この30日の学習日数', value:`${info.days}日`,        tone:'shu' },
+            { label:'自力で書ける文字',   value:`${info.writeDone}字`,   tone:'ai' },
+            { label:'集めた ことば',      value:`${words.length}語`,      tone:'midori' },
+            { label:'復習まちの問題',     value:`${info.due}問`,          tone:'fuji' },
+          ].map(s => {
+            const t = TONES[s.tone];
+            return (
+              <div key={s.label} className={`rounded-md border p-2 ${t.stat}`}>
+                <div className={`text-[10px] font-semibold ${t.statLabel}`}>{s.label}</div>
+                <div className={`text-lg font-semibold tabular-nums ${t.statValue}`}>{s.value}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="rounded-md border border-sumi-200 bg-washi-100 p-2.5 font-medium text-sumi-700 leading-relaxed">
+          {advice}
+        </div>
+        {info.weakChars.length > 0 && (
+          <div>
+            <div className="text-[11px] font-semibold text-sumi-500 mb-1">つまずいている文字</div>
+            <div className="flex flex-wrap gap-1">
+              {info.weakChars.map(c => (
+                <span key={c} className="kkm-glyph px-2 py-0.5 rounded border border-shu-200 bg-shu-50 text-shu-800">{c}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="text-[10px] font-medium text-sumi-400 leading-relaxed">
+          記録はこの端末の中だけに保存され、どこにも送信されません。
+          消したいときは 右上の設定（歯車）から「さいしょから」を選んでください。
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, setKanaMode, onGo, words, mim, tier }) {
+  const allDone = isDayComplete(todayRec);
+  const nextChar = useMemo(() => {
+    const order = learnOrderOf(kanaMode);
+    return order.find(c => getStage(progress, c) < 2) || order.find(c => getStage(progress, c) < 4) || order[0];
+  }, [progress, kanaMode]);
+  const weak = useMemo(() => weakItems(skill, '').slice(0, 8), [skill]);
+  const stats = useMemo(() => {
+    const hira = HIRA_LIST.filter(c => getStage(progress, c) >= 4).length;
+    const kata = KATA_LIST.filter(c => getStage(progress, c) >= 4).length;
+    const sp = SPECIAL_UNITS.reduce((acc, u) => {
+      const p = unitProgressOf(u, skill); return { done: acc.done + p.done, total: acc.total + p.total };
+    }, { done: 0, total: 0 });
+    return {
+      hira: { done: hira, total: HIRA_LIST.length },
+      kata: { done: kata, total: KATA_LIST.length },
+      sp,
+    };
+  }, [progress, skill]);
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto p-2 md:p-4 kkm-main-pad">
+      <div className="max-w-3xl mx-auto flex flex-col gap-3">
+
+        {/* あいさつ */}
+        <div className="kkm-sheet rounded-lg p-3 flex items-center gap-3 border-l-4 border-l-shu-600">
+          <div className="shrink-0 kkm-float"><MascotFace size={50} mood={allDone ? 'wow' : 'cheer'}/></div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm md:text-lg font-semibold text-sumi-800">
+              {allDone ? 'きょうの めあて、ぜんぶ おわったよ！' : 'きょうも 5ふん、いっしょに やろう'}
+            </div>
+            <div className="text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5">
+              {streak > 0 ? `${streak}にち つづいているよ。` : 'はじめの 1ぽを ふみだそう。'}
+              {' '}かんぺきな もじ {mastered.length}こ ・ あつめた ことば {words.length}こ
+            </div>
+          </div>
+          {allDone && <span className="shrink-0 kkm-stamp text-shu-600"><Hanamaru size={40} draw/></span>}
+        </div>
+
+        {/* MIM：ちからだめし（2 しゅうかんに 1 かい）。
+            のびを はかって、指導の あつさを 見なおす きっかけにする。 */}
+        {mimCheckDue(mim) && (
+          <button onClick={() => onGo('mim')}
+            className="kkm-btn kkm-ripple kkm-sheet rounded-lg p-3 flex items-center gap-3 text-left border-l-4 border-l-ai-600 kkm-pulse-ring">
+            <span className="shrink-0 w-12 h-12 rounded-md bg-ai-50 border border-ai-300 text-ai-700 flex items-center justify-center">
+              <IconClock size={24}/>
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[11px] font-semibold text-ai-700">2 ふんの ちからだめし</span>
+              <span className="block text-sm font-semibold text-sumi-800 mt-0.5">
+                {(mim?.log || []).length === 0 ? 'よみめいじんに ちょうせん してみよう' : 'まえより のびたか ためして みよう'}
+              </span>
+            </span>
+            <IconArrow size={18} className="shrink-0 text-sumi-400"/>
+          </button>
+        )}
+
+        {/* きょうの めあて 3 つ */}
+        <div>
+          <SectionTitle className="mb-2">きょうの めあて</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
+            {MISSIONS.map(m => {
+              const t = TONES[m.tone];
+              const now = Math.min(todayRec[m.key] || 0, m.goal);
+              const pct = Math.round((now / m.goal) * 100);
+              const cleared = now >= m.goal;
+              const Icon = ICONS[m.icon] || IconMaru;
+              return (
+                <button key={m.key} onClick={() => onGo(m.view)}
+                  className={`kkm-btn kkm-lift kkm-sheet rounded-lg p-3 text-left flex items-center gap-3 border-l-4 ${t.leftRule} ${cleared ? 'opacity-90' : ''}`}>
+                  <ProgressRing pct={pct} size={46}>
+                    {cleared
+                      ? <span className="text-shu-600"><Hanamaru size={22}/></span>
+                      : <span className={t.icon}><Icon size={20}/></span>}
+                  </ProgressRing>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-sm font-semibold ${t.text}`}>{m.title}</span>
+                    <span className="block text-[11px] font-medium text-sumi-600 truncate">{m.sub}</span>
+                    <span className="block text-[11px] font-semibold text-sumi-500 tabular-nums mt-0.5">{now} / {m.goal}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* つぎの もじ（やさしい じゅんで すすめる） */}
+        <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
+        <button onClick={() => onGo('write', nextChar)}
+          className="kkm-btn kkm-ripple kkm-sheet rounded-lg p-3 flex items-center gap-3 text-left border-l-4 border-l-ai-600">
+          <div className="shrink-0 w-14 h-14 rounded-md bg-washi-100 border border-ai-300 flex items-center justify-center">
+            <span className="kkm-glyph text-3xl text-ai-700">{nextChar}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-semibold text-ai-700 flex items-center gap-1"><IconTarget size={12}/> つぎの もじ</div>
+            <div className="text-sm font-semibold text-sumi-800 mt-0.5">かんたんな じから じゅんばんに かこう</div>
+          </div>
+          <IconArrow size={18} className="shrink-0 text-sumi-400"/>
+        </button>
+
+        {/* にがて */}
+        {weak.length > 0 && (
+          <div className="kkm-sheet rounded-lg p-3 border-l-4 border-l-shu-600">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs md:text-sm font-semibold text-shu-700 flex items-center gap-1.5">
+                <IconAlert size={15}/> にがて ボックス
+              </span>
+              <button onClick={() => onGo('sound')}
+                className="kkm-btn text-[11px] font-semibold text-shu-700 underline">やっつける</button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {weak.map(id => {
+                const [kind, a, b] = id.split(':');
+                const label = kind === 's' ? b : a;
+                return (
+                  <span key={id} className="kkm-glyph px-2 py-1 rounded-md bg-shu-50 border border-shu-200 text-shu-800 text-sm">{label}</span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* すすみぐあい */}
+        <div className="kkm-sheet rounded-lg p-3">
+          <div className="text-xs md:text-sm font-semibold text-sumi-700 mb-2 flex items-center gap-1.5">
+            <IconGrid size={15}/> すすみぐあい
+          </div>
+          <div className="flex flex-col gap-2">
+            {[
+              { label:'ひらがな',       v:stats.hira, bar:'bg-shu-500' },
+              { label:'カタカナ',       v:stats.kata, bar:'bg-ai-500' },
+              { label:'とくべつな おと', v:stats.sp,   bar:'bg-fuji-500' },
+            ].map(row => (
+              <div key={row.label}>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-sumi-600 mb-1">
+                  <span>{row.label}</span>
+                  <span className="tabular-nums">{row.v.done} / {row.v.total}</span>
+                </div>
+                <div className="h-2 rounded-full bg-washi-300 overflow-hidden">
+                  <div className={`h-full rounded-full ${row.bar} transition-all duration-500`}
+                    style={{ width: `${row.v.total ? (row.v.done / row.v.total) * 100 : 0}%` }}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <StampCalendar log={log}/>
+        <GuardianPanel progress={progress} skill={skill} log={log} words={words} mim={mim} tier={tier}
+          onCheck={() => onGo('mim')}/>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   21.5. <CollectionView> ── ずかん（あつめた ことば と しりとり）
+
+   ごほうびの 画面。じぶんで あつめた ことばが たまっていく ようすを
+   見せて、「もっと あつめたい」を つくる。
+   ────────────────────────────────────────────────────────────── */
+const COLLECTION_TABS = [
+  { key: 'words',     label: 'ことばずかん', Icon: IconBook },
+  { key: 'shiritori', label: 'しりとり',     Icon: IconLink },
+];
+function CollectionView({ kanaMode, setKanaMode, progress, usableInWords, words, onAdd, onDelete, voiceOn }) {
+  const [tab, setTab] = useState('words');
+  return (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="shrink-0 flex gap-1.5 px-2 md:px-4 pt-2">
+        {COLLECTION_TABS.map(t => {
+          const on = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={on}
+              className={`kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-sm border flex items-center justify-center gap-1.5 ${
+                on ? 'bg-shu-600 text-white border-shu-700' : 'bg-white text-sumi-500 border-sumi-200 hover:bg-washi-100'
+              }`}>
+              <t.Icon size={16}/> {t.label}
+            </button>
+          );
+        })}
+      </div>
+      {tab === 'words' ? (
+        <div className="flex-1 p-2 md:p-4 min-h-0 overflow-hidden">
+          <WordCollection kanaMode={kanaMode} setKanaMode={setKanaMode}
+            progress={progress} usableInWords={usableInWords}
+            words={words} onAdd={onAdd} onDelete={onDelete} voiceOn={voiceOn}/>
+        </div>
+      ) : (
+        <ShiritoriGame words={words} voiceOn={voiceOn}/>
+      )}
+    </div>
+  );
+}
+
 /* ──────────────────────────────────────────────────────────────
    22. <App> ── ルートコンポーネント
    ────────────────────────────────────────────────────────────── */
 // PWA ショートカット（manifest の ?view=...）や共有 URL から初期ビューを決める
+const VIEW_KEYS = VIEW_TABS.map(t => t.key);
 function getInitialView() {
   try {
     const v = new URLSearchParams(window.location.search).get('view');
-    if (v === 'words' || v === 'shiritori' || v === 'practice') return v;
+    if (VIEW_KEYS.includes(v)) return v;
+    // 旧バージョンの リンク（practice / shiritori）も うけとる
+    if (v === 'practice') return 'write';
+    if (v === 'shiritori') return 'words';
   } catch (e) {}
-  return 'practice';
+  return 'home';
 }
 
 function App() {
@@ -3909,6 +6345,18 @@ function App() {
   const streak = useStreak();
   const install = useInstallPrompt();
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
+  // あたらしい学習モデルの 2 本柱：ふくしゅうの はこ（SRS）と きょうの きろく
+  const { skill, answerSkill } = useSkill();
+  const { log: dayLog, todayRec, bumpMission } = useDayLog();
+  // MIM：ちからだめしの きろくと、そこから きまる 指導の ステージ（層）
+  const [mim, setMim] = useLocalStorage(KEY_MIM, { log: [] });
+  const tier = useMemo(() => currentTier(mim, skill), [mim, skill]);
+  // ホームから「この もじを かこう」と とんでくるときの うけわたし
+  const [requestedChar, setRequestedChar] = useState(null);
+  const [requestedUnit, setRequestedUnit] = useState(null);
+  const [dayDonePopup, setDayDonePopup] = useState(false);
+  const dayDoneRef = useRef(null);
+
   // ブラウザの インストールダイアログが つかえるならそれを出し、
   // だめなら 手順の案内モーダルを出す（＝ボタンが「無反応」にならない）。
   const handleInstall = useCallback(async () => {
@@ -3959,6 +6407,17 @@ function App() {
   useAchievements({ mastered, words, streak, earned, setEarned,
     onNew: (b) => setToastBadge(b) });
 
+  // きょうの めあてを ぜんぶ おわらせた しゅんかんに はんこを おす
+  useEffect(() => {
+    const key = todayKey();
+    if (dayDoneRef.current === null) { dayDoneRef.current = isDayComplete(todayRec) ? key : ''; return; }
+    if (isDayComplete(todayRec) && dayDoneRef.current !== key) {
+      dayDoneRef.current = key;
+      playFanfare(); burstConfetti(); hapticTriumph();
+      setDayDonePopup(true);
+    }
+  }, [todayRec]);
+
   const bumpCount = useCallback((char) => {
     setPracticeCount(prev => ({ ...prev, [char]: (prev[char] || 0) + 1 }));
   }, [setPracticeCount]);
@@ -3974,11 +6433,10 @@ function App() {
   }, []);
 
   // 1ラウンド完了（書き順すべて成功）：ステージに応じてカウンタを更新
-  // 戻り値：{ newStage, prevStage } を呼び出し側のためにrefで返したいが、
-  // setProgress内では難しいのでイベント駆動の通知はsetterで完結させる
   const onRoundComplete = useCallback((char, clean) => {
     if (!char) return;
     bumpCount(char);
+    bumpMission('write');
     setProgress(prev => {
       const cur = prev[char] || newStageObj();
       let next = { ...cur };
@@ -4005,7 +6463,7 @@ function App() {
       }
       return { ...prev, [char]: next };
     });
-  }, [bumpCount]);
+  }, [bumpCount, bumpMission]);
 
   // 自力モードでミスした瞬間：れんぞくカウントをリセット（ラウンドの途中ミスもペナルティ）
   const onMistakeStreakReset = useCallback((char) => {
@@ -4030,6 +6488,7 @@ function App() {
   const addWord = useCallback((w) => {
     setWords(prev => [...prev, { id: Date.now() + Math.random(), ...w, date: Date.now() }]);
     playPickup();
+    bumpMission('words');
     // ことばに使った文字のうち、ステージ3だったものをステージ4へ昇格
     const chars = Array.from(new Set((w.text || '').split('')));
     setProgress(prev => {
@@ -4051,10 +6510,18 @@ function App() {
       }
       return next;
     });
-  }, [setWords]);
+  }, [setWords, bumpMission]);
   const deleteWord = useCallback((id) => {
     setWords(prev => prev.filter(w => w.id !== id));
   }, [setWords]);
+
+  // ホームの カードから 各画面へ とぶ（もじや ユニットを 指定できる）
+  const goTo = useCallback((v, payload) => {
+    if (v === 'write' && payload) setRequestedChar(payload);
+    if (v === 'special' && payload) setRequestedUnit(payload);
+    setView(v);
+  }, []);
+
   // 「さいしょから」＝このアプリの記録だけを消す。
   // localStorage.clear() は gigayama.github.io というサイト全体の保存を消すので、
   // 同じサイトに置いた他のアプリ（けいさんカードなど）の学習記録まで
@@ -4082,10 +6549,20 @@ function App() {
         earnedCount={earned.length}
         showInstall={!install.standalone} installReady={install.canPrompt}
         onInstall={handleInstall}/>
-      <ModeTabsMobile view={view} setView={setView}/>
 
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {view === 'practice' && (
+        {view === 'home' && (
+          <HomeView progress={progress} mastered={mastered} skill={skill}
+            todayRec={todayRec} log={dayLog} streak={streak}
+            kanaMode={kanaMode} setKanaMode={setKanaMode}
+            words={words} onGo={goTo} mim={mim} tier={tier}/>
+        )}
+        {view === 'mim' && (
+          <MimCheckView mim={mim} setMim={setMim} voiceOn={voiceOn}
+            onChecked={() => bumpMission('check')}
+            onClose={() => setView('home')}/>
+        )}
+        {view === 'write' && (
           <MainBoard kanaMode={kanaMode} setKanaMode={setKanaMode}
             kanaKind={kanaKind} setKanaKind={setKanaKind}
             progress={progress} mastered={mastered}
@@ -4094,21 +6571,29 @@ function App() {
             onMistakeStreakReset={onMistakeStreakReset}
             onStrokeCountMismatch={onStrokeCountMismatch}
             practiceCount={practiceCount} voiceOn={voiceOn}
+            requestedChar={requestedChar}
+            onConsumeRequested={() => setRequestedChar(null)}
             onGoToWords={() => setView('words')}/>
         )}
-        {view === 'words' && (
-          <div className="flex-1 p-3 md:p-4 min-h-0 overflow-hidden">
-            <WordCollection kanaMode={kanaMode} setKanaMode={setKanaMode}
-              progress={progress} usableInWords={usableInWords}
-              words={words}
-              onAdd={addWord} onDelete={deleteWord} voiceOn={voiceOn}/>
-          </div>
+        {view === 'sound' && (
+          <SoundView kanaMode={kanaMode} setKanaMode={setKanaMode}
+            progress={progress} skill={skill} answerSkill={answerSkill}
+            bumpMission={bumpMission} voiceOn={voiceOn}/>
         )}
-        {view === 'shiritori' && (
-          <ShiritoriGame words={words} voiceOn={voiceOn}/>
+        {view === 'special' && (
+          <SpecialView skill={skill} answerSkill={answerSkill}
+            bumpMission={bumpMission} voiceOn={voiceOn}
+            initialUnit={requestedUnit} onConsumeInitial={() => setRequestedUnit(null)}
+            onGoWrite={(c) => goTo('write', c)} tier={tier}/>
+        )}
+        {view === 'words' && (
+          <CollectionView kanaMode={kanaMode} setKanaMode={setKanaMode}
+            progress={progress} usableInWords={usableInWords}
+            words={words} onAdd={addWord} onDelete={deleteWord} voiceOn={voiceOn}/>
         )}
       </main>
 
+      <ModeTabsMobile view={view} setView={setView}/>
       <Footer/>
 
       {installGuideOpen && <InstallGuideModal platform={install.platform} onClose={() => setInstallGuideOpen(false)}/>}
@@ -4117,6 +6602,7 @@ function App() {
                           onClose={() => setBadgesOpen(false)}/>}
       {toastBadge  && <BadgeToast badge={toastBadge} onClose={() => setToastBadge(null)}/>}
       {wordCelebration && <WordMasterPopup info={wordCelebration} onClose={() => setWordCelebration(null)}/>}
+      {dayDonePopup && <DayDonePopup streak={streak} onClose={() => setDayDonePopup(false)}/>}
       {storageWarn && (
         <div role="alert"
           className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[500] bg-white border border-shu-400 border-l-4 border-l-shu-600 text-sumi-800 rounded-lg px-4 py-3 shadow-xl max-w-sm flex items-start gap-2.5 kkm-pop-in">
@@ -4131,6 +6617,30 @@ function App() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* きょうの めあてを ぜんぶ おわらせた ときの はんこ */
+function DayDonePopup({ streak, onClose }) {
+  const ref = useModal(onClose);
+  useEffect(() => { const t = setTimeout(onClose, 5200); return () => clearTimeout(t); }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[350] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-sumi-900/45 backdrop-blur-sm kkm-fade-in" onClick={onClose}/>
+      <div ref={ref} className="relative kkm-sheet rounded-xl px-6 py-6 max-w-xs w-full text-center border-t-4 border-t-shu-600 kkm-pop-in">
+        <span className="kkm-stamp inline-flex w-24 h-24 rounded-lg bg-shu-600 border-2 border-shu-700 items-center justify-center">
+          <Hanamaru size={62} color="#fff" draw/>
+        </span>
+        <div className="text-xl font-semibold text-sumi-800 mt-3">きょうの めあて たっせい！</div>
+        <div className="text-sm font-medium text-sumi-600 mt-1">
+          カレンダーに はんこを おしたよ。{streak > 1 && `${streak}にち れんぞく！`}
+        </div>
+        <button onClick={onClose}
+          className="kkm-btn kkm-ripple mt-4 w-full py-3 rounded-md bg-shu-600 text-white font-semibold border border-shu-700">
+          やったー！
+        </button>
+      </div>
     </div>
   );
 }

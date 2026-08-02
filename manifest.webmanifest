@@ -1,7 +1,7 @@
 {
   "name": "ひらがな・カタカナ かきかたマスター",
   "short_name": "かきかたマスター",
-  "description": "小学1年生のための、ひらがな・カタカナの かきじゅん れんしゅう＆ことばあつめアプリ。書き順アニメ・なぞり書き・自動採点で、たのしく文字が身につきます。",
+  "description": "小学1年生のための ひらがな・カタカナ学習アプリ。かきじゅん・なぞり書き・自動採点に加えて、拗音（きゃ）・促音（っ）・長音・助詞など つまずきやすい とくべつな おとを マス（拍）で学べます。",
   "lang": "ja",
   "dir": "ltr",
   "_comment_id": "id はこのアプリの『背番号』。同じサイト（gigayama.github.io）に置いた他のアプリと絶対に重ならないよう、リポジトリ名と同じ絶対パスを必ず書くこと。id を省略したりコピー元のまま放置すると、Chromebook で『このアプリのページが別のアプリのウィンドウで開く』取りちがえが起きる。このリポジトリをコピーして別アプリを作るときは、id・scope・start_url を必ず新しいフォルダ名に書き換えること。",
@@ -50,7 +50,7 @@
       "name": "もじをかく",
       "short_name": "かく",
       "description": "ひらがな・カタカナの かきかた れんしゅう",
-      "url": "./index.html?view=practice"
+      "url": "./index.html?view=write"
     },
     {
       "name": "ことばずかん",
@@ -59,10 +59,16 @@
       "url": "./index.html?view=words"
     },
     {
-      "name": "しりとり",
-      "short_name": "しりとり",
-      "description": "コンピュータと しりとりで あそぶ",
-      "url": "./index.html?view=shiritori"
+      "name": "とくべつな おと",
+      "short_name": "とくべつ",
+      "description": "っ・ゃゅょ・ん・のばす おと の れんしゅう",
+      "url": "./index.html?view=special"
+    },
+    {
+      "name": "よむ れんしゅう",
+      "short_name": "よむ",
+      "description": "もじと おとを むすびつける",
+      "url": "./index.html?view=sound"
     }
   ]
 }
