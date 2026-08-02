@@ -5,7 +5,7 @@
 
    ＜たのしさUPの追加機能＞
    - 音声よみあげ（タップで読んでくれる）
-   - マスコット「ことりせんせい」のおうえん
+   - マスコット「ねこせんせい」のおうえん
    - 連続学習日数のストリーク
    - レベル（しょうごう）と ごほうびの はんこ図鑑
    - きょうの もじ（デイリーチャレンジ）
@@ -2123,47 +2123,61 @@ const ICONS = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   6. <Mascot> ── 「ことりせんせい」が声をかける
+   6. <Mascot> ── 「ねこせんせい」が声をかける
 
-   絵文字のひよこは使わず、線だけで描いた ことり にした。
-   きもち（mood）で 目・口・うごきだけが変わり、形はいつも同じ。
+   絵文字は使わず、線だけで描いた ねこ にした。
+   きもち（mood）で 目・口・みみ・うごきだけが変わり、形はいつも同じ。
+   34px まで小さくしても つぶれないよう、線は 1.5〜2.2 の太さでそろえ、
+   目は大きく・左右にはなして 低い位置に置いてある（あかちゃんの顔の比率）。
    ────────────────────────────────────────────────────────────── */
 const MASCOT_MOODS = {
-  happy: { anim: 'kkm-float',   eye: 'dot',   beakUp: false },
-  cheer: { anim: 'kkm-breathe', eye: 'dot',   beakUp: true  },
-  wow:   { anim: 'kkm-breathe', eye: 'wide',  beakUp: true  },
-  sad:   { anim: '',            eye: 'droop', beakUp: false },
+  happy: { anim: 'kkm-float',   eye: 'dot',   mouth: 'smile', droopEar: false },
+  cheer: { anim: 'kkm-breathe', eye: 'dot',   mouth: 'open',  droopEar: false },
+  wow:   { anim: 'kkm-breathe', eye: 'spark', mouth: 'open',  droopEar: false },
+  sad:   { anim: '',            eye: 'dot',   mouth: 'wave',  droopEar: true  },
 };
 function MascotFace({ size = 40, mood = 'happy' }) {
   const m = MASCOT_MOODS[mood] || MASCOT_MOODS.happy;
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"
          className={m.anim}>
-      {/* からだ */}
-      <path d="M24 43c-8.3 0-15-6.3-15-14.5S15.7 14 24 14s15 6.3 15 14.5S32.3 43 24 43z"
-            fill="#faf7f0" stroke="#443f38" strokeWidth="2.2" strokeLinejoin="round"/>
-      {/* あたまの毛 */}
-      <path d="M24 14V8M24 8c-1.6-1.8-1.3-3.8.7-5 .8 2 .4 3.7-.7 5z"
-            stroke="#443f38" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-      {/* つばさ */}
-      <path d="M11.5 27c2.6 1 4 3.2 4.2 6.5-2.6-.4-4.2-2.5-4.2-6.5zM36.5 27c-2.6 1-4 3.2-4.2 6.5 2.6-.4 4.2-2.5 4.2-6.5z"
-            fill="#f4cec2" stroke="#443f38" strokeWidth="1.8" strokeLinejoin="round"/>
-      {/* め */}
-      {m.eye === 'wide' ? (
-        <><circle cx="19" cy="25" r="2.6" fill="#443f38"/><circle cx="29" cy="25" r="2.6" fill="#443f38"/>
-          <circle cx="19.9" cy="24" r=".9" fill="#fff"/><circle cx="29.9" cy="24" r=".9" fill="#fff"/></>
-      ) : m.eye === 'droop' ? (
-        <path d="M16.6 25.6q2.4-2.4 4.8 0M26.6 25.6q2.4-2.4 4.8 0"
-              stroke="#443f38" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
-      ) : (
-        <><circle cx="19" cy="25" r="1.9" fill="#443f38"/><circle cx="29" cy="25" r="1.9" fill="#443f38"/></>
-      )}
-      {/* くちばし */}
-      {m.beakUp
-        ? <path d="M21 30h6l-3 3.4z" fill="#b34328" stroke="#93331e" strokeWidth="1.4" strokeLinejoin="round"/>
-        : <path d="M21.5 30.5h5l-2.5 2.8z" fill="#b34328" stroke="#93331e" strokeWidth="1.4" strokeLinejoin="round"/>}
+      {/* みみ ── しょんぼりすると 外へ たれる */}
+      <g transform={m.droopEar ? 'rotate(-42 16.5 15.2)' : undefined}>
+        <path d="M12.9 17.6 11.9 6.7l9.2 5.1z" fill="#fdfbf7" stroke="#443f38" strokeWidth="2.2" strokeLinejoin="round"/>
+        <path d="M14.6 14.1 14 9.4l4.1 2.3z" fill="#f0b6a4"/>
+      </g>
+      <g transform={m.droopEar ? 'rotate(42 31.5 15.2)' : undefined}>
+        <path d="M35.1 17.6l1-10.9-9.2 5.1z" fill="#fdfbf7" stroke="#443f38" strokeWidth="2.2" strokeLinejoin="round"/>
+        <path d="M33.4 14.1l.6-4.7-4.1 2.3z" fill="#f0b6a4"/>
+      </g>
+      {/* かお */}
+      <ellipse cx="24" cy="26.2" rx="14.9" ry="13.9" fill="#fdfbf7" stroke="#443f38" strokeWidth="2.2"/>
+      {/* ひげ */}
+      <path d="M12.4 25.2 5.6 23.8M12.6 29 6.2 30.6M35.6 25.2l6.8-1.4M35.4 29l6.4 1.6"
+            stroke="#443f38" strokeWidth="1.5" strokeLinecap="round" opacity=".8"/>
       {/* ほっぺ */}
-      <circle cx="15.4" cy="29.5" r="2" fill="#f4cec2"/><circle cx="32.6" cy="29.5" r="2" fill="#f4cec2"/>
+      <ellipse cx="13.4" cy="31.2" rx="2.9" ry="2.3" fill="#f2b0a0" opacity=".75"/>
+      <ellipse cx="34.6" cy="31.2" rx="2.9" ry="2.3" fill="#f2b0a0" opacity=".75"/>
+      {/* め */}
+      {m.eye === 'spark' ? (
+        <><circle cx="18.3" cy="26.2" r="4" fill="#443f38"/><circle cx="29.7" cy="26.2" r="4" fill="#443f38"/>
+          <circle cx="19.8" cy="24.5" r="1.6" fill="#fff"/><circle cx="31.2" cy="24.5" r="1.6" fill="#fff"/>
+          <circle cx="16.6" cy="28" r=".85" fill="#fff" opacity=".9"/><circle cx="28" cy="28" r=".85" fill="#fff" opacity=".9"/></>
+      ) : (
+        <><circle cx="18.3" cy="26.2" r="3.5" fill="#443f38"/><circle cx="29.7" cy="26.2" r="3.5" fill="#443f38"/>
+          <circle cx="19.6" cy="24.8" r="1.3" fill="#fff"/><circle cx="31" cy="24.8" r="1.3" fill="#fff"/></>
+      )}
+      {/* はな */}
+      <path d="M22.5 29.7h3l-1.5 1.9z" fill="#c9564f" stroke="#8f3a34" strokeWidth="1" strokeLinejoin="round"/>
+      {/* くち */}
+      {m.mouth === 'open' ? (
+        <><path d="M24 31.4v1.4" stroke="#443f38" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M21.3 32.8h5.4a2.7 2.7 0 0 1-5.4 0z" fill="#c9564f" stroke="#443f38" strokeWidth="1.5" strokeLinejoin="round"/></>
+      ) : m.mouth === 'wave' ? (
+        <path d="M21 33q1.5-1.9 3-.2 1.5 1.7 3-.2" stroke="#443f38" strokeWidth="1.9" strokeLinecap="round" fill="none"/>
+      ) : (
+        <path d="M21 31.7q1.5 2.3 3 0 1.5 2.3 3 0" stroke="#443f38" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      )}
     </svg>
   );
 }
