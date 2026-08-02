@@ -116,46 +116,37 @@ function getKindOfChar(c) {
    ここの p: に書くだけでよい。
    ────────────────────────────────────────────────────────────── */
 
-// ★カスタマイズポイント: 「ことばあつめ」のヒント
-const WORD_HINTS_HIRA = [
-  { w:'あめ', p:'sweet' }, { w:'いぬ', p:'dog' }, { w:'うみ', p:'water' }, { w:'えき', p:'train' },
-  { w:'おに', p:'person' }, { w:'かに', p:'octopus' }, { w:'きく', p:'flower' }, { w:'くも', p:'cloud' },
-  { w:'こま', p:'tool' }, { w:'さくら', p:'flower' }, { w:'すいか', p:'fruit' }, { w:'そら', p:'cloud' },
-  { w:'たこ', p:'octopus' }, { w:'つき', p:'moon' }, { w:'にじ', p:'rainbow' }, { w:'はな', p:'flower' },
-  { w:'ふね', p:'ship' }, { w:'ほし', p:'star' }, { w:'みず', p:'water' }, { w:'もも', p:'fruit' },
-  { w:'やま', p:'mountain' }, { w:'ゆき', p:'snow' }, { w:'りんご', p:'fruit' }, { w:'れもん', p:'fruit' },
-  // 濁音
-  { w:'ぞう', p:'animal' }, { w:'でんわ', p:'tool' }, { w:'ぶどう', p:'fruit' }, { w:'かばん', p:'bag' },
-  { w:'だんご', p:'sweet' }, { w:'べんとう', p:'rice' },
-  // 半濁音
-  { w:'ぱんだ', p:'animal' }, { w:'えんぴつ', p:'pencil' }, { w:'ぷりん', p:'sweet' }, { w:'たんぽぽ', p:'flower' },
-  // 拗音・促音
-  { w:'ちょう', p:'bug' }, { w:'きって', p:'tool' }, { w:'でんしゃ', p:'train' }, { w:'がっこう', p:'school' },
-];
-const WORD_HINTS_KATA = [
-  { w:'アイス', p:'sweet' }, { w:'イルカ', p:'fish' }, { w:'ウサギ', p:'rabbit' }, { w:'エビ', p:'octopus' },
-  { w:'オムレツ', p:'rice' }, { w:'カバ', p:'animal' }, { w:'キリン', p:'animal' }, { w:'クマ', p:'animal' },
-  { w:'ケーキ', p:'sweet' }, { w:'コアラ', p:'animal' }, { w:'サメ', p:'fish' }, { w:'シマウマ', p:'animal' },
-  { w:'スイカ', p:'fruit' }, { w:'タコ', p:'octopus' }, { w:'チーズ', p:'rice' }, { w:'トマト', p:'vegetable' },
-  { w:'ネコ', p:'cat' }, { w:'ヘビ', p:'animal' }, { w:'バナナ', p:'fruit' }, { w:'ライオン', p:'animal' },
-  // 濁音
-  { w:'ゴリラ', p:'animal' }, { w:'ダチョウ', p:'bird' }, { w:'ブタ', p:'animal' }, { w:'ゾウ', p:'animal' },
-  // 半濁音
-  { w:'パンダ', p:'animal' }, { w:'ピアノ', p:'music' }, { w:'プリン', p:'sweet' }, { w:'ペンギン', p:'bird' },
-  // 拗音・促音
-  { w:'チョコ', p:'sweet' }, { w:'コップ', p:'drink' }, { w:'ジャム', p:'fruit' },
-];
-
-// 「ことばを つくろう」でこどもが えらべる さしえ
+// ★カスタマイズポイント: 「ことばを つくろう」で こどもが えらべる さしえ
+//
+// さしえは わざと 16 こに しぼってある。1年生に 40 この 絵から えらばせると、
+// ことばを 書くことより「絵さがし」に 気もちが いってしまい、手が とまる。
+// ここは ことばの なかまを ざっくり えらぶだけの場所なので、
+//
+//   ・ぜんぶ 1 画面に おさまる かずにする（スクロールさせない）
+//   ・絵の 下に ことばの ラベルを 出す（絵の いみを 当てさせない）
+//
+// の 2 つを まもる。ふやしたくなったら、まず 1 つ けすこと。
+//
+// ※ ここに ない さしえ（PICTS のキー）も、もんだいの データや、
+//   むかし ほぞんした ことばでは そのまま つかえる。この表は
+//   「子どもに えらばせる ぶん」だけを しぼったもの。
 const PICT_CHOICES = [
-  'fruit','sweet','rice','drink','vegetable',
-  'dog','cat','rabbit','bird','fish',
-  'octopus','bug','animal','flower','tree',
-  'leaf','star','moon','sun','cloud',
-  'rain','snow','rainbow','mountain','water',
-  'car','train','ship','plane','house',
-  'school','book','pencil','ball','music',
-  'person','heart','bag','cloth','tool',
+  { name:'rice',   label:'たべもの' },
+  { name:'fruit',  label:'くだもの' },
+  { name:'sweet',  label:'おかし'   },
+  { name:'drink',  label:'のみもの' },
+  { name:'animal', label:'どうぶつ' },
+  { name:'bird',   label:'とり'     },
+  { name:'fish',   label:'さかな'   },
+  { name:'bug',    label:'むし'     },
+  { name:'flower', label:'はな'     },
+  { name:'tree',   label:'き'       },
+  { name:'cloud',  label:'てんき'   },
+  { name:'water',  label:'みず'     },
+  { name:'car',    label:'のりもの' },
+  { name:'house',  label:'いえ'     },
+  { name:'school', label:'がっこう' },
+  { name:'person', label:'ひと'     },
 ];
 
 // 旧バージョン（絵文字で保存された ことば）を さしえに読みかえる表。
@@ -185,53 +176,482 @@ function pictOf(word) {
   return 'shape';
 }
 
-// コンピュータがしりとりで使う単語リスト（ひらがな）
-const SHIRITORI_CPU_WORDS = [
-  {w:'あり',p:'bug'},{w:'あひる',p:'bird'},{w:'あさ',p:'sun'},{w:'あき',p:'leaf'},{w:'あかい',p:'heart'},
-  {w:'いか',p:'octopus'},{w:'いちご',p:'fruit'},{w:'いえ',p:'house'},{w:'いし',p:'mountain'},{w:'いもうと',p:'person'},
-  {w:'うし',p:'animal'},{w:'うちわ',p:'tool'},{w:'うさぎ',p:'rabbit'},{w:'うた',p:'music'},{w:'うで',p:'person'},
-  {w:'えき',p:'train'},{w:'えんぴつ',p:'pencil'},{w:'えほん',p:'book'},{w:'えび',p:'octopus'},{w:'えいが',p:'tool'},
-  {w:'おに',p:'person'},{w:'おかし',p:'sweet'},{w:'おつき',p:'moon'},{w:'おはな',p:'flower'},{w:'おおかみ',p:'animal'},
-  {w:'かに',p:'octopus'},{w:'かめ',p:'animal'},{w:'かさ',p:'rain'},{w:'かえる',p:'animal'},{w:'かぜ',p:'cloud'},{w:'かわ',p:'water'},
-  {w:'きつね',p:'animal'},{w:'きのこ',p:'vegetable'},{w:'きりん',p:'animal'},{w:'きく',p:'flower'},{w:'きじ',p:'bird'},
-  {w:'くじら',p:'fish'},{w:'くり',p:'vegetable'},{w:'くるま',p:'car'},{w:'くも',p:'cloud'},{w:'くさ',p:'leaf'},
-  {w:'けむり',p:'cloud'},{w:'けいと',p:'tool'},{w:'けが',p:'tool'},{w:'けむし',p:'bug'},
-  {w:'こうもり',p:'animal'},{w:'こども',p:'person'},{w:'こうえん',p:'tree'},{w:'こおり',p:'snow'},{w:'こま',p:'tool'},{w:'こころ',p:'heart'},
-  {w:'さかな',p:'fish'},{w:'さる',p:'animal'},{w:'さんぽ',p:'person'},{w:'さくら',p:'flower'},{w:'さとう',p:'sweet'},{w:'さむい',p:'snow'},
-  {w:'しか',p:'animal'},{w:'しろ',p:'house'},{w:'しお',p:'rice'},{w:'したぎ',p:'cloth'},{w:'しんかんせん',p:'train'},
-  {w:'すずめ',p:'bird'},{w:'すみれ',p:'flower'},{w:'すいか',p:'fruit'},{w:'すもう',p:'person'},{w:'すな',p:'mountain'},{w:'すき',p:'heart'},
-  {w:'せみ',p:'bug'},{w:'せかい',p:'star'},{w:'せんせい',p:'person'},{w:'せっけん',p:'tool'},{w:'せわ',p:'person'},
-  {w:'そら',p:'cloud'},{w:'そうじ',p:'tool'},{w:'そと',p:'leaf'},{w:'そり',p:'snow'},{w:'そば',p:'rice'},
-  {w:'たこ',p:'octopus'},{w:'たぬき',p:'animal'},{w:'たまご',p:'rice'},{w:'たき',p:'water'},{w:'たいよう',p:'sun'},{w:'たか',p:'bird'},
-  {w:'ちょう',p:'bug'},{w:'ちきゅう',p:'star'},{w:'ちゃわん',p:'drink'},{w:'ちから',p:'person'},
-  {w:'つき',p:'moon'},{w:'つる',p:'bird'},{w:'つみき',p:'tool'},{w:'つばさ',p:'bird'},{w:'つち',p:'leaf'},{w:'つゆ',p:'rain'},
-  {w:'てんき',p:'cloud'},{w:'てがみ',p:'pencil'},{w:'てんとう',p:'bug'},{w:'てつ',p:'tool'},{w:'てら',p:'house'},
-  {w:'とり',p:'bird'},{w:'とら',p:'animal'},{w:'とまと',p:'vegetable'},{w:'とうふ',p:'rice'},{w:'とかげ',p:'animal'},{w:'ともだち',p:'person'},
-  {w:'なみ',p:'water'},{w:'なし',p:'fruit'},{w:'なつ',p:'sun'},{w:'なまこ',p:'octopus'},{w:'なわ',p:'tool'},
-  {w:'にじ',p:'rainbow'},{w:'にわ',p:'leaf'},{w:'にんじん',p:'vegetable'},{w:'にく',p:'rice'},{w:'にわとり',p:'bird'},{w:'にほん',p:'mountain'},
-  {w:'ぬの',p:'cloth'},{w:'ぬいぐるみ',p:'tool'},{w:'ぬりえ',p:'pencil'},
-  {w:'ねこ',p:'cat'},{w:'ねずみ',p:'animal'},{w:'ねんど',p:'tool'},{w:'ねむい',p:'moon'},
-  {w:'のり',p:'leaf'},{w:'のはら',p:'leaf'},{w:'のこぎり',p:'tool'},{w:'のみもの',p:'drink'},
-  {w:'はな',p:'flower'},{w:'はと',p:'bird'},{w:'はし',p:'tool'},{w:'はる',p:'flower'},{w:'はりねずみ',p:'animal'},{w:'はやし',p:'tree'},
-  {w:'ひよこ',p:'bird'},{w:'ひつじ',p:'animal'},{w:'ひこうき',p:'plane'},{w:'ひかり',p:'light'},{w:'ひまわり',p:'flower'},{w:'ひみつ',p:'person'},
-  {w:'ふね',p:'ship'},{w:'ふくろう',p:'bird'},{w:'ふうせん',p:'ball'},{w:'ふゆ',p:'snow'},{w:'ふで',p:'pencil'},{w:'ふじさん',p:'mountain'},
-  {w:'へび',p:'animal'},{w:'へや',p:'house'},{w:'へいわ',p:'heart'},{w:'へそ',p:'person'},
-  {w:'ほし',p:'star'},{w:'ほたる',p:'light'},{w:'ほおずき',p:'light'},{w:'ほんや',p:'book'},{w:'ほね',p:'tool'},
-  {w:'まつ',p:'tree'},{w:'まくら',p:'cloth'},{w:'まめ',p:'vegetable'},{w:'まち',p:'house'},{w:'まいにち',p:'book'},{w:'まぐろ',p:'fish'},
-  {w:'みず',p:'water'},{w:'みかん',p:'fruit'},{w:'みつばち',p:'bug'},{w:'みち',p:'tool'},{w:'みそしる',p:'drink'},{w:'みんな',p:'person'},
-  {w:'むし',p:'bug'},{w:'むらさき',p:'shape'},{w:'むすび',p:'rice'},{w:'むかし',p:'book'},{w:'むぎ',p:'leaf'},
-  {w:'めだか',p:'fish'},{w:'めがね',p:'tool'},{w:'めがみ',p:'person'},{w:'めし',p:'rice'},{w:'めいろ',p:'book'},
-  {w:'もも',p:'fruit'},{w:'もり',p:'tree'},{w:'もぐら',p:'animal'},{w:'もち',p:'sweet'},{w:'もくば',p:'tool'},{w:'もみじ',p:'leaf'},
-  {w:'やすみ',p:'moon'},{w:'やま',p:'mountain'},{w:'やね',p:'house'},{w:'やかん',p:'drink'},{w:'やど',p:'house'},
-  {w:'ゆき',p:'snow'},{w:'ゆび',p:'person'},{w:'ゆうひ',p:'sun'},{w:'ゆかた',p:'cloth'},{w:'ゆめ',p:'moon'},{w:'ゆか',p:'tree'},
-  {w:'よる',p:'moon'},{w:'よこ',p:'shape'},{w:'よつば',p:'leaf'},{w:'よみもの',p:'book'},
-  {w:'らいおん',p:'animal'},{w:'らっこ',p:'octopus'},{w:'らくだ',p:'animal'},{w:'らくがき',p:'pencil'},
-  {w:'りんご',p:'fruit'},{w:'りす',p:'animal'},{w:'りゅう',p:'animal'},{w:'りか',p:'tool'},
-  {w:'るすばん',p:'tool'},{w:'るりいろ',p:'shape'},
-  {w:'れもん',p:'fruit'},{w:'れんこん',p:'vegetable'},{w:'れっしゃ',p:'train'},{w:'れいぞうこ',p:'snow'},{w:'れんしゅう',p:'pencil'},
-  {w:'ろうそく',p:'light'},{w:'ろば',p:'animal'},{w:'ろけっと',p:'plane'},{w:'ろうか',p:'school'},
-  {w:'わに',p:'animal'},{w:'わかめ',p:'leaf'},{w:'わたあめ',p:'sweet'},{w:'わかば',p:'leaf'},{w:'わらい',p:'person'},{w:'わすれもの',p:'bag'},
+/* ══════════════════════════════════════════════════════════════
+   1.1. ことばずかん ── このアプリの ことばは ぜんぶ ここ
+
+   1年生が 1年かんで 出あう ことばを「なかま」ごとに まとめた、
+   このアプリ ゆいいつの ことばの もとだね。ここに 1 語 足すと、
+
+     ・あたまの おと（「あ」から はじまる ことばは どれ？）
+     ・ことばの なかの もじ／にた もじ さがし
+     ・なかまの ことば（たべものは どれ？）
+     ・はんたいの ことば
+     ・しりとり
+     ・ことばあつめの ヒント
+
+   の ぜんぶで つかわれる。**べつの場所に ことばの表を 作らないこと。**
+
+     w … ことば（ひらがなだけ／カタカナだけ で書く）
+     p … さしえ（PICTS のキー）
+     g … なかま（WORD_GROUPS のキー）
+
+   ★カスタマイズポイント: ことばを ふやすときは この 2 つの表に 足すだけ。
+   ══════════════════════════════════════════════════════════════ */
+
+/* なかま（教科書の「なかまの ことば」に そろえてある）。
+
+     key   … 保存と 参照に つかう名まえ
+     title … 子どもに見せる名まえ
+     ask   … 「なかまの ことば」の といかけ
+     quiz  … もんだいに つかってよい なかまか。
+             「みの まわりの もの」のように 何でも 当てはまってしまう
+             なかまは false（ことばは つかうが 出題には しない）。
+     avoid … まちがい選択肢に つかっては いけない なかま。
+             「どうぶつは どれ？」に「すずめ」を まぜると、とりも
+             どうぶつなので こたえが 2 つに なってしまう。
+     text  … 絵にできない なかま（うごき・ようす・いろ・あいさつ など）。
+             text どうし だけで もんだいを つくるので、さしえの
+             ある／ない が こたえの ヒントに ならない。 */
+const WORD_GROUPS = [
+  { key:'body',    title:'からだ',              ask:'からだの ことばは どれ？',                 quiz:true  },
+  { key:'family',  title:'ひと・かぞく',        ask:'ひとを あらわす ことばは どれ？',          quiz:true  },
+  { key:'school',  title:'がっこう',            ask:'がっこうに あるものは どれ？',             quiz:true,  avoid:['study','tool','town'] },
+  { key:'study',   title:'べんきょうの どうぐ', ask:'べんきょうに つかう ものは どれ？',        quiz:true,  avoid:['school','tool'] },
+  { key:'food',    title:'たべもの',            ask:'たべものは どれ？',                        quiz:true,  avoid:['yasai'] },
+  { key:'yasai',   title:'やさい・くだもの',    ask:'やさいや くだものは どれ？',               quiz:true,  avoid:['food','plant'] },
+  { key:'animal',  title:'どうぶつ',            ask:'どうぶつは どれ？',                        quiz:true,  avoid:['bird','bug','sea'] },
+  { key:'bird',    title:'とり',                ask:'とりは どれ？',                            quiz:true  },
+  { key:'bug',     title:'むし',                ask:'むしは どれ？',                            quiz:true  },
+  { key:'sea',     title:'うみの いきもの',     ask:'うみの いきものは どれ？',                 quiz:true  },
+  { key:'plant',   title:'はな・き',            ask:'はなや きは どれ？',                       quiz:true,  avoid:['nature','yasai'] },
+  { key:'weather', title:'てんき・きせつ',      ask:'てんきや きせつの ことばは どれ？',        quiz:true,  avoid:['nature'] },
+  { key:'nature',  title:'しぜん',              ask:'しぜんの ことばは どれ？',                 quiz:true,  avoid:['weather','plant','sea','town'] },
+  { key:'vehicle', title:'のりもの',            ask:'のりものは どれ？',                        quiz:true  },
+  { key:'town',    title:'いえ・まち',          ask:'いえや まちに あるものは どれ？',          quiz:true,  avoid:['school','tool','nature'] },
+  { key:'tool',    title:'みの まわりの もの',  ask:'',                                         quiz:false },
+  { key:'cloth',   title:'きるもの',            ask:'きるものは どれ？',                        quiz:true,  avoid:['tool'] },
+  { key:'play',    title:'あそび',              ask:'あそびの ことばは どれ？',                 quiz:true,  avoid:['tool','school'] },
+  { key:'verb',    title:'うごきの ことば',     ask:'うごきを あらわす ことばは どれ？',        quiz:true,  text:true },
+  { key:'adj',     title:'ようすの ことば',     ask:'ようすを あらわす ことばは どれ？',        quiz:true,  text:true, avoid:['color'] },
+  { key:'color',   title:'いろ',                ask:'いろの なまえは どれ？',                   quiz:true,  text:true, avoid:['adj'] },
+  { key:'time',    title:'とき',                ask:'ときを あらわす ことばは どれ？',          quiz:true,  text:true },
+  { key:'place',   title:'ばしょ・むき',        ask:'ばしょや むきを あらわす ことばは どれ？', quiz:true,  text:true },
+  { key:'aisatsu', title:'あいさつ',            ask:'あいさつの ことばは どれ？',               quiz:true,  text:true },
+  { key:'other',   title:'そのほか',            ask:'',                                         quiz:false },
 ];
+const WORD_GROUP_MAP = {};
+WORD_GROUPS.forEach(g => { WORD_GROUP_MAP[g.key] = g; });
+// 「なかまの ことば」の もんだいに つかえる なかま だけ
+const QUIZ_GROUPS = WORD_GROUPS.filter(g => g.quiz);
+
+/* ひらがなの ことば（1年生の 語彙）。
+   おなじ ことばを 2 つの なかまに 書かないこと（あめ＝雨／飴 のように
+   まぎれる ものは、どちらか 1 つに きめて べつの ことばを つかう）。 */
+const WORD_BANK = [
+  /* ── からだ ── */
+  {w:'あたま',p:'person',g:'body'},{w:'かお',p:'person',g:'body'},{w:'め',p:'person',g:'body'},
+  {w:'みみ',p:'person',g:'body'},{w:'くち',p:'person',g:'body'},{w:'て',p:'person',g:'body'},
+  {w:'あし',p:'person',g:'body'},{w:'ゆび',p:'person',g:'body'},{w:'つめ',p:'person',g:'body'},
+  {w:'かた',p:'person',g:'body'},{w:'くび',p:'person',g:'body'},{w:'せなか',p:'person',g:'body'},
+  {w:'おなか',p:'person',g:'body'},{w:'ひざ',p:'person',g:'body'},{w:'ひじ',p:'person',g:'body'},
+  {w:'うで',p:'person',g:'body'},{w:'むね',p:'person',g:'body'},{w:'のど',p:'person',g:'body'},
+  {w:'ほね',p:'person',g:'body'},{w:'へそ',p:'person',g:'body'},{w:'かみのけ',p:'person',g:'body'},
+  {w:'まつげ',p:'person',g:'body'},{w:'ほほ',p:'person',g:'body'},
+
+  /* ── ひと・かぞく ── */
+  {w:'おとうさん',p:'person',g:'family'},{w:'おかあさん',p:'person',g:'family'},
+  {w:'おにいさん',p:'person',g:'family'},{w:'おねえさん',p:'person',g:'family'},
+  {w:'おじいさん',p:'person',g:'family'},{w:'おばあさん',p:'person',g:'family'},
+  {w:'あかちゃん',p:'person',g:'family'},{w:'いもうと',p:'person',g:'family'},
+  {w:'おとうと',p:'person',g:'family'},{w:'ともだち',p:'person',g:'family'},
+  {w:'せんせい',p:'person',g:'family'},{w:'こども',p:'person',g:'family'},
+  {w:'おとな',p:'person',g:'family'},{w:'かぞく',p:'person',g:'family'},
+  {w:'みんな',p:'person',g:'family'},{w:'ぼく',p:'person',g:'family'},
+  {w:'わたし',p:'person',g:'family'},{w:'おきゃくさん',p:'person',g:'family'},
+
+  /* ── がっこう ── */
+  {w:'がっこう',p:'school',g:'school'},{w:'きょうしつ',p:'school',g:'school'},
+  {w:'こくばん',p:'school',g:'school'},{w:'つくえ',p:'tool',g:'school'},
+  {w:'いす',p:'tool',g:'school'},{w:'こうてい',p:'school',g:'school'},
+  {w:'たいいくかん',p:'school',g:'school'},{w:'としょしつ',p:'school',g:'school'},
+  {w:'ろうか',p:'school',g:'school'},{w:'げたばこ',p:'school',g:'school'},
+  {w:'ほけんしつ',p:'school',g:'school'},{w:'きゅうしょく',p:'rice',g:'school'},
+  {w:'そうじ',p:'tool',g:'school'},{w:'こくご',p:'book',g:'school'},
+  {w:'さんすう',p:'book',g:'school'},{w:'おんがく',p:'music',g:'school'},
+  {w:'たいいく',p:'ball',g:'school'},{w:'ずこう',p:'pencil',g:'school'},
+  {w:'りか',p:'leaf',g:'school'},{w:'せいかつ',p:'leaf',g:'school'},
+
+  /* ── べんきょうの どうぐ ── */
+  {w:'えんぴつ',p:'pencil',g:'study'},{w:'けしごむ',p:'pencil',g:'study'},
+  {w:'ものさし',p:'pencil',g:'study'},{w:'ふでばこ',p:'bag',g:'study'},
+  {w:'したじき',p:'book',g:'study'},{w:'じょうぎ',p:'pencil',g:'study'},
+  {w:'ふで',p:'pencil',g:'study'},{w:'きょうかしょ',p:'book',g:'study'},
+  {w:'えほん',p:'book',g:'study'},{w:'ずかん',p:'book',g:'study'},
+  {w:'にっき',p:'book',g:'study'},{w:'かみ',p:'book',g:'study'},
+  {w:'ほん',p:'book',g:'study'},{w:'よみもの',p:'book',g:'study'},
+  {w:'ふうとう',p:'book',g:'study'},
+
+  /* ── たべもの ── */
+  {w:'ごはん',p:'rice',g:'food'},{w:'たまご',p:'rice',g:'food'},{w:'にく',p:'rice',g:'food'},
+  {w:'みそしる',p:'drink',g:'food'},{w:'おにぎり',p:'rice',g:'food'},{w:'うどん',p:'rice',g:'food'},
+  {w:'そば',p:'rice',g:'food'},{w:'おかし',p:'sweet',g:'food'},{w:'あめだま',p:'sweet',g:'food'},
+  {w:'もち',p:'sweet',g:'food'},{w:'だんご',p:'sweet',g:'food'},{w:'わたあめ',p:'sweet',g:'food'},
+  {w:'せんべい',p:'sweet',g:'food'},{w:'さとう',p:'sweet',g:'food'},{w:'しお',p:'rice',g:'food'},
+  {w:'しょうゆ',p:'drink',g:'food'},{w:'とうふ',p:'rice',g:'food'},{w:'なっとう',p:'rice',g:'food'},
+  {w:'ぎゅうにゅう',p:'drink',g:'food'},{w:'おちゃ',p:'drink',g:'food'},
+  {w:'のみもの',p:'drink',g:'food'},{w:'のり',p:'rice',g:'food'},
+  {w:'てんぷら',p:'rice',g:'food'},{w:'からあげ',p:'rice',g:'food'},
+  {w:'たまごやき',p:'rice',g:'food'},{w:'やきそば',p:'rice',g:'food'},
+  {w:'むすび',p:'rice',g:'food'},{w:'めし',p:'rice',g:'food'},{w:'べんとう',p:'rice',g:'food'},
+
+  /* ── やさい・くだもの ── */
+  {w:'りんご',p:'fruit',g:'yasai'},{w:'みかん',p:'fruit',g:'yasai'},{w:'いちご',p:'fruit',g:'yasai'},
+  {w:'すいか',p:'fruit',g:'yasai'},{w:'もも',p:'fruit',g:'yasai'},{w:'ぶどう',p:'fruit',g:'yasai'},
+  {w:'なし',p:'fruit',g:'yasai'},{w:'かき',p:'fruit',g:'yasai'},{w:'くり',p:'fruit',g:'yasai'},
+  {w:'なす',p:'vegetable',g:'yasai'},{w:'きゅうり',p:'vegetable',g:'yasai'},
+  {w:'にんじん',p:'vegetable',g:'yasai'},{w:'だいこん',p:'vegetable',g:'yasai'},
+  {w:'たまねぎ',p:'vegetable',g:'yasai'},{w:'じゃがいも',p:'vegetable',g:'yasai'},
+  {w:'かぼちゃ',p:'vegetable',g:'yasai'},{w:'とうもろこし',p:'vegetable',g:'yasai'},
+  {w:'ほうれんそう',p:'vegetable',g:'yasai'},{w:'きのこ',p:'vegetable',g:'yasai'},
+  {w:'まめ',p:'vegetable',g:'yasai'},{w:'れんこん',p:'vegetable',g:'yasai'},
+  {w:'ごぼう',p:'vegetable',g:'yasai'},{w:'さつまいも',p:'vegetable',g:'yasai'},
+  {w:'とまと',p:'vegetable',g:'yasai'},{w:'れもん',p:'fruit',g:'yasai'},
+  {w:'ねぎ',p:'vegetable',g:'yasai'},{w:'はくさい',p:'vegetable',g:'yasai'},
+
+  /* ── どうぶつ ── */
+  {w:'いぬ',p:'dog',g:'animal'},{w:'ねこ',p:'cat',g:'animal'},{w:'うし',p:'animal',g:'animal'},
+  {w:'うま',p:'animal',g:'animal'},{w:'ぶた',p:'animal',g:'animal'},{w:'ひつじ',p:'animal',g:'animal'},
+  {w:'やぎ',p:'animal',g:'animal'},{w:'さる',p:'animal',g:'animal'},{w:'くま',p:'animal',g:'animal'},
+  {w:'きつね',p:'animal',g:'animal'},{w:'たぬき',p:'animal',g:'animal'},{w:'りす',p:'animal',g:'animal'},
+  {w:'ねずみ',p:'animal',g:'animal'},{w:'もぐら',p:'animal',g:'animal'},{w:'しか',p:'animal',g:'animal'},
+  {w:'ぞう',p:'animal',g:'animal'},{w:'きりん',p:'animal',g:'animal'},{w:'らいおん',p:'animal',g:'animal'},
+  {w:'とら',p:'animal',g:'animal'},{w:'かば',p:'animal',g:'animal'},{w:'さい',p:'animal',g:'animal'},
+  {w:'うさぎ',p:'rabbit',g:'animal'},{w:'はりねずみ',p:'animal',g:'animal'},
+  {w:'おおかみ',p:'animal',g:'animal'},{w:'こうもり',p:'animal',g:'animal'},
+  {w:'かえる',p:'animal',g:'animal'},{w:'とかげ',p:'animal',g:'animal'},{w:'へび',p:'animal',g:'animal'},
+  {w:'かめ',p:'animal',g:'animal'},{w:'わに',p:'animal',g:'animal'},{w:'ろば',p:'animal',g:'animal'},
+  {w:'らくだ',p:'animal',g:'animal'},{w:'いのしし',p:'animal',g:'animal'},
+
+  /* ── とり ── */
+  {w:'とり',p:'bird',g:'bird'},{w:'すずめ',p:'bird',g:'bird'},{w:'はと',p:'bird',g:'bird'},
+  {w:'からす',p:'bird',g:'bird'},{w:'つばめ',p:'bird',g:'bird'},{w:'にわとり',p:'bird',g:'bird'},
+  {w:'ひよこ',p:'bird',g:'bird'},{w:'つる',p:'bird',g:'bird'},{w:'はくちょう',p:'bird',g:'bird'},
+  {w:'たか',p:'bird',g:'bird'},{w:'ふくろう',p:'bird',g:'bird'},{w:'きじ',p:'bird',g:'bird'},
+  {w:'あひる',p:'bird',g:'bird'},{w:'かも',p:'bird',g:'bird'},{w:'わし',p:'bird',g:'bird'},
+  {w:'きつつき',p:'bird',g:'bird'},{w:'うぐいす',p:'bird',g:'bird'},
+
+  /* ── むし ── */
+  {w:'むし',p:'bug',g:'bug'},{w:'あり',p:'bug',g:'bug'},{w:'ちょう',p:'bug',g:'bug'},
+  {w:'せみ',p:'bug',g:'bug'},{w:'とんぼ',p:'bug',g:'bug'},{w:'ばった',p:'bug',g:'bug'},
+  {w:'こおろぎ',p:'bug',g:'bug'},{w:'かまきり',p:'bug',g:'bug'},{w:'かぶとむし',p:'bug',g:'bug'},
+  {w:'くわがた',p:'bug',g:'bug'},{w:'てんとうむし',p:'bug',g:'bug'},{w:'ほたる',p:'bug',g:'bug'},
+  {w:'はち',p:'bug',g:'bug'},{w:'みつばち',p:'bug',g:'bug'},{w:'けむし',p:'bug',g:'bug'},
+  {w:'だんごむし',p:'bug',g:'bug'},{w:'かたつむり',p:'bug',g:'bug'},
+
+  /* ── うみの いきもの ── */
+  {w:'さかな',p:'fish',g:'sea'},{w:'たこ',p:'octopus',g:'sea'},{w:'いか',p:'octopus',g:'sea'},
+  {w:'えび',p:'octopus',g:'sea'},{w:'かに',p:'octopus',g:'sea'},{w:'くじら',p:'fish',g:'sea'},
+  {w:'めだか',p:'fish',g:'sea'},{w:'きんぎょ',p:'fish',g:'sea'},{w:'まぐろ',p:'fish',g:'sea'},
+  {w:'さんま',p:'fish',g:'sea'},{w:'いわし',p:'fish',g:'sea'},{w:'わかめ',p:'leaf',g:'sea'},
+  {w:'こんぶ',p:'leaf',g:'sea'},{w:'なまこ',p:'octopus',g:'sea'},{w:'ひとで',p:'star',g:'sea'},
+  {w:'くらげ',p:'water',g:'sea'},{w:'かい',p:'octopus',g:'sea'},{w:'やどかり',p:'octopus',g:'sea'},
+  {w:'うに',p:'octopus',g:'sea'},{w:'あさり',p:'octopus',g:'sea'},{w:'らっこ',p:'octopus',g:'sea'},
+
+  /* ── はな・き ── */
+  {w:'はな',p:'flower',g:'plant'},{w:'おはな',p:'flower',g:'plant'},{w:'さくら',p:'flower',g:'plant'},
+  {w:'ひまわり',p:'flower',g:'plant'},{w:'たんぽぽ',p:'flower',g:'plant'},
+  {w:'あさがお',p:'flower',g:'plant'},{w:'すみれ',p:'flower',g:'plant'},
+  {w:'うめ',p:'flower',g:'plant'},{w:'まつ',p:'tree',g:'plant'},{w:'たけ',p:'tree',g:'plant'},
+  {w:'もみじ',p:'leaf',g:'plant'},{w:'いちょう',p:'leaf',g:'plant'},{w:'わかば',p:'leaf',g:'plant'},
+  {w:'くさ',p:'leaf',g:'plant'},{w:'き',p:'tree',g:'plant'},{w:'たね',p:'leaf',g:'plant'},
+  {w:'えだ',p:'tree',g:'plant'},{w:'はっぱ',p:'leaf',g:'plant'},{w:'よつば',p:'leaf',g:'plant'},
+  {w:'ほおずき',p:'flower',g:'plant'},{w:'どんぐり',p:'tree',g:'plant'},
+  {w:'まつぼっくり',p:'tree',g:'plant'},{w:'つぼみ',p:'flower',g:'plant'},
+  {w:'はなびら',p:'flower',g:'plant'},{w:'むぎ',p:'leaf',g:'plant'},
+
+  /* ── てんき・きせつ ── */
+  {w:'はれ',p:'sun',g:'weather'},{w:'あめ',p:'rain',g:'weather'},{w:'くもり',p:'cloud',g:'weather'},
+  {w:'くも',p:'cloud',g:'weather'},{w:'ゆき',p:'snow',g:'weather'},{w:'かぜ',p:'cloud',g:'weather'},
+  {w:'かみなり',p:'cloud',g:'weather'},{w:'にじ',p:'rainbow',g:'weather'},{w:'つゆ',p:'rain',g:'weather'},
+  {w:'こおり',p:'snow',g:'weather'},{w:'しも',p:'snow',g:'weather'},{w:'きり',p:'cloud',g:'weather'},
+  {w:'たいふう',p:'cloud',g:'weather'},{w:'はる',p:'flower',g:'weather'},{w:'なつ',p:'sun',g:'weather'},
+  {w:'あき',p:'leaf',g:'weather'},{w:'ふゆ',p:'snow',g:'weather'},
+
+  /* ── しぜん ── */
+  {w:'やま',p:'mountain',g:'nature'},{w:'かわ',p:'water',g:'nature'},{w:'うみ',p:'water',g:'nature'},
+  {w:'そら',p:'cloud',g:'nature'},{w:'つき',p:'moon',g:'nature'},{w:'ほし',p:'star',g:'nature'},
+  {w:'たいよう',p:'sun',g:'nature'},{w:'いし',p:'mountain',g:'nature'},{w:'すな',p:'mountain',g:'nature'},
+  {w:'もり',p:'tree',g:'nature'},{w:'はやし',p:'tree',g:'nature'},{w:'のはら',p:'leaf',g:'nature'},
+  {w:'たき',p:'water',g:'nature'},{w:'なみ',p:'water',g:'nature'},{w:'みず',p:'water',g:'nature'},
+  {w:'ちきゅう',p:'star',g:'nature'},{w:'つち',p:'leaf',g:'nature'},{w:'ひかり',p:'light',g:'nature'},
+  {w:'ゆうひ',p:'sun',g:'nature'},{w:'あさひ',p:'sun',g:'nature'},{w:'ふじさん',p:'mountain',g:'nature'},
+  {w:'いけ',p:'water',g:'nature'},{w:'たんぼ',p:'leaf',g:'nature'},{w:'はたけ',p:'leaf',g:'nature'},
+
+  /* ── のりもの ── */
+  {w:'くるま',p:'car',g:'vehicle'},{w:'でんしゃ',p:'train',g:'vehicle'},
+  {w:'しんかんせん',p:'train',g:'vehicle'},{w:'じてんしゃ',p:'car',g:'vehicle'},
+  {w:'ひこうき',p:'plane',g:'vehicle'},{w:'ふね',p:'ship',g:'vehicle'},
+  {w:'きしゃ',p:'train',g:'vehicle'},{w:'れっしゃ',p:'train',g:'vehicle'},
+  {w:'ちかてつ',p:'train',g:'vehicle'},{w:'じどうしゃ',p:'car',g:'vehicle'},
+  {w:'しょうぼうしゃ',p:'car',g:'vehicle'},{w:'きゅうきゅうしゃ',p:'car',g:'vehicle'},
+  {w:'いかだ',p:'ship',g:'vehicle'},
+
+  /* ── いえ・まち ── */
+  {w:'いえ',p:'house',g:'town'},{w:'へや',p:'house',g:'town'},{w:'まど',p:'house',g:'town'},
+  {w:'やね',p:'house',g:'town'},{w:'かいだん',p:'house',g:'town'},{w:'げんかん',p:'house',g:'town'},
+  {w:'だいどころ',p:'house',g:'town'},{w:'おふろ',p:'water',g:'town'},{w:'にわ',p:'leaf',g:'town'},
+  {w:'もん',p:'house',g:'town'},{w:'ゆか',p:'house',g:'town'},{w:'こうえん',p:'tree',g:'town'},
+  {w:'おみせ',p:'shop',g:'town'},{w:'びょういん',p:'house',g:'town'},{w:'えき',p:'train',g:'town'},
+  {w:'ゆうびんきょく',p:'shop',g:'town'},{w:'こうばん',p:'house',g:'town'},
+  {w:'としょかん',p:'book',g:'town'},{w:'こうさてん',p:'car',g:'town'},{w:'しんごう',p:'light',g:'town'},
+  {w:'みち',p:'car',g:'town'},{w:'まち',p:'shop',g:'town'},{w:'てら',p:'castle',g:'town'},
+  {w:'じんじゃ',p:'castle',g:'town'},{w:'ほんや',p:'shop',g:'town'},{w:'やど',p:'house',g:'town'},
+
+  /* ── みの まわりの もの（出題には つかわない なかま） ── */
+  {w:'とけい',p:'tool',g:'tool'},{w:'めがね',p:'tool',g:'tool'},{w:'かさ',p:'rain',g:'tool'},
+  {w:'かばん',p:'bag',g:'tool'},{w:'ぼうし',p:'cloth',g:'tool'},{w:'くつ',p:'cloth',g:'tool'},
+  {w:'はさみ',p:'tool',g:'tool'},{w:'さら',p:'tool',g:'tool'},{w:'はし',p:'tool',g:'tool'},
+  {w:'せっけん',p:'tool',g:'tool'},{w:'ちゃわん',p:'tool',g:'tool'},{w:'やかん',p:'drink',g:'tool'},
+  {w:'なべ',p:'tool',g:'tool'},{w:'ほうき',p:'tool',g:'tool'},{w:'ぞうきん',p:'tool',g:'tool'},
+  {w:'ばけつ',p:'tool',g:'tool'},{w:'かがみ',p:'tool',g:'tool'},{w:'まくら',p:'cloth',g:'tool'},
+  {w:'ふとん',p:'cloth',g:'tool'},{w:'たんす',p:'tool',g:'tool'},{w:'でんわ',p:'tool',g:'tool'},
+  {w:'でんき',p:'light',g:'tool'},{w:'れいぞうこ',p:'snow',g:'tool'},{w:'けいと',p:'tool',g:'tool'},
+  {w:'なわ',p:'tool',g:'tool'},{w:'のこぎり',p:'tool',g:'tool'},{w:'うちわ',p:'tool',g:'tool'},
+  {w:'ろうそく',p:'light',g:'tool'},{w:'てがみ',p:'book',g:'tool'},{w:'かぎ',p:'tool',g:'tool'},
+  {w:'おかね',p:'tool',g:'tool'},{w:'さいふ',p:'bag',g:'tool'},{w:'きって',p:'tool',g:'tool'},
+  {w:'きっぷ',p:'train',g:'tool'},{w:'ぬの',p:'cloth',g:'tool'},{w:'ざぶとん',p:'cloth',g:'tool'},
+  {w:'ふろしき',p:'cloth',g:'tool'},{w:'したぎ',p:'cloth',g:'tool'},
+
+  /* ── きるもの ── */
+  {w:'ようふく',p:'cloth',g:'cloth'},{w:'くつした',p:'cloth',g:'cloth'},
+  {w:'てぶくろ',p:'cloth',g:'cloth'},{w:'ゆかた',p:'cloth',g:'cloth'},
+  {w:'きもの',p:'cloth',g:'cloth'},{w:'うわぎ',p:'cloth',g:'cloth'},
+  {w:'ながぐつ',p:'cloth',g:'cloth'},{w:'まえかけ',p:'cloth',g:'cloth'},
+  {w:'はだぎ',p:'cloth',g:'cloth'},
+
+  /* ── あそび ── */
+  {w:'なわとび',p:'ball',g:'play'},{w:'ぶらんこ',p:'ball',g:'play'},{w:'すべりだい',p:'ball',g:'play'},
+  {w:'てつぼう',p:'ball',g:'play'},{w:'すなば',p:'mountain',g:'play'},{w:'かくれんぼ',p:'person',g:'play'},
+  {w:'おにごっこ',p:'person',g:'play'},{w:'かるた',p:'book',g:'play'},{w:'つみき',p:'tool',g:'play'},
+  {w:'こま',p:'tool',g:'play'},{w:'たこあげ',p:'tool',g:'play'},{w:'けんだま',p:'ball',g:'play'},
+  {w:'おりがみ',p:'tool',g:'play'},{w:'ふうせん',p:'ball',g:'play'},{w:'しゃぼんだま',p:'ball',g:'play'},
+  {w:'ぬりえ',p:'pencil',g:'play'},{w:'ぬいぐるみ',p:'rabbit',g:'play'},{w:'おもちゃ',p:'ball',g:'play'},
+  {w:'うた',p:'music',g:'play'},{w:'おどり',p:'music',g:'play'},{w:'そり',p:'snow',g:'play'},
+  {w:'すもう',p:'person',g:'play'},{w:'さんぽ',p:'person',g:'play'},{w:'めいろ',p:'book',g:'play'},
+  {w:'もくば',p:'tool',g:'play'},{w:'ねんど',p:'tool',g:'play'},{w:'おに',p:'person',g:'play'},
+  {w:'えいが',p:'tool',g:'play'},{w:'らくがき',p:'pencil',g:'play'},
+
+  /* ── うごきの ことば ── */
+  {w:'はしる',p:'person',g:'verb'},{w:'あるく',p:'person',g:'verb'},{w:'とぶ',p:'bird',g:'verb'},
+  {w:'およぐ',p:'water',g:'verb'},{w:'たべる',p:'rice',g:'verb'},{w:'のむ',p:'drink',g:'verb'},
+  {w:'ねる',p:'moon',g:'verb'},{w:'おきる',p:'sun',g:'verb'},{w:'よむ',p:'book',g:'verb'},
+  {w:'かく',p:'pencil',g:'verb'},{w:'きく',p:'music',g:'verb'},{w:'みる',p:'person',g:'verb'},
+  {w:'いう',p:'person',g:'verb'},{w:'はなす',p:'person',g:'verb'},{w:'わらう',p:'heart',g:'verb'},
+  {w:'なく',p:'heart',g:'verb'},{w:'もつ',p:'person',g:'verb'},{w:'なげる',p:'ball',g:'verb'},
+  {w:'すわる',p:'person',g:'verb'},{w:'たつ',p:'person',g:'verb'},{w:'あそぶ',p:'ball',g:'verb'},
+  {w:'あらう',p:'water',g:'verb'},{w:'ぬぐ',p:'cloth',g:'verb'},{w:'とる',p:'person',g:'verb'},
+  {w:'うたう',p:'music',g:'verb'},{w:'おどる',p:'music',g:'verb'},{w:'さがす',p:'person',g:'verb'},
+  {w:'ならべる',p:'shape',g:'verb'},{w:'つくる',p:'tool',g:'verb'},{w:'いく',p:'person',g:'verb'},
+  {w:'のる',p:'car',g:'verb'},{w:'おりる',p:'car',g:'verb'},{w:'はいる',p:'house',g:'verb'},
+  {w:'でる',p:'house',g:'verb'},{w:'あける',p:'house',g:'verb'},{w:'しめる',p:'house',g:'verb'},
+  {w:'おす',p:'person',g:'verb'},{w:'ひく',p:'person',g:'verb'},
+
+  /* ── ようすの ことば ── */
+  {w:'おおきい',p:'shape',g:'adj'},{w:'ちいさい',p:'shape',g:'adj'},{w:'たかい',p:'mountain',g:'adj'},
+  {w:'ひくい',p:'shape',g:'adj'},{w:'ながい',p:'shape',g:'adj'},{w:'みじかい',p:'shape',g:'adj'},
+  {w:'あつい',p:'sun',g:'adj'},{w:'さむい',p:'snow',g:'adj'},{w:'つめたい',p:'snow',g:'adj'},
+  {w:'あたたかい',p:'sun',g:'adj'},{w:'あまい',p:'sweet',g:'adj'},{w:'からい',p:'vegetable',g:'adj'},
+  {w:'すっぱい',p:'fruit',g:'adj'},{w:'おいしい',p:'rice',g:'adj'},{w:'はやい',p:'car',g:'adj'},
+  {w:'おそい',p:'ship',g:'adj'},{w:'あかるい',p:'light',g:'adj'},{w:'くらい',p:'moon',g:'adj'},
+  {w:'おもい',p:'shape',g:'adj'},{w:'かるい',p:'cloud',g:'adj'},{w:'ひろい',p:'shape',g:'adj'},
+  {w:'せまい',p:'shape',g:'adj'},{w:'つよい',p:'person',g:'adj'},{w:'よわい',p:'person',g:'adj'},
+  {w:'おおい',p:'shape',g:'adj'},{w:'すくない',p:'shape',g:'adj'},{w:'あたらしい',p:'star',g:'adj'},
+  {w:'ふるい',p:'castle',g:'adj'},{w:'うれしい',p:'heart',g:'adj'},{w:'かなしい',p:'heart',g:'adj'},
+  {w:'たのしい',p:'heart',g:'adj'},{w:'さびしい',p:'heart',g:'adj'},{w:'いたい',p:'heart',g:'adj'},
+  {w:'ねむい',p:'moon',g:'adj'},{w:'きれい',p:'flower',g:'adj'},{w:'まるい',p:'shape',g:'adj'},
+  {w:'やわらかい',p:'cloth',g:'adj'},{w:'かたい',p:'mountain',g:'adj'},{w:'あかい',p:'heart',g:'adj'},
+  {w:'あおい',p:'water',g:'adj'},{w:'しろい',p:'snow',g:'adj'},{w:'くろい',p:'shape',g:'adj'},
+
+  /* ── いろ ── */
+  {w:'あか',p:'shape',g:'color'},{w:'あお',p:'shape',g:'color'},{w:'きいろ',p:'shape',g:'color'},
+  {w:'しろ',p:'shape',g:'color'},{w:'くろ',p:'shape',g:'color'},{w:'みどり',p:'shape',g:'color'},
+  {w:'ちゃいろ',p:'shape',g:'color'},{w:'むらさき',p:'shape',g:'color'},{w:'ももいろ',p:'shape',g:'color'},
+  {w:'みずいろ',p:'shape',g:'color'},{w:'だいだいいろ',p:'shape',g:'color'},
+  {w:'はいいろ',p:'shape',g:'color'},{w:'きんいろ',p:'shape',g:'color'},{w:'ぎんいろ',p:'shape',g:'color'},
+  {w:'るりいろ',p:'shape',g:'color'},
+
+  /* ── とき ── */
+  {w:'あさ',p:'sun',g:'time'},{w:'ひる',p:'sun',g:'time'},{w:'よる',p:'moon',g:'time'},
+  {w:'ゆうがた',p:'sun',g:'time'},{w:'ひるま',p:'sun',g:'time'},{w:'きょう',p:'sun',g:'time'},
+  {w:'あした',p:'sun',g:'time'},{w:'きのう',p:'moon',g:'time'},{w:'あさって',p:'sun',g:'time'},
+  {w:'まいにち',p:'sun',g:'time'},{w:'いま',p:'tool',g:'time'},{w:'さっき',p:'tool',g:'time'},
+  {w:'むかし',p:'book',g:'time'},{w:'ことし',p:'sun',g:'time'},{w:'やすみ',p:'moon',g:'time'},
+  {w:'たんじょうび',p:'sweet',g:'time'},
+
+  /* ── ばしょ・むき ── */
+  {w:'うえ',p:'shape',g:'place'},{w:'した',p:'shape',g:'place'},{w:'なか',p:'shape',g:'place'},
+  {w:'そと',p:'shape',g:'place'},{w:'まえ',p:'shape',g:'place'},{w:'うしろ',p:'shape',g:'place'},
+  {w:'みぎ',p:'shape',g:'place'},{w:'ひだり',p:'shape',g:'place'},{w:'となり',p:'shape',g:'place'},
+  {w:'よこ',p:'shape',g:'place'},{w:'ちかく',p:'shape',g:'place'},{w:'とおく',p:'shape',g:'place'},
+  {w:'あいだ',p:'shape',g:'place'},{w:'まわり',p:'shape',g:'place'},
+
+  /* ── あいさつ ── */
+  {w:'おはよう',p:'sun',g:'aisatsu'},{w:'こんにちは',p:'person',g:'aisatsu'},
+  {w:'こんばんは',p:'moon',g:'aisatsu'},{w:'さようなら',p:'person',g:'aisatsu'},
+  {w:'ありがとう',p:'heart',g:'aisatsu'},{w:'ごめんなさい',p:'heart',g:'aisatsu'},
+  {w:'いただきます',p:'rice',g:'aisatsu'},{w:'ごちそうさま',p:'rice',g:'aisatsu'},
+  {w:'おやすみなさい',p:'moon',g:'aisatsu'},{w:'いってきます',p:'house',g:'aisatsu'},
+  {w:'ただいま',p:'house',g:'aisatsu'},{w:'おかえり',p:'house',g:'aisatsu'},
+  {w:'はじめまして',p:'person',g:'aisatsu'},
+
+  /* ── そのほか（出題には つかわないが、しりとりや 読みで つかう） ── */
+  {w:'けむり',p:'cloud',g:'other'},{w:'けが',p:'heart',g:'other'},{w:'こころ',p:'heart',g:'other'},
+  {w:'せかい',p:'star',g:'other'},{w:'せわ',p:'heart',g:'other'},{w:'ちから',p:'person',g:'other'},
+  {w:'つばさ',p:'bird',g:'other'},{w:'てつ',p:'tool',g:'other'},{w:'にほん',p:'mountain',g:'other'},
+  {w:'ひみつ',p:'heart',g:'other'},{w:'へいわ',p:'heart',g:'other'},{w:'ゆめ',p:'moon',g:'other'},
+  {w:'るすばん',p:'house',g:'other'},{w:'れんしゅう',p:'pencil',g:'other'},
+  {w:'わらい',p:'heart',g:'other'},{w:'わすれもの',p:'bag',g:'other'},
+  {w:'めがみ',p:'person',g:'other'},{w:'りゅう',p:'animal',g:'other'},
+  {w:'ことば',p:'book',g:'other'},{w:'なまえ',p:'pencil',g:'other'},
+  {w:'こえ',p:'music',g:'other'},{w:'おと',p:'music',g:'other'},
+];
+
+/* カタカナの ことば。
+   ちいさい ァィゥェォ は 1年生の 学習はんいの 外で、拍の かぞえかたも
+   むずかしくなるので つかわない（フォーク・ソファ など）。 */
+const WORD_BANK_KATA = [
+  /* ── たべもの ── */
+  {w:'パン',p:'rice',g:'food'},{w:'カレー',p:'rice',g:'food'},{w:'ジュース',p:'drink',g:'food'},
+  {w:'ミルク',p:'drink',g:'food'},{w:'チーズ',p:'rice',g:'food'},{w:'バター',p:'rice',g:'food'},
+  {w:'ケーキ',p:'sweet',g:'food'},{w:'プリン',p:'sweet',g:'food'},{w:'アイス',p:'sweet',g:'food'},
+  {w:'チョコ',p:'sweet',g:'food'},{w:'ドーナツ',p:'sweet',g:'food'},{w:'ゼリー',p:'sweet',g:'food'},
+  {w:'ラーメン',p:'rice',g:'food'},{w:'スープ',p:'drink',g:'food'},{w:'サラダ',p:'vegetable',g:'food'},
+  {w:'オムレツ',p:'rice',g:'food'},{w:'ハンバーグ',p:'rice',g:'food'},{w:'ピザ',p:'rice',g:'food'},
+  {w:'コーヒー',p:'drink',g:'food'},{w:'ジャム',p:'sweet',g:'food'},{w:'ヨーグルト',p:'sweet',g:'food'},
+  {w:'ソース',p:'rice',g:'food'},{w:'ソーセージ',p:'rice',g:'food'},{w:'モモ',p:'fruit',g:'yasai'},
+
+  /* ── やさい・くだもの ── */
+  {w:'トマト',p:'vegetable',g:'yasai'},{w:'キャベツ',p:'vegetable',g:'yasai'},
+  {w:'ピーマン',p:'vegetable',g:'yasai'},{w:'レモン',p:'fruit',g:'yasai'},
+  {w:'メロン',p:'fruit',g:'yasai'},{w:'バナナ',p:'fruit',g:'yasai'},
+  {w:'オレンジ',p:'fruit',g:'yasai'},{w:'キウイ',p:'fruit',g:'yasai'},
+
+  /* ── どうぶつ ── */
+  {w:'パンダ',p:'animal',g:'animal'},{w:'ライオン',p:'animal',g:'animal'},{w:'ゾウ',p:'animal',g:'animal'},
+  {w:'キリン',p:'animal',g:'animal'},{w:'コアラ',p:'animal',g:'animal'},{w:'ゴリラ',p:'animal',g:'animal'},
+  {w:'カバ',p:'animal',g:'animal'},{w:'クマ',p:'animal',g:'animal'},{w:'ブタ',p:'animal',g:'animal'},
+  {w:'ヒツジ',p:'animal',g:'animal'},{w:'ウサギ',p:'rabbit',g:'animal'},{w:'ネズミ',p:'animal',g:'animal'},
+  {w:'シマウマ',p:'animal',g:'animal'},{w:'ラクダ',p:'animal',g:'animal'},{w:'トナカイ',p:'animal',g:'animal'},
+  {w:'リス',p:'animal',g:'animal'},{w:'ワニ',p:'animal',g:'animal'},{w:'ヘビ',p:'animal',g:'animal'},
+  {w:'ネコ',p:'cat',g:'animal'},{w:'イヌ',p:'dog',g:'animal'},{w:'サル',p:'animal',g:'animal'},
+
+  /* ── とり ── */
+  {w:'ペンギン',p:'bird',g:'bird'},{w:'ダチョウ',p:'bird',g:'bird'},{w:'フクロウ',p:'bird',g:'bird'},
+  {w:'ハト',p:'bird',g:'bird'},{w:'ニワトリ',p:'bird',g:'bird'},{w:'スズメ',p:'bird',g:'bird'},
+  {w:'カラス',p:'bird',g:'bird'},{w:'ツバメ',p:'bird',g:'bird'},{w:'インコ',p:'bird',g:'bird'},
+
+  /* ── むし ── */
+  {w:'チョウ',p:'bug',g:'bug'},{w:'セミ',p:'bug',g:'bug'},{w:'カブトムシ',p:'bug',g:'bug'},
+  {w:'クワガタ',p:'bug',g:'bug'},{w:'バッタ',p:'bug',g:'bug'},{w:'アリ',p:'bug',g:'bug'},
+  {w:'トンボ',p:'bug',g:'bug'},{w:'ホタル',p:'bug',g:'bug'},{w:'ハチ',p:'bug',g:'bug'},
+  {w:'ムシ',p:'bug',g:'bug'},
+
+  /* ── うみの いきもの ── */
+  {w:'イルカ',p:'fish',g:'sea'},{w:'クジラ',p:'fish',g:'sea'},{w:'サメ',p:'fish',g:'sea'},
+  {w:'タコ',p:'octopus',g:'sea'},{w:'イカ',p:'octopus',g:'sea'},{w:'エビ',p:'octopus',g:'sea'},
+  {w:'カニ',p:'octopus',g:'sea'},{w:'メダカ',p:'fish',g:'sea'},{w:'クラゲ',p:'water',g:'sea'},
+  {w:'マグロ',p:'fish',g:'sea'},{w:'ラッコ',p:'octopus',g:'sea'},
+
+  /* ── はな・き ── */
+  {w:'バラ',p:'flower',g:'plant'},{w:'チューリップ',p:'flower',g:'plant'},
+  {w:'ヒマワリ',p:'flower',g:'plant'},{w:'サボテン',p:'tree',g:'plant'},
+  {w:'タンポポ',p:'flower',g:'plant'},{w:'ツリー',p:'tree',g:'plant'},{w:'ユリ',p:'flower',g:'plant'},
+
+  /* ── のりもの ── */
+  {w:'バス',p:'car',g:'vehicle'},{w:'タクシー',p:'car',g:'vehicle'},{w:'トラック',p:'car',g:'vehicle'},
+  {w:'パトカー',p:'car',g:'vehicle'},{w:'ロケット',p:'plane',g:'vehicle'},
+  {w:'ヘリコプター',p:'plane',g:'vehicle'},{w:'ボート',p:'ship',g:'vehicle'},
+  {w:'ヨット',p:'ship',g:'vehicle'},{w:'バイク',p:'car',g:'vehicle'},
+
+  /* ── がっこう ── */
+  {w:'プール',p:'water',g:'school'},{w:'ロッカー',p:'school',g:'school'},
+  {w:'チョーク',p:'pencil',g:'school'},{w:'グラウンド',p:'school',g:'school'},
+
+  /* ── べんきょうの どうぐ ── */
+  {w:'ノート',p:'book',g:'study'},{w:'クレヨン',p:'pencil',g:'study'},
+  {w:'ランドセル',p:'bag',g:'study'},{w:'ハサミ',p:'tool',g:'study'},
+
+  /* ── みの まわりの もの（出題には つかわない なかま） ── */
+  {w:'テレビ',p:'tool',g:'tool'},{w:'ラジオ',p:'music',g:'tool'},{w:'カメラ',p:'tool',g:'tool'},
+  {w:'コップ',p:'drink',g:'tool'},{w:'スプーン',p:'tool',g:'tool'},{w:'ナイフ',p:'tool',g:'tool'},
+  {w:'タオル',p:'cloth',g:'tool'},{w:'ボタン',p:'cloth',g:'tool'},{w:'ドア',p:'house',g:'tool'},
+  {w:'カーテン',p:'cloth',g:'tool'},{w:'ベッド',p:'cloth',g:'tool'},{w:'テーブル',p:'tool',g:'tool'},
+  {w:'ストーブ',p:'light',g:'tool'},{w:'パソコン',p:'tool',g:'tool'},{w:'ポスト',p:'tool',g:'tool'},
+  {w:'ヤカン',p:'drink',g:'tool'},{w:'ルーペ',p:'tool',g:'tool'},{w:'モップ',p:'tool',g:'tool'},
+
+  /* ── きるもの ── */
+  {w:'シャツ',p:'cloth',g:'cloth'},{w:'ズボン',p:'cloth',g:'cloth'},{w:'スカート',p:'cloth',g:'cloth'},
+  {w:'セーター',p:'cloth',g:'cloth'},{w:'コート',p:'cloth',g:'cloth'},{w:'パジャマ',p:'cloth',g:'cloth'},
+  {w:'マスク',p:'cloth',g:'cloth'},{w:'リボン',p:'cloth',g:'cloth'},{w:'ベルト',p:'cloth',g:'cloth'},
+  {w:'ポケット',p:'cloth',g:'cloth'},{w:'エプロン',p:'cloth',g:'cloth'},{w:'ハンカチ',p:'cloth',g:'cloth'},
+
+  /* ── あそび ── */
+  {w:'ボール',p:'ball',g:'play'},{w:'ブランコ',p:'ball',g:'play'},{w:'スキー',p:'snow',g:'play'},
+  {w:'スケート',p:'snow',g:'play'},{w:'ゲーム',p:'tool',g:'play'},{w:'カルタ',p:'book',g:'play'},
+  {w:'ピアノ',p:'music',g:'play'},{w:'オルガン',p:'music',g:'play'},{w:'ラッパ',p:'music',g:'play'},
+  {w:'サッカー',p:'ball',g:'play'},{w:'カスタネット',p:'music',g:'play'},
+  {w:'ヌイグルミ',p:'rabbit',g:'play'},{w:'ソリ',p:'snow',g:'play'},
+
+  /* ── いろ ── */
+  {w:'ピンク',p:'shape',g:'color'},{w:'グレー',p:'shape',g:'color'},
+];
+
+/* はんたいの ことば（1年生の「はんたいの いみの ことば」）。
+   ここから 行き・帰り の 2 とおりの もんだいを 作る。 */
+const OPPOSITE_PAIRS = [
+  ['おおきい','ちいさい'],['たかい','ひくい'],['ながい','みじかい'],
+  ['あつい','さむい'],['つめたい','あたたかい'],['あまい','からい'],
+  ['あたらしい','ふるい'],['はやい','おそい'],['おもい','かるい'],
+  ['あかるい','くらい'],['ひろい','せまい'],['つよい','よわい'],
+  ['おおい','すくない'],['うれしい','かなしい'],['かたい','やわらかい'],
+  ['うえ','した'],['まえ','うしろ'],['みぎ','ひだり'],['なか','そと'],
+  ['あさ','よる'],['のる','おりる'],['はいる','でる'],
+  ['あける','しめる'],['たつ','すわる'],['おきる','ねる'],['わらう','なく'],
+];
+const OPPOSITE_MAP = {};
+OPPOSITE_PAIRS.forEach(([a, b]) => { OPPOSITE_MAP[a] = b; OPPOSITE_MAP[b] = a; });
+const OPPOSITE_WORDS = Object.keys(OPPOSITE_MAP);
+
+/* ───── ここから下は 上の 2 つの表から 自動で つくる ───── */
+
+// おなじ ことばが 2 か所に あったら、先に 書いたほうを のこす。
+function dedupeWords(list) {
+  const seen = new Set();
+  const out = [];
+  list.forEach(x => { if (!seen.has(x.w)) { seen.add(x.w); out.push(x); } });
+  return out;
+}
+const ALL_WORDS = dedupeWords([...WORD_BANK, ...WORD_BANK_KATA]);
+function bankOf(script) { return script === 'katakana' ? WORD_BANK_KATA : WORD_BANK; }
+
+// しりとりで コンピュータが つかう ことば。
+// あいさつ（おはよう・ありがとう）は しりとりの ことばに ならないので のぞく。
+const SHIRITORI_CPU_WORDS = WORD_BANK.filter(x => x.w.length >= 2 && x.g !== 'aisatsu');
+
+/* ことばあつめの ヒント。
+   「じぶんで 書ける じ だけで 作れる ことば」に しぼるのは 画面の
+   しごとなので、ここでは ならべる じゅんばんだけを きめる。
+   なかまを 1 語ずつ 順に とっていく（同じ なかまばかりに ならない）。 */
+function orderHints(list) {
+  const count = {};
+  return list
+    .filter(x => x.w.length >= 2 && x.w.length <= 4)
+    .map((x, i) => ({ x, n: (count[x.g] = (count[x.g] || 0) + 1), i }))
+    .sort((a, b) => (a.n - b.n) || (a.x.w.length - b.x.w.length) || (a.i - b.i))
+    .map(e => ({ w: e.x.w, p: e.x.p }));
+}
+const WORD_HINTS_HIRA = orderHints(WORD_BANK);
+const WORD_HINTS_KATA = orderHints(WORD_BANK_KATA);
 
 // ★カスタマイズポイント: レベル（しょうごう）
 // icon は PICTS のキー、color は Tailwind のクラス（index.html の配色定義より）
@@ -432,6 +852,18 @@ const SPECIAL_UNITS = [
       { w:'たんぽぽ', p:'flower', bad:['たんぼぼ','たんほほ'] },
       { w:'ぱんだ', p:'animal',  bad:['ばんだ','はんだ'] },
       { w:'てんぷら', p:'rice',  bad:['てんぶら'] },
+      { w:'かぶとむし', p:'bug', bad:['かふとむし'] },
+      { w:'じてんしゃ', p:'car', bad:['してんしゃ'] },
+      { w:'ぎゅうにゅう', p:'drink', bad:['きゅうにゅう'] },
+      { w:'かがみ', p:'tool',    bad:['かかみ'] },
+      { w:'ぶらんこ', p:'ball',  bad:['ふらんこ','ぶらんご'] },
+      { w:'ざぶとん', p:'cloth', bad:['さぶとん'] },
+      { w:'でんき',  p:'light',  bad:['てんき'] },
+      { w:'ごはん',  p:'rice',   bad:['こはん'] },
+      { w:'ぞうきん', p:'tool',  bad:['そうきん'] },
+      { w:'たまご',  p:'rice',   bad:['たまこ'] },
+      { w:'とんぼ',  p:'bug',    bad:['とんほ','とんぽ'] },
+      { w:'げたばこ', p:'school', bad:['けたばこ','げたはこ'] },
     ],
   },
   {
@@ -449,6 +881,17 @@ const SPECIAL_UNITS = [
       { w:'にんじん', p:'vegetable',bad:['にじん','にんじ'] },
       { w:'ほん',     p:'book',     bad:['ほ'] },
       { w:'かんばん', p:'shop',     bad:['かばん'] },
+      { w:'てんき',   p:'cloud',    bad:['てき'] },
+      { w:'こんにちは', p:'person',  bad:['こにちは'] },
+      { w:'たんぽぽ', p:'flower',   bad:['たぽぽ'] },
+      { w:'ぶらんこ', p:'ball',     bad:['ぶらこ'] },
+      { w:'しんかんせん', p:'train', bad:['しかんせん','しんかせん'] },
+      { w:'こうえん', p:'tree',     bad:['こうえ'] },
+      { w:'みんな',   p:'person',   bad:['みな'] },
+      { w:'さんぽ',   p:'person',   bad:['さぽ'] },
+      { w:'ふうせん', p:'ball',     bad:['ふうせ'] },
+      { w:'げんかん', p:'house',    bad:['げかん','げんか'] },
+      { w:'たんじょうび', p:'sweet', bad:['たじょうび'] },
     ],
   },
   {
@@ -468,6 +911,17 @@ const SPECIAL_UNITS = [
       { w:'なっとう', p:'rice',   bad:['なとう','なつとう'] },
       { w:'ポケット', p:'cloth',  bad:['ポケト','ポケツト'] },
       { w:'いっぱい', p:'drink',  bad:['いぱい','いつぱい'] },
+      { w:'ざっし',   p:'book',   bad:['ざし','ざつし'] },
+      { w:'ばった',   p:'bug',    bad:['ばた','ばつた'] },
+      { w:'ろけっと', p:'plane',  bad:['ろけと','ろけつと'] },
+      { w:'いっしょ', p:'person', bad:['いしょ','いつしょ'] },
+      { w:'ねっこ',   p:'tree',   bad:['ねこ','ねつこ'] },
+      { w:'とっきゅう', p:'train', bad:['ときゅう','とつきゅう'] },
+      { w:'あさって', p:'sun',    bad:['あさて','あさつて'] },
+      { w:'にっき',   p:'book',   bad:['にき','につき'] },
+      { w:'サッカー', p:'ball',   bad:['サカー','サツカー'] },
+      { w:'スリッパ', p:'cloth',  bad:['スリパ','スリツパ'] },
+      { w:'ロッカー', p:'school', bad:['ロカー','ロツカー'] },
     ],
   },
   {
@@ -487,6 +941,17 @@ const SPECIAL_UNITS = [
       { w:'しゅくだい', p:'pencil', bad:['しゆくだい'] },
       { w:'にんぎょう', p:'person', bad:['にんぎよう'] },
       { w:'キャベツ',   p:'vegetable', bad:['キヤベツ'] },
+      { w:'ちゃわん',   p:'drink',  bad:['ちやわん'] },
+      { w:'おちゃ',     p:'drink',  bad:['おちや'] },
+      { w:'きょうしつ', p:'school', bad:['きようしつ'] },
+      { w:'じてんしゃ', p:'car',    bad:['じてんしや'] },
+      { w:'ぎゅうにゅう', p:'drink', bad:['ぎゆうにゅう','ぎゅうにゆう'] },
+      { w:'しゃしん',   p:'tool',   bad:['しやしん'] },
+      { w:'びょうき',   p:'person', bad:['びようき'] },
+      { w:'ひゃく',     p:'book',   bad:['ひやく'] },
+      { w:'きゃく',     p:'person', bad:['きやく'] },
+      { w:'シャツ',     p:'cloth',  bad:['シヤツ'] },
+      { w:'ジャム',     p:'sweet',  bad:['ジヤム'] },
     ],
   },
   {
@@ -509,6 +974,18 @@ const SPECIAL_UNITS = [
       { w:'ラーメン',   p:'rice',   bad:['ラアメン'] },
       { w:'スキー',     p:'snow',   bad:['スキイ'] },
       { w:'コーヒー',   p:'drink',  bad:['コオヒイ'] },
+      { w:'ゆうびん',   p:'tool',   bad:['ゆおびん'] },
+      { w:'ぼうし',     p:'cloth',  bad:['ぼおし'] },
+      { w:'きょうしつ', p:'school', bad:['きょおしつ'] },
+      { w:'ふうせん',   p:'ball',   bad:['ふおせん'] },
+      { w:'とうもろこし', p:'vegetable', bad:['とおもろこし'] },
+      { w:'こうえん',   p:'tree',   bad:['こおえん'] },
+      { w:'おうさま',   p:'castle', bad:['おおさま'] },
+      { w:'とおり',     p:'car',    bad:['とうり'] },
+      { w:'テーブル',   p:'tool',   bad:['テエブル'] },
+      { w:'セーター',   p:'cloth',  bad:['セエター'] },
+      { w:'プール',     p:'water',  bad:['プウル'] },
+      { w:'チーズ',     p:'rice',   bad:['チイズ'] },
     ],
   },
   {
@@ -527,6 +1004,18 @@ const SPECIAL_UNITS = [
       { s:'うみ◯ いく。',             a:'へ', c:['へ','え'], p:'water' },
       { s:'これ◯ ぼくの かさです。',  a:'は', c:['は','わ'], p:'rain' },
       { s:'いえ◯ かえる。',           a:'へ', c:['へ','え'], p:'house' },
+      { s:'おかあさん◯ やさしいです。', a:'は', c:['は','わ'], p:'person' },
+      { s:'あした◯ にちようびです。', a:'は', c:['は','わ'], p:'sun' },
+      { s:'いぬ◯ かわいい。',         a:'は', c:['は','わ'], p:'dog' },
+      { s:'きょう◯ はれです。',       a:'は', c:['は','わ'], p:'cloud' },
+      { s:'とりが そら◯ とぶ。',      a:'を', c:['を','お'], p:'bird' },
+      { s:'ぎゅうにゅう◯ のむ。',     a:'を', c:['を','お'], p:'drink' },
+      { s:'くつ◯ はく。',             a:'を', c:['を','お'], p:'cloth' },
+      { s:'えほん◯ よむ。',           a:'を', c:['を','お'], p:'book' },
+      { s:'えき◯ あるく。',           a:'へ', c:['へ','え'], p:'train' },
+      { s:'ともだち◯ てがみを かく。', a:'へ', c:['へ','え'], p:'person' },
+      { s:'やま◯ のぼる。',           a:'を', c:['を','お'], p:'mountain' },
+      { s:'こうえん◯ はしる。',       a:'を', c:['を','お'], p:'tree' },
     ],
     words: [],
   },
@@ -648,31 +1137,22 @@ function learnOrderOf(kanaMode) {
    1.85. あたまの おと の ことば（読みの れんしゅうに つかう）
 
    「あ」→ どの え？ のように、もじと おとを つなぐ 出題に つかう。
-   ひらがなは しりとりの ことばを そのまま つかう（1年生が 知っている
-   ものだけを えらんである）。
+   ことばは 1.1 の ことばずかん（WORD_BANK / WORD_BANK_KATA）から
+   そのまま とる。ここに ことばの表を 作らないこと。
    ────────────────────────────────────────────────────────────── */
-const HEAD_WORDS_KATA = [
-  {w:'アイス',p:'sweet'},{w:'イルカ',p:'fish'},{w:'ウサギ',p:'rabbit'},{w:'エプロン',p:'cloth'},{w:'オルガン',p:'music'},
-  {w:'カバ',p:'animal'},{w:'キリン',p:'animal'},{w:'クマ',p:'animal'},{w:'ケーキ',p:'sweet'},{w:'コアラ',p:'animal'},
-  {w:'サメ',p:'fish'},{w:'シマウマ',p:'animal'},{w:'スイカ',p:'fruit'},{w:'セーター',p:'cloth'},{w:'ソファ',p:'house'},
-  {w:'タオル',p:'cloth'},{w:'チーズ',p:'rice'},{w:'ツリー',p:'tree'},{w:'テレビ',p:'tool'},{w:'トマト',p:'vegetable'},
-  {w:'ナイフ',p:'tool'},{w:'ニンジン',p:'vegetable'},{w:'ヌイグルミ',p:'rabbit'},{w:'ネコ',p:'cat'},{w:'ノート',p:'book'},
-  {w:'ハサミ',p:'tool'},{w:'ヒコウキ',p:'plane'},{w:'フネ',p:'ship'},{w:'ヘリコプター',p:'plane'},{w:'ホウキ',p:'tool'},
-  {w:'マスク',p:'cloth'},{w:'ミルク',p:'drink'},{w:'ムシ',p:'bug'},{w:'メロン',p:'fruit'},{w:'モモ',p:'fruit'},
-  {w:'ヤカン',p:'drink'},{w:'ユニフォーム',p:'cloth'},{w:'ヨット',p:'ship'},
-  {w:'ライオン',p:'animal'},{w:'リボン',p:'cloth'},{w:'ルーペ',p:'tool'},{w:'レモン',p:'fruit'},{w:'ロボット',p:'tool'},
-  {w:'ワニ',p:'animal'},
-];
-// 先頭の文字 → ことば の 索引をつくる（もじ ↔ え の 出題に つかう）
+// 先頭の文字 → ことば の 索引をつくる（もじ ↔ え の 出題に つかう）。
+// ことばずかん（WORD_BANK / WORD_BANK_KATA）ただ 1 つから 作るので、
+// ことばを 足せば 出題も そのまま ふえる。
+// 1 もじの ことば（て・め・き）は「あたまの おと」の もんだいに ならない
+// ので のぞく（こたえが 出題の もじ そのものに なってしまう）。
 const HEAD_WORD_INDEX = (() => {
   const map = {};
-  const add = (list) => list.forEach(x => {
+  ALL_WORDS.forEach(x => {
+    if (x.w.length < 2) return;
     const c = x.w[0];
     if (!map[c]) map[c] = [];
     map[c].push(x);
   });
-  add(SHIRITORI_CPU_WORDS);
-  add(HEAD_WORDS_KATA);
   return map;
 })();
 function headWordsOf(char) { return HEAD_WORD_INDEX[char] || []; }
@@ -820,6 +1300,30 @@ const MIM_PM_ITEMS = [
   { w:'しゃぼんだま',p:'ball',      k:'youon',   bad:['しやぼんだま','しゃぼだま'] },
   { w:'にんぎょう',  p:'person',    k:'youchou', bad:['にんぎよう','にんぎょ'] },
   { w:'スキー',      p:'snow',      k:'kata',    bad:['スキイ','スキ'] },
+  // ── サイクル 6 ──
+  { w:'つくえ',      p:'tool',      k:'seion',   bad:['くつえ','つくね'] },
+  { w:'かぎ',        p:'tool',      k:'dakuon',  bad:['かき','かに'] },
+  { w:'ぼうし',      p:'cloth',     k:'chouon',  bad:['ぼおし','ぼし'] },
+  { w:'せっけん',    p:'tool',      k:'sokuon',  bad:['せけん','せつけん'] },
+  { w:'おちゃ',      p:'drink',     k:'youon',   bad:['おちや','おちゅ'] },
+  { w:'きょうりゅう',p:'animal',    k:'youchou', bad:['きようりゅう','きょりゅう'] },
+  { w:'クレヨン',    p:'pencil',    k:'kata',    bad:['クレオン','クレヨ'] },
+  // ── サイクル 7 ──
+  { w:'ひまわり',    p:'flower',    k:'seion',   bad:['ひわまり','ひまわに'] },
+  { w:'たんぽぽ',    p:'flower',    k:'dakuon',  bad:['たんぼぼ','たんほほ'] },
+  { w:'ゆうびん',    p:'tool',      k:'chouon',  bad:['ゆおびん','ゆびん'] },
+  { w:'きっぷ',      p:'train',     k:'sokuon',  bad:['きぷ','きつぷ'] },
+  { w:'ちゃわん',    p:'drink',     k:'youon',   bad:['ちやわん','ちゃおん'] },
+  { w:'しょうがっこう',p:'school',  k:'youchou', bad:['しようがっこう','しょがっこう'] },
+  { w:'ポケット',    p:'cloth',     k:'kata',    bad:['ポケト','ポケツト'] },
+  // ── サイクル 8 ──
+  { w:'かぶとむし',  p:'bug',       k:'seion',   bad:['かぶむとし','かぶとむに'] },
+  { w:'かばん',      p:'bag',       k:'dakuon',  bad:['かはん','かばに'] },
+  { w:'おおきい',    p:'mountain',  k:'chouon',  bad:['おうきい','おきい'] },
+  { w:'いっぱい',    p:'drink',     k:'sokuon',  bad:['いぱい','いつぱい'] },
+  { w:'じゃんけん',  p:'person',    k:'youon',   bad:['じやんけん','じゃけん'] },
+  { w:'ぎゅうにゅう',p:'drink',     k:'youchou', bad:['ぎゆうにゅう','ぎゅにゅう'] },
+  { w:'コーヒー',    p:'drink',     k:'kata',    bad:['コオヒイ','コーヒ'] },
 ];
 
 /* テスト②「3つの ことば さがし」。
@@ -838,6 +1342,18 @@ const MIM_PM_CHUNKS = [
   ['ゆき','こおり','さむい'],
   ['あめ','かさ','ながぐつ'],
   ['きゅうしょく','ぎゅうにゅう','パン'],
+  ['ふうせん','いぬ','はしる'],
+  ['にわとり','たまご','あさ'],
+  ['しんかんせん','えき','きっぷ'],
+  ['きょうしつ','こくばん','つくえ'],
+  ['てがみ','ポスト','ゆうびん'],
+  ['おにいさん','おねえさん','いもうと'],
+  ['なつやすみ','うみ','すいか'],
+  ['あかい','きいろ','あおい'],
+  ['じてんしゃ','こうえん','ともだち'],
+  ['えんぴつ','けしごむ','ノート'],
+  ['おはよう','ありがとう','さようなら'],
+  ['おおきい','ちいさい','ながい'],
 ];
 
 /* ──────────────────────────────────────────────────────────────
@@ -919,12 +1435,16 @@ const SRS_INTERVALS = [0, 1, 2, 4, 7, 14, 30];   // はこ → 何日あける
 const SRS_MAX_BOX = SRS_INTERVALS.length - 1;
 
 // item id のつけかた（アプリ全体で これだけ）
-//   よむ：      'r:あ'
-//   とくべつ：  's:sokuon:きって'
-//   にたもの：  'c:ぬ'
+//   よむ：        'r:あ'
+//   とくべつ：    's:sokuon:きって'
+//   にたもの：    'c:ぬ'
+//   なかま：      'g:animal'
+//   はんたい：    'o:おおきい'
 function srsIdRead(char)          { return 'r:' + char; }
 function srsIdSpecial(unit, word) { return 's:' + unit + ':' + word; }
 function srsIdConfuse(char)       { return 'c:' + char; }
+function srsIdGroup(groupKey)     { return 'g:' + groupKey; }
+function srsIdOpposite(word)      { return 'o:' + word; }
 
 function dayNumber(d = new Date()) {
   // ローカル時間の「日」を通し番号にする（時刻のずれで前後しないように）
@@ -1806,6 +2326,13 @@ function weakItems(skill, prefix) {
   }
   return out;
 }
+// item id を 画面に出す ことばに なおす（にがてボックスの ふだ）
+function weakLabelOf(id) {
+  const [kind, a, b] = String(id).split(':');
+  if (kind === 's') return b;                                          // とくべつ → ことば
+  if (kind === 'g') return WORD_GROUP_MAP[a]?.title || a;              // なかま → なかまの名まえ
+  return a;                                                           // よむ・にたもの・はんたい
+}
 
 /* 配列を まぜる（出題の じゅんばんを 毎回かえる） */
 function shuffled(arr) {
@@ -2120,6 +2647,7 @@ function Hanamaru({ size = 24, className = '', draw = false, duration = 0.9, col
 const ICONS = {
   lock: IconLock, play: IconPlay, brush: IconBrush, pen: IconPen, maru: IconMaru,
   check: IconCheck, star: IconStar, trophy: IconTrophy, book: IconBook, pencil: IconPencil,
+  grid: IconGrid, rotate: IconRotate, bulb: IconBulb,
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -4133,7 +4661,7 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
    ────────────────────────────────────────────────────────────── */
 function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, onSave }) {
   const [text, setText] = useState('');
-  const [pict, setPict] = useState(PICT_CHOICES[0]);
+  const [pict, setPict] = useState(PICT_CHOICES[0].name);
   const [kindTab, setKindTab] = useState('seion');
   const table = getKanaTable(kanaMode, kindTab);
   const canSave = text.length >= 1;
@@ -4177,15 +4705,22 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
           )}
         </div>
 
-        {/* ② さしえを えらぶ */}
+        {/* ② さしえを えらぶ
+            えらぶ かずを 16 に しぼり、ぜんぶを ひと目に 出す（スクロール
+            させない）。絵の いみを 当てさせないよう、下に ことばを そえる。 */}
         <div className="mb-3">
-          <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">さしえを えらぶ</div>
-          <div className="grid grid-cols-8 sm:grid-cols-10 gap-1 max-h-[128px] overflow-y-auto p-0.5">
-            {PICT_CHOICES.map(name => (
-              <button key={name} onClick={() => setPict(name)} aria-pressed={pict === name} aria-label={name}
-                className={`kkm-btn aspect-square rounded-md border flex items-center justify-center ${
-                  pict === name ? 'bg-shu-50 border-shu-500 text-shu-700' : 'bg-white border-sumi-200 text-sumi-500 hover:border-shu-300'
-                }`}><Pict name={name} size={20}/></button>
+          <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">
+            なかまを えらぶ<span className="font-medium text-sumi-500">（にている ものを えらべば だいじょうぶ）</span>
+          </div>
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-0.5">
+            {PICT_CHOICES.map(c => (
+              <button key={c.name} onClick={() => setPict(c.name)} aria-pressed={pict === c.name} aria-label={c.label}
+                className={`kkm-btn rounded-md border flex flex-col items-center justify-center gap-0.5 py-1.5 ${
+                  pict === c.name ? 'bg-shu-50 border-shu-500 text-shu-700' : 'bg-white border-sumi-200 text-sumi-500 hover:border-shu-300'
+                }`}>
+                <Pict name={c.name} size={22}/>
+                <span className="text-[9px] font-semibold leading-none">{c.label}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -5460,7 +5995,7 @@ function makeConfuseQuestion(char) {
   const conf = confusablesOf(char);
   if (conf.length === 0) return null;
   // その字を ふくむ ことばを さがす（おなじ なかまの ことばだけ）
-  const all = scriptOf(char) === 'katakana' ? HEAD_WORDS_KATA : SHIRITORI_CPU_WORDS;
+  const all = bankOf(scriptOf(char));
   const hits = all.filter(x => x.w.indexOf(char) > 0);
   const w = hits.length > 0 ? hits[Math.floor(Math.random() * hits.length)] : null;
   if (!w) return null;
@@ -5520,6 +6055,60 @@ function makeJoshiQuestion(unit, sentObj) {
     answer: sentObj.a, answerText: sentObj.a,
     answerSay: sentObj.s.replace('◯', sentObj.a),
     why: unit.tips[0],
+  };
+}
+
+/* ⑧ なかまの ことば：「たべものは どれ？」
+
+   教科書の「なかまの ことば」。もじが 読めるように なっても、
+   ことばの いみが なかまで つながっていないと 文が 読めない。
+
+   まちがい選択肢は 1 つの なかまから 1 語ずつ、しかも その なかまと
+   かさなる なかま（どうぶつ ↔ とり）を のぞいて えらぶ。こたえが
+   2 つに なる もんだいを 出さないための しかけ。 */
+function makeGroupQuestion(groupKey, script) {
+  const g = WORD_GROUP_MAP[groupKey];
+  if (!g || !g.quiz) return null;
+  const bank = bankOf(script);
+  const mine = bank.filter(x => x.g === groupKey);
+  if (mine.length === 0) return null;
+  const target = mine[Math.floor(Math.random() * mine.length)];
+  const skip = new Set([groupKey, ...(g.avoid || [])]);
+  const pool = shuffled(bank.filter(x => {
+    const og = WORD_GROUP_MAP[x.g];
+    // 絵の ある／ない が こたえの ヒントに ならないよう、
+    // さしえを 出す なかま どうし・出さない なかま どうしで まぜる
+    return og && og.quiz && !skip.has(x.g) && !!og.text === !!g.text;
+  }));
+  const others = [];
+  for (const c of pool) {
+    if (others.length >= 3) break;
+    if (others.some(o => o.g === c.g)) continue;                    // なかまは かぶらせない
+    if (!g.text && (c.p === target.p || others.some(o => o.p === c.p))) continue;   // さしえも かぶらせない
+    others.push(c);
+  }
+  if (others.length < 3) return null;
+  return {
+    uid: nextUid(), id: srsIdGroup(groupKey), kind: 'choice', choiceLayout: 'word',
+    lead: 'なかまの ことば', ask: g.ask,
+    choices: shuffled([target, ...others]).map(x => ({ value: x.w, label: x.w, pict: g.text ? null : x.p })),
+    answer: target.w, answerText: target.w, answerSay: target.w,
+    why: `${target.w} は「${g.title}」の なかま`,
+  };
+}
+
+/* ⑨ はんたいの ことば：「おおきい ⇔ ちいさい」 */
+function makeOppositeQuestion(word) {
+  const ans = OPPOSITE_MAP[word];
+  if (!ans) return null;
+  const others = shuffled(OPPOSITE_WORDS.filter(w => w !== word && w !== ans)).slice(0, 3);
+  if (others.length < 3) return null;
+  return {
+    uid: nextUid(), id: srsIdOpposite(word), kind: 'choice', choiceLayout: 'word',
+    lead: 'はんたいの ことば', ask: `「${word}」の はんたいは どれ？`,
+    choices: shuffled([ans, ...others]).map(w => ({ value: w, label: w })),
+    answer: ans, answerText: ans, answerSay: ans,
+    why: `${word} ⇔ ${ans}`,
   };
 }
 
@@ -5597,6 +6186,25 @@ function buildReadQuestions(n, progress, skill, kanaMode) {
   return out.slice(0, n);
 }
 
+/* ことばの もんだいを n もん つくる（なかまの ことば／はんたいの ことば）。
+   もじが 書けるか どうかとは 関係なく 出せるので、いつでも つかえる。
+   ここも ふくしゅうの きげんが 来ている ものを 先に 出す。 */
+function buildWordMeaningQuestions(n, skill, kanaMode) {
+  const keys = shuffled(QUIZ_GROUPS.map(g => g.key)).sort((a, b) =>
+    (srsIsDue(skill?.[srsIdGroup(a)]) ? 0 : 1) - (srsIsDue(skill?.[srsIdGroup(b)]) ? 0 : 1));
+  const words = shuffled(OPPOSITE_WORDS).sort((a, b) =>
+    (srsIsDue(skill?.[srsIdOpposite(a)]) ? 0 : 1) - (srsIsDue(skill?.[srsIdOpposite(b)]) ? 0 : 1));
+  const out = [];
+  for (let i = 0; out.length < n && i < keys.length + words.length; i++) {
+    // なかま と はんたい を こうごに 出す
+    const q = (i % 2 === 0)
+      ? makeGroupQuestion(keys[Math.floor(i / 2) % keys.length], kanaMode)
+      : makeOppositeQuestion(words[Math.floor(i / 2) % words.length]);
+    if (q) out.push(q);
+  }
+  return out.slice(0, n);
+}
+
 /* ふくしゅう：きげんの きた ものを 種類を まぜて 出す */
 function buildReviewQuestions(n, progress, skill, kanaMode) {
   const due = Object.keys(skill || {}).filter(id => srsIsDue(skill[id]));
@@ -5609,6 +6217,8 @@ function buildReviewQuestions(n, progress, skill, kanaMode) {
     let q = null;
     if (kind === 'r') q = Math.random() < 0.5 ? makeHeadSoundQuestion(a) : makeWordCharQuestion(a);
     else if (kind === 'c') q = makeConfuseQuestion(a);
+    else if (kind === 'g') q = makeGroupQuestion(a, kanaMode);
+    else if (kind === 'o') q = makeOppositeQuestion(a);
     else if (kind === 's') {
       const unit = SPECIAL_UNIT_MAP[a];
       if (unit) {
@@ -5623,7 +6233,10 @@ function buildReviewQuestions(n, progress, skill, kanaMode) {
     }
     if (q) out.push(q);
   }
-  // まだ足りなければ あたらしい もんだいを たす
+  // まだ足りなければ あたらしい もんだいを たす。
+  // ことばの もんだい（なかま・はんたい）も かならず 1 つは まぜて、
+  // 字だけでなく ことばの いみも ふくしゅうに 入るようにする。
+  if (out.length < n) out.push(...buildWordMeaningQuestions(1, skill, kanaMode));
   if (out.length < n) out.push(...buildReadQuestions(n - out.length, progress, skill, kanaMode));
   if (out.length < n) out.push(...buildSpecialQuestions('hatsuon', n - out.length, skill));
   return shuffled(out).slice(0, n);
@@ -5639,6 +6252,8 @@ const SOUND_COURSES = [
   { key:'head',    title:'あたまの おと',   sub:'この もじから はじまる ことばは？', tone:'ai',     icon:'star'  },
   { key:'inword',  title:'ことばの なかの もじ', sub:'あいた マスに はいる もじは？', tone:'midori', icon:'book'  },
   { key:'confuse', title:'にた もじ さがし', sub:'ぬ と め、シ と ツ を 見わける',   tone:'fuji',   icon:'pencil'},
+  { key:'group',   title:'なかまの ことば',  sub:'たべもの・どうぶつ・いろ で わける', tone:'midori', icon:'grid'  },
+  { key:'opposite',title:'はんたいの ことば', sub:'おおきい ⇔ ちいさい',              tone:'ai',     icon:'rotate'},
   { key:'mix',     title:'ぜんぶ まぜて',    sub:'ふくしゅうも いっしょに',          tone:'shu',    icon:'check' },
 ];
 function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMission, voiceOn }) {
@@ -5656,6 +6271,16 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
       const conf = shuffled(CONFUSABLE_SETS.filter(s => s.kana === kanaMode).flatMap(s => s.chars));
       qs = conf.map(makeConfuseQuestion).filter(Boolean).slice(0, 8);
       if (qs.length < 4) qs = qs.concat(sorted.map(makeWordCharQuestion).filter(Boolean).slice(0, 8 - qs.length));
+    }
+    if (course.key === 'group') {
+      const keys = shuffled(QUIZ_GROUPS.map(g => g.key)).sort((a, b) =>
+        (srsIsDue(skill?.[srsIdGroup(a)]) ? 0 : 1) - (srsIsDue(skill?.[srsIdGroup(b)]) ? 0 : 1));
+      qs = keys.map(k => makeGroupQuestion(k, kanaMode)).filter(Boolean).slice(0, 8);
+    }
+    if (course.key === 'opposite') {
+      const words = shuffled(OPPOSITE_WORDS).sort((a, b) =>
+        (srsIsDue(skill?.[srsIdOpposite(a)]) ? 0 : 1) - (srsIsDue(skill?.[srsIdOpposite(b)]) ? 0 : 1));
+      qs = words.map(makeOppositeQuestion).filter(Boolean).slice(0, 8);
     }
     if (course.key === 'mix')     qs = buildReviewQuestions(8, progress, skill, kanaMode);
     playPickup();
@@ -5684,7 +6309,7 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
           <div className="min-w-0">
             <div className="text-sm md:text-base font-semibold text-sumi-800">よんで こたえる れんしゅう</div>
             <div className="text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5">
-              かける だけでは よめない。おとと もじを むすびつけよう。
+              かける だけでは よめない。おとと もじ、そして ことばの いみを むすびつけよう。
               {dueCount > 0 && <span className="text-shu-700 font-semibold"> ふくしゅう {dueCount}こ たまってるよ</span>}
             </div>
           </div>
@@ -6020,22 +6645,26 @@ function GuardianPanel({ progress, skill, log, words, mim, tier, onCheck }) {
     // にがて（まちがえた ままの もの）を 単元ごとに かぞえる
     const byUnit = {};
     const weakChars = [];
+    const weakWords = [];
     for (const id in (skill || {})) {
       if (!srsIsWeak(skill[id])) continue;
       const [kind, a, b] = id.split(':');
       if (kind === 's') byUnit[a] = (byUnit[a] || 0) + 1;
-      else weakChars.push(a);
+      else if (kind === 'r' || kind === 'c') weakChars.push(a);
+      else weakWords.push(weakLabelOf(id));            // なかま・はんたい（ことばの いみ）
     }
     const worstUnit = Object.keys(byUnit).sort((x, y) => byUnit[y] - byUnit[x])[0];
     const due = countDue(skill, '');
     const writeDone = HIRA_LIST.concat(KATA_LIST).filter(c => getStage(progress, c) >= 3).length;
-    return { days, byUnit, weakChars: weakChars.slice(0, 12), worstUnit, due, writeDone };
+    return { days, byUnit, weakChars: weakChars.slice(0, 12), weakWords: weakWords.slice(0, 8), worstUnit, due, writeDone };
   }, [progress, skill, log]);
 
   const advice = info.worstUnit
     ? `いま いちばん つまずいているのは「${SPECIAL_UNIT_MAP[info.worstUnit]?.title || info.worstUnit}」です。この単元を いっしょに 音読しながら もう一度どうぞ。`
     : info.weakChars.length > 0
       ? '形の にた文字（ぬ／め、シ／ツ など）で つまずいています。「よむ」の「にた もじ さがし」が ききます。'
+      : info.weakWords.length > 0
+        ? `ことばの いみ（${info.weakWords.slice(0, 3).join('・')} など）で つまずいています。「よむ」の「なかまの ことば」「はんたいの ことば」を いっしょに どうぞ。`
       : tier >= 3
         ? 'ちからだめしの結果から、いまは手あつい支援が要る段階です。「とくべつ」の各単元を、リズム（動作化）をいっしょにやりながら少しずつ進めてください。'
         : tier === 2
@@ -6218,8 +6847,7 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
             </div>
             <div className="flex flex-wrap gap-1.5">
               {weak.map(id => {
-                const [kind, a, b] = id.split(':');
-                const label = kind === 's' ? b : a;
+                const label = weakLabelOf(id);
                 return (
                   <span key={id} className="kkm-glyph px-2 py-1 rounded-md bg-shu-50 border border-shu-200 text-shu-800 text-sm">{label}</span>
                 );
