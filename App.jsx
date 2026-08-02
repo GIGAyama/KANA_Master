@@ -5,7 +5,7 @@
 
    ＜たのしさUPの追加機能＞
    - 音声よみあげ（タップで読んでくれる）
-   - マスコット「ことりせんせい」のおうえん
+   - マスコット「えんぴつせんせい」のおうえん
    - 連続学習日数のストリーク
    - レベル（しょうごう）と ごほうびの はんこ図鑑
    - きょうの もじ（デイリーチャレンジ）
@@ -2123,55 +2123,48 @@ const ICONS = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   6. <Mascot> ── 「ことりせんせい」が声をかける
+   6. <Mascot> ── 「えんぴつせんせい」が声をかける
 
-   絵文字のひよこは使わず、線だけで描いた ことり にした。
-   きもち（mood）で 目・口・うごきだけが変わり、形はいつも同じ。
+   えんぴつの すがたを した せんせい。絵は 2 まいの PNG で持っている。
+     mascot.png       … かお〜ちょうネクタイ（小さいマスでも 顔が見える）
+     mascot-full.png  … ぜんしん（ふきだしの となりに 立たせる用）
+   きもち（mood）で 変わるのは うごきだけ。絵は いつも同じ。
+
+   ※ 画像は もとの絵の たてよこ比のまま出す（object-contain / width auto）。
+     たて・よこを 決めうちで のばすと 顔がゆがむので しないこと。
    ────────────────────────────────────────────────────────────── */
+const MASCOT_SRC      = './mascot.png';
+const MASCOT_FULL_SRC = './mascot-full.png';
+const MASCOT_FULL_RATIO = 394 / 512;   // mascot-full.png の よこ ÷ たて
 const MASCOT_MOODS = {
-  happy: { anim: 'kkm-float',   eye: 'dot',   beakUp: false },
-  cheer: { anim: 'kkm-breathe', eye: 'dot',   beakUp: true  },
-  wow:   { anim: 'kkm-breathe', eye: 'wide',  beakUp: true  },
-  sad:   { anim: '',            eye: 'droop', beakUp: false },
+  happy: 'kkm-float',
+  cheer: 'kkm-breathe',
+  wow:   'kkm-breathe',
+  sad:   'kkm-mascot-sad',
 };
 function MascotFace({ size = 40, mood = 'happy' }) {
-  const m = MASCOT_MOODS[mood] || MASCOT_MOODS.happy;
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"
-         className={m.anim}>
-      {/* からだ */}
-      <path d="M24 43c-8.3 0-15-6.3-15-14.5S15.7 14 24 14s15 6.3 15 14.5S32.3 43 24 43z"
-            fill="#faf7f0" stroke="#443f38" strokeWidth="2.2" strokeLinejoin="round"/>
-      {/* あたまの毛 */}
-      <path d="M24 14V8M24 8c-1.6-1.8-1.3-3.8.7-5 .8 2 .4 3.7-.7 5z"
-            stroke="#443f38" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-      {/* つばさ */}
-      <path d="M11.5 27c2.6 1 4 3.2 4.2 6.5-2.6-.4-4.2-2.5-4.2-6.5zM36.5 27c-2.6 1-4 3.2-4.2 6.5 2.6-.4 4.2-2.5 4.2-6.5z"
-            fill="#f4cec2" stroke="#443f38" strokeWidth="1.8" strokeLinejoin="round"/>
-      {/* め */}
-      {m.eye === 'wide' ? (
-        <><circle cx="19" cy="25" r="2.6" fill="#443f38"/><circle cx="29" cy="25" r="2.6" fill="#443f38"/>
-          <circle cx="19.9" cy="24" r=".9" fill="#fff"/><circle cx="29.9" cy="24" r=".9" fill="#fff"/></>
-      ) : m.eye === 'droop' ? (
-        <path d="M16.6 25.6q2.4-2.4 4.8 0M26.6 25.6q2.4-2.4 4.8 0"
-              stroke="#443f38" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
-      ) : (
-        <><circle cx="19" cy="25" r="1.9" fill="#443f38"/><circle cx="29" cy="25" r="1.9" fill="#443f38"/></>
-      )}
-      {/* くちばし */}
-      {m.beakUp
-        ? <path d="M21 30h6l-3 3.4z" fill="#b34328" stroke="#93331e" strokeWidth="1.4" strokeLinejoin="round"/>
-        : <path d="M21.5 30.5h5l-2.5 2.8z" fill="#b34328" stroke="#93331e" strokeWidth="1.4" strokeLinejoin="round"/>}
-      {/* ほっぺ */}
-      <circle cx="15.4" cy="29.5" r="2" fill="#f4cec2"/><circle cx="32.6" cy="29.5" r="2" fill="#f4cec2"/>
-    </svg>
+    <img src={MASCOT_SRC} alt="" aria-hidden="true" draggable="false"
+         width={size} height={size}
+         className={`block object-contain ${MASCOT_MOODS[mood] || MASCOT_MOODS.happy}`}
+         style={{ width: size, height: size }}/>
+  );
+}
+function MascotFull({ height = 78, mood = 'happy' }) {
+  const w = Math.round(height * MASCOT_FULL_RATIO);
+  return (
+    <img src={MASCOT_FULL_SRC} alt="" aria-hidden="true" draggable="false"
+         width={w} height={height}
+         className={`block object-contain ${MASCOT_MOODS[mood] || MASCOT_MOODS.happy}`}
+         style={{ width: w, height }}/>
   );
 }
 function Mascot({ message, mood = 'happy', size = 'normal' }) {
   const px = size === 'small' ? 34 : 52;
   return (
     <div className="flex items-center gap-2">
-      <div className="shrink-0"><MascotFace size={px} mood={mood}/></div>
+      {/* ぜんしんは たてに長いので、顔が同じくらいの大きさに見える たかさにする */}
+      <div className="shrink-0"><MascotFull height={Math.round(px * 1.7)} mood={mood}/></div>
       {message && (
         <div key={message}
           className="relative bg-white border border-shu-200 rounded-lg px-2.5 py-1.5 shadow-sm kkm-pop-in min-w-0">

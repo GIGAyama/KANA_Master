@@ -345,6 +345,11 @@ Tailwind のクラス（`bg-shu-600` など）として画面じゅうで使え�
 - `SvgIcon` … 操作をあらわす UI アイコン（ボタン・見出し）
 - `Pict` / `PICTS` … ことばのさしえ（いぬ・はな・でんしゃ など）
 
+例外はマスコット「えんぴつせんせい」だけで、こちらは絵（`mascot.png` /
+`mascot-full.png`）を `MascotFace` / `MascotFull` で出しています。
+どちらも もとの絵の たてよこ比のまま表示するので、大きさを変えるときは
+`size`（正方形のマスの一辺）や `height`（たかさ）だけを渡してください。
+
 ことばのデータは絵文字ではなく `p: 'dog'` のように `PICTS` のキーを持ちます。
 絵文字で保存された古いデータは `EMOJI_TO_PICT` でさしえに読みかえるので、
 バージョンアップしても学習記録はそのまま使えます。
@@ -494,7 +499,8 @@ KanjiVG のストロークデータ 1 つから**作っています（`App.jsx` 
 | `App.jsx` | アプリ本体（React・ブラウザ内 Babel で変換） |
 | `manifest.webmanifest` | PWA マニフェスト |
 | `sw.js` | Service Worker（オフライン対応・書き順データのキャッシュ） |
-| `icon-*.png` / `apple-touch-icon.png` | アプリアイコン |
+| `icon-*.png` / `apple-touch-icon.png` / `favicon.png` | アプリアイコン |
+| `mascot.png` / `mascot-full.png` | マスコット「えんぴつせんせい」の絵（顔・ぜんしん） |
 
 `App.jsx` の 大きな くぎりは 見出しコメントの番号で たどれます。
 とくに あたらしい しくみは 次のところです。

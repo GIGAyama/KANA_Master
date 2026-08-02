@@ -8,7 +8,7 @@
    ============================================================== */
 
 // App.jsx などを更新したら必ず数字を上げること（古いキャッシュを破棄するため）
-const VERSION = 'v8';
+const VERSION = 'v9';
 
 // このアプリ専用の目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io というサイト全体で
@@ -31,6 +31,8 @@ const SHELL_ASSETS = [
   './icon-maskable-192.png',
   './icon-maskable-512.png',
   './apple-touch-icon.png',
+  './mascot.png',
+  './mascot-full.png',
 ];
 
 // 初回起動を速くするために事前取得したい CDN 依存（取得失敗しても致命的にしない）
