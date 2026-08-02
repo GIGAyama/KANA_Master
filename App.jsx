@@ -354,22 +354,15 @@ function loadInitialProgress() {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   1.9. フォント（教科書体）
+   1.9. 画面の色（キャンバス用）
 
-   書体の指定は index.html の CSS 変数 --kkm-font-kyokasho ただ 1 か所。
-   ここではそれを読み出すだけにして、キャンバス（お手本）と HTML（もじ表・
-   ことば）で ぜったいに ちがう書体にならないようにする。
+   色の定義は index.html の CSS 変数ただ 1 か所。ここでは読み出すだけにして、
+   キャンバス（お手本・書いた線）と HTML で ぜったいに ちがう色にならない
+   ようにする。読めない環境のために ひかえの値を持っておく。
+
+   ※ 書体は HTML 側の --kkm-font-kyokasho だけで決まる。お手本は
+     かきじゅんデータ（KanjiVG）から描くので、キャンバスに文字は出さない。
    ────────────────────────────────────────────────────────────── */
-// CSS 変数が読めなかったとき用の控え（index.html と同じ内容にしておく）
-const KYOKASHO_FONT_FALLBACK =
-  "'UD デジタル 教科書体 N-R','UDデジタル教科書体N-R','UD Digi Kyokasho N-R'," +
-  "'UD デジタル 教科書体 NK-R','UDデジタル教科書体NK-R','UD Digi Kyokasho NK-R'," +
-  "'UD デジタル 教科書体 NP-R','UDデジタル教科書体NP-R','UD Digi Kyokasho NP-R'," +
-  "'YuKyokasho Yoko','YuKyokasho','游教科書体','Klee One'," +
-  "'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
-/* キャンバス（お手本・なぞり書きの線）で使う色。
-   色の定義は index.html の CSS 変数ただ 1 か所なので、ここでは読み出すだけ。
-   読めない環境のために ひかえの値を持っておく。 */
 const __cssVarCache = {};
 function themeColor(name, fallback) {
   if (__cssVarCache[name] != null) return __cssVarCache[name];
@@ -377,36 +370,6 @@ function themeColor(name, fallback) {
   try { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch (e) {}
   __cssVarCache[name] = v || fallback;
   return __cssVarCache[name];
-}
-
-let __kyokashoStack = '';
-function kyokashoFontStack() {
-  if (__kyokashoStack) return __kyokashoStack;
-  try {
-    const v = getComputedStyle(document.documentElement)
-      .getPropertyValue('--kkm-font-kyokasho').trim();
-    if (v) { __kyokashoStack = v; return v; }
-  } catch (e) { /* 変数が読めない環境では控えを使う */ }
-  __kyokashoStack = KYOKASHO_FONT_FALLBACK;
-  return __kyokashoStack;
-}
-
-// Web フォント（Klee One）が使えるようになったら cb を呼ぶ。
-// フォント未ロードのあいだは代替書体の字形・寸法で測ってしまうため、
-// 読み込み完了後にお手本を描きなおす必要がある。戻り値は後片づけ関数。
-function onKyokashoFontReady(cb) {
-  if (typeof document === 'undefined' || !document.fonts) return () => {};
-  let alive = true;
-  const fire = () => { if (alive) cb(); };
-  // まだ画面で使われていない書体も先に取りに行かせる
-  try { document.fonts.load(`400 48px ${kyokashoFontStack()}`, 'あアん').then(fire, () => {}); } catch (e) {}
-  try { document.fonts.ready.then(fire, () => {}); } catch (e) {}
-  const onDone = () => fire();
-  try { document.fonts.addEventListener('loadingdone', onDone); } catch (e) {}
-  return () => {
-    alive = false;
-    try { document.fonts.removeEventListener('loadingdone', onDone); } catch (e) {}
-  };
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -523,6 +486,12 @@ function burstConfetti() {
 /* ──────────────────────────────────────────────────────────────
    3. KanjiVG
    ────────────────────────────────────────────────────────────── */
+/* KanjiVG の線の太さ（109 座標系）。
+   お手本・書き順アニメの両方でこの値をつかい、子どもが書く線の太さ
+   （マスの 0.07 ＝ 109 座標系で 約7.6）と ほぼ そろえてある。
+   こうすると なぞった線が お手本を ちょうど おおいかくす。 */
+const KVG_STROKE_W = 7;
+
 const kanjiPathsCache = {};
 const kanjiFetchInflight = {}; // char -> Promise（同時呼び出しを束ねる）
 async function fetchKanjiVG(char) {
@@ -562,11 +531,17 @@ async function fetchKanjiVG(char) {
    呼ぶこと（画数違反は採点せず、別途やり直しフローを起こす）。
 
    観点と配点（合計100点。scoreHandwriting の items と必ずそろえること）：
+     ・せんの かたち      30点（お手本の線とどれだけ重なっているか）★主役
      ・かきじゅん         15点（画の順番だけを見る）
      ・はじめと むき      15点（画ごとの始点の位置 + 向きベクトル）
-     ・マスの つかいかた  30点（マスを4等分した部屋の使い方）
-     ・せんの こうさ      20点（必要な交差ペアの有無）
      ・おおきさ・いち     20点（バウンディングボックスの大きさ・中心）
+     ・マスの つかいかた  10点（マスを4等分した部屋の使い方）
+     ・せんの こうさ      10点（必要な交差ペアの有無）
+
+   「せんの かたち」が主役。ほかの観点は 始点・外形・部屋といった あらい特徴
+   しか見ないので、これが無いと「外形のなかを ぐちゃぐちゃ」でも高得点に
+   なってしまう（じっさい 花丸が出ていた）。配点を変えるときは、かたちの
+   比重を いちばん重いままにしておくこと。
 
    戻り値：{ total, breakdown:[{key,label,score,max,status,advice}], comment, passed }
    ────────────────────────────────────────────────────────────── */
@@ -630,6 +605,32 @@ function simplifyPoints(pts) {
   return out;
 }
 
+// 点列を「長さの割合」で n 等分して取りなおす（0..1 の座標のまま）。
+// お手本（sampleSvgPath）も同じ取りかたなので、k 番目どうしを
+// そのまま比べられる＝「同じ進みぐあいの場所」で見くらべられる。
+function resamplePolyline(poly, n) {
+  if (!poly || poly.length < 2 || n < 2) return null;
+  const cum = [0];
+  for (let i = 1; i < poly.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(poly[i].x - poly[i - 1].x, poly[i].y - poly[i - 1].y));
+  }
+  const total = cum[cum.length - 1];
+  if (!(total > 0)) return null;
+  const out = [];
+  let j = 1;
+  for (let k = 0; k < n; k++) {
+    const target = (total * k) / (n - 1);
+    while (j < cum.length - 1 && cum[j] < target) j++;
+    const seg = cum[j] - cum[j - 1];
+    const t = seg > 0 ? (target - cum[j - 1]) / seg : 0;
+    out.push({
+      x: poly[j - 1].x + (poly[j].x - poly[j - 1].x) * t,
+      y: poly[j - 1].y + (poly[j].y - poly[j - 1].y) * t,
+    });
+  }
+  return out;
+}
+
 // マスを4等分した部屋番号（0:TL, 1:TR, 2:BL, 3:BR）
 function quadrantOf(p) {
   return (p.x >= 0.5 ? 1 : 0) | (p.y >= 0.5 ? 2 : 0);
@@ -678,6 +679,81 @@ function crossPairSet(polys) {
     }
   }
   return pairs;
+}
+
+/* 観点⓪：かたち（0..1）── いちばん大事な観点
+
+   画ごとに、お手本の線と じっさいに書いた線を「同じ進みぐあいの場所」で
+   くらべ、どれだけ離れているかをはかる。
+
+   ＜これが無かったころの問題＞
+   ほかの観点は、始点・終点・マスの部屋・外形しか見ていなかった。そのため
+     ・曲がるところを 直線で ずぼらに書く
+     ・外形のなかを ぐちゃぐちゃに ぬりつぶす
+     ・下から上へ 逆向きに 書く
+   でも高い点が出てしまい、じっさい「ぐちゃぐちゃ」で花丸が取れていた。
+   線そのものを くらべることで、この 3 つが いちどに ふせげる。
+
+   進みぐあいの順にくらべる（k 番目どうし）ので、逆向き・順番ちがいは
+   自動的に大きく離れ、点が下がる。
+
+   ＜位置ずれは ここでは見ない＞
+   字ぜんたいが おなじだけ ずれているぶんは、先に打ち消してから くらべる。
+   「書く場所」は『おおきさ・いち』と『はじめと むき』が すでに見ているので、
+   ここでも数えると 1 つのミスを 3 回減点することになってしまう。
+   打ち消すのは「ぜんたいの平行移動」だけなので、字のかたちが ちがう
+   （ぐちゃぐちゃ・逆向き・直線ですます）ときは どう動かしても重ならず、
+   ちゃんと 0 点に近づく。 */
+const SHAPE_N = 24;          // くらべる点の数（お手本のサンプル数とそろえる）
+const SHAPE_FREE = 0.03;     // これくらいのズレは 1年生なら ふつう（減点しない）
+const SHAPE_SPAN = 0.13;     // ここまで離れると 0 点（マスの 1/8 ほど）
+const SHAPE_SHIFT_CAP = 0.045; // 打ち消してよい「字ぜんたいの平行移動」の上限
+function evalShape(usrPolys, tplPolys) {
+  const n = Math.min(usrPolys.length, tplPolys.length);
+  if (n === 0) return 0;
+  const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+
+  // ① 画ごとに「同じ進みぐあいの場所」の点をそろえ、あわせて平行移動ぶんを出す
+  const pairs = [];
+  let dx = 0, dy = 0, m = 0;
+  for (let i = 0; i < n; i++) {
+    const t = tplPolys[i];
+    if (!t || t.length < 2) continue;
+    const tp = t.length === SHAPE_N ? t : resamplePolyline(t, SHAPE_N);
+    const up = resamplePolyline(usrPolys[i], SHAPE_N);
+    if (!tp || !up) continue;
+    pairs.push([up, tp]);
+    for (let k = 0; k < SHAPE_N; k++) { dx += up[k].x - tp[k].x; dy += up[k].y - tp[k].y; m++; }
+  }
+  if (pairs.length === 0 || m === 0) return 0;
+  dx /= m; dy /= m;
+  // 打ち消すのは「すこしのズレ」まで。字ぜんたいが大きくずれているのは
+  // かたち以前の問題なので、ここでも きちんと点が下がるようにする。
+  const shift = Math.hypot(dx, dy);
+  if (shift > SHAPE_SHIFT_CAP) { const k = SHAPE_SHIFT_CAP / shift; dx *= k; dy *= k; }
+
+  // ② 平行移動ぶんを取りのぞいて、線どうしの離れぐあいをはかる
+  const perStroke = [];
+  for (const [up, tp] of pairs) {
+    let mean = 0, worst = 0;
+    for (let k = 0; k < SHAPE_N; k++) {
+      const d = Math.hypot(up[k].x - dx - tp[k].x, up[k].y - dy - tp[k].y);
+      mean += d;
+      if (d > worst) worst = d;
+    }
+    mean /= SHAPE_N;
+    // ふだんのズレ（平均）と、いちばん外れたところ（最大）の両方を見る。
+    // 平均が良くても 1 か所だけ大きく外れていれば、そのぶん下がる。
+    const meanScore  = clamp01(1 - (mean  - SHAPE_FREE) / SHAPE_SPAN);
+    const worstScore = clamp01(1 - (worst - SHAPE_FREE * 2) / (SHAPE_SPAN * 2.2));
+    perStroke.push(0.75 * meanScore + 0.25 * worstScore);
+  }
+  // 画ごとの点は「ならし」だけでなく「いちばん悪い画」も見る。
+  // ならしだけだと、3画のうち 2画が上手なら 1画がまるで違っていても
+  // 隠れてしまう。1画でも大きくずれていれば ちゃんと点が下がるようにする。
+  const avg = perStroke.reduce((a, b) => a + b, 0) / perStroke.length;
+  const worstStroke = Math.min(...perStroke);
+  return 0.72 * avg + 0.28 * worstStroke;
 }
 
 // 観点①-a：かきじゅん（純粋な順番のみ）（0..1）
@@ -836,6 +912,7 @@ function adviceFor(key, raw) {
     case 'rooms':     return ok ? 'マスを もうちょっと ひろく つかおう' : 'すみずみまで つかえる ように しよう';
     case 'crossings': return ok ? 'せんの かさなる ところを ていねいに' : 'せんを ちゃんと かさねて かこう';
     case 'balance':   return ok ? 'まんなかに かくと きれいだよ' : 'マスの まんなかに おおきく かこう';
+    case 'shape':     return ok ? 'お手本の せんに もうすこし ちかづけよう' : 'お手本を よく みて、せんの かたちを まねしよう';
   }
   return '';
 }
@@ -848,11 +925,12 @@ function scoreHandwriting(userStrokes, templatePaths) {
   const tplPolys = templatePaths.map(d => sampleSvgPath(d, 24));
   const usrPolys = userStrokes.map(s => simplifyPoints(s.points || []));
   const items = [
+    { key: 'shape',     label: 'せんの かたち',     max: 30, raw: evalShape(usrPolys, tplPolys) },
     { key: 'order',     label: 'かきじゅん',         max: 15, raw: evalStrokeSequence(usrPolys, tplPolys) },
     { key: 'startdir',  label: 'はじめと むき',     max: 15, raw: evalStrokeStartAndDir(usrPolys, tplPolys) },
-    { key: 'rooms',     label: 'マスの つかいかた', max: 30, raw: evalRooms(usrPolys, tplPolys) },
-    { key: 'crossings', label: 'せんの こうさ',     max: 20, raw: evalCrossings(usrPolys, tplPolys) },
     { key: 'balance',   label: 'おおきさ・いち',     max: 20, raw: evalBalance(usrPolys, tplPolys) },
+    { key: 'rooms',     label: 'マスの つかいかた', max: 10, raw: evalRooms(usrPolys, tplPolys) },
+    { key: 'crossings', label: 'せんの こうさ',     max: 10, raw: evalCrossings(usrPolys, tplPolys) },
   ];
   const breakdown = items.map(it => ({
     key: it.key,
@@ -862,12 +940,39 @@ function scoreHandwriting(userStrokes, templatePaths) {
     status: it.raw >= 0.85 ? 'good' : it.raw >= 0.6 ? 'ok' : 'bad',
     advice: adviceFor(it.key, it.raw),
   }));
-  const total = breakdown.reduce((s, b) => s + b.score, 0);
+  // かたちは「合格のための必要条件」。ほかの観点（順番・外形・部屋・交差）は
+  // あらい特徴しか見ないので、線がまるで違っていても そこそこ点が入ってしまう。
+  // かたちが半分に届かないときだけ、合計におさえをかけて合格させない。
+  // （かたちが 0.5 以上あれば おさえは かからない＝ふつうに書けていれば無関係）
+  const shapeRaw = items[0].raw;
+  const gate = shapeRaw >= 0.5 ? 1 : 0.5 + shapeRaw;
+  const total = Math.round(breakdown.reduce((s, b) => s + b.score, 0) * gate);
   const comment = total >= 90 ? 'すばらしい！'
                 : total >= 70 ? 'じょうず！'
                 : total >= 50 ? 'いい かんじ！'
                 : 'もう いっかい！';
   return { total, breakdown, comment, passed: total >= 60 };
+}
+
+/* KanjiVG の 1 画をキャンバスに描く。呼ぶまえに ctx を 109 座標系に
+   合わせておくこと（線の色・太さも呼び出し側で決める）。
+   Path2D が使えない古いブラウザでは、採点と同じ点列でおりかえし線にする。 */
+const __hasPath2D = typeof Path2D !== 'undefined';
+const __path2dCache = new Map();   // d -> Path2D
+function drawKvgStroke(ctx, d) {
+  if (!d) return;
+  if (__hasPath2D) {
+    let p = __path2dCache.get(d);
+    if (!p) { try { p = new Path2D(d); } catch (e) { p = null; } __path2dCache.set(d, p); }
+    if (p) { ctx.stroke(p); return; }
+  }
+  // 予備：0..1 に正規化された点列を 109 座標にもどして折れ線で描く
+  const pts = sampleSvgPath(d, 48);
+  if (pts.length < 2) return;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x * 109, pts[0].y * 109);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x * 109, pts[i].y * 109);
+  ctx.stroke();
 }
 
 function getStartEndPoints(pathStr) {
@@ -900,88 +1005,6 @@ function getPathLength(pathStr) {
   __svgMeasureSvg.removeChild(p);
   __pathLengthCache.set(pathStr, len);
   return len;
-}
-
-/* ──────────────────────────────────────────────────────────────
-   3.9. お手本（フォント）と かきじゅんデータ（KanjiVG）の位置合わせ
-
-   ＜なおした不具合＞
-   うすいお手本の文字はフォントで描き、朱色の書きはじめマーカー・書き順アニメ・
-   採点は KanjiVG のストロークで持っている。この 2 つは別々の座標系なので、
-   これまでは「フォントを 0.86em で マスの中央に置く」という決め打ちで
-   重ねていた。そのため
-     ・textBaseline='middle' の基準（フォントの ascent/descent の中点）は
-       書体ごとに違い、たてに数％ずれる
-     ・字ごとに字面の大きさが違うので、拡大率も字ごとに合っていない
-     ・「っ」「ゃ」などの小書き文字は KanjiVG では小さく右下に寄っているのに、
-       フォントは 0.86em で中央に描かれるため、大きく外れる
-   という理由で、ほとんどの文字でマーカーが実際の書きはじめとずれていた。
-
-   そこで「フォントの字形の外形」を実測し、「KanjiVG のストロークの外形」に
-   ぴったり重なるよう 拡大率と位置を計算してから描く。こうすると
-   マーカー・アニメ・採点はいっさい変えずに、すべてが同じ場所を指す。
-   ────────────────────────────────────────────────────────────── */
-
-// KanjiVG のパスは「線の中心線」なので、フォントの字形（塗りつぶした形）より
-// 線の太さの半分だけ内側にある。かきじゅんアニメと同じ太さ（109 座標系で 6）
-// の半分だけ外へひろげて、見た目の外形どうしを比べられるようにする。
-const KVG_HALF_STROKE = 3 / 109;
-
-// KanjiVG ストローク全体の外形（0..1）。paths 配列ごとにキャッシュする。
-const __tplBoxCache = new WeakMap();
-function getTemplateBox(paths) {
-  if (!paths || paths.length === 0) return null;
-  const cached = __tplBoxCache.get(paths);
-  if (cached !== undefined) return cached;
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const d of paths) {
-    // 採点と同じ 24 分割を使う（sampleSvgPath 側のキャッシュを共有できる）
-    for (const p of sampleSvgPath(d, 24)) {
-      if (p.x < x0) x0 = p.x;
-      if (p.x > x1) x1 = p.x;
-      if (p.y < y0) y0 = p.y;
-      if (p.y > y1) y1 = p.y;
-    }
-  }
-  let box = null;
-  if (x1 > x0 && y1 > y0) {
-    box = {
-      x0: Math.max(0, x0 - KVG_HALF_STROKE), y0: Math.max(0, y0 - KVG_HALF_STROKE),
-      x1: Math.min(1, x1 + KVG_HALF_STROKE), y1: Math.min(1, y1 + KVG_HALF_STROKE),
-    };
-  }
-  __tplBoxCache.set(paths, box);
-  return box;
-}
-
-// お手本の文字を KanjiVG の外形に合わせるための { k（倍率）, x, y（描画原点）}。
-// ctx には あらかじめ font / textAlign='left' / textBaseline='alphabetic' を
-// 設定しておくこと。合わせられないときは null（＝中央ぞろえにフォールバック）。
-function fitGlyphToTemplate(ctx, ch, size, paths) {
-  const box = getTemplateBox(paths);
-  if (!box || !ch) return null;
-  let m;
-  try { m = ctx.measureText(ch); } catch (e) { return null; }
-  // actualBoundingBox* に対応していない古いブラウザでは実測できない
-  if (!m || typeof m.actualBoundingBoxAscent !== 'number' || typeof m.actualBoundingBoxRight !== 'number') return null;
-  const gx0 = -m.actualBoundingBoxLeft, gx1 = m.actualBoundingBoxRight;
-  const gy0 = -m.actualBoundingBoxAscent, gy1 = m.actualBoundingBoxDescent;
-  const gw = gx1 - gx0, gh = gy1 - gy0;
-  if (!(gw > 0) || !(gh > 0)) return null;
-  const tw = (box.x1 - box.x0) * size, th = (box.y1 - box.y0) * size;
-  // たて・よこ どちらも近づける等方倍率（字形をゆがめないので対角線で合わせる）
-  let k = Math.hypot(tw, th) / Math.hypot(gw, gh);
-  if (!isFinite(k) || k <= 0) return null;
-  // 想定外のフォント計測でお手本が暴れないよう、常識的な範囲に収める
-  k = Math.min(Math.max(k, 0.5), 2);
-  // 最後の安全網：どんな場合もマスからはみ出させない
-  const maxK = (size * 0.96) / Math.max(gw, gh);
-  if (k > maxK) k = maxK;
-  return {
-    k,
-    x: ((box.x0 + box.x1) / 2) * size - k * ((gx0 + gx1) / 2),
-    y: ((box.y0 + box.y1) / 2) * size - k * ((gy0 + gy1) / 2),
-  };
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1968,14 +1991,8 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     };
   }, []);
 
-  // 教科書体（Web フォント）が使えるようになったらお手本を描きなおす。
-  // 未ロードのあいだは代替書体の寸法で位置合わせしてしまうため必須。
-  useEffect(() => {
-    return onKyokashoFontReady(() => {
-      if (stateRef.current.char) redrawGuide();
-    });
-    // eslint-disable-next-line
-  }, []);
+  // ※ お手本は かきじゅんデータから描くので、Web フォントの読み込み完了を
+  //   待って描きなおす必要はない（書体が変わっても お手本の形は変わらない）。
 
   useEffect(() => { redrawInk(); /* eslint-disable-line */ }, [currentStroke, paths]);
   // ステージが変わるとガイドの表示も切り替わる
@@ -2099,44 +2116,38 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       }
     });
   }
+  /* お手本（うすい文字）を描く。
+
+     お手本は フォントではなく、かきじゅんデータ（KanjiVG）そのものを描く。
+     書き順アニメ・書きはじめの赤い点・採点は もともと KanjiVG の座標を
+     見ているので、お手本も同じデータから描けば
+
+       ・アニメで見た形と なぞる形が ぴったり同じになる
+       ・赤い点が かならず 線の書きはじめの上に のる
+       ・端末に教科書体が入っているかどうかで お手本の形が変わらない
+
+     という 3 つが いちどに そろう。
+     （フォントで描いていたころは、字形が KanjiVG と別ものだったため、
+       外形を合わせても 線の内側の位置までは 合わせられなかった。） */
   function redrawGuide() {
     const c = guideRef.current; if (!c) return;
     const ctx = c.getContext('2d'); const s = c.width;
     ctx.clearRect(0, 0, s, s);
     // 自力モード（ステージ2以上）ではガイドを描かない
     if (stateRef.current.stage >= 2) return;
-    const ch = stateRef.current.char;
-    if (!ch) return;
-    // 書体は index.html の --kkm-font-kyokasho（UD デジタル教科書体）に統一。
-    // 画ごとのストロークデータは KanjiVG が引き続き持つので、書き順アニメ・
-    // 始点マーカー・採点ロジックは変わらない。
-    // ただし字形の位置・大きさは fitGlyphToTemplate で KanjiVG に合わせる。
+    const paths = stateRef.current.paths;
+    if (!paths || paths.length === 0) return;
     ctx.save();
-    // 紙にうすく刷ったお手本の色（--kkm-guide）
-    ctx.fillStyle = themeColor('--kkm-guide', '#e5ded0');
-    const fontSize = Math.round(s * 0.86);
-    // 合成ボールドで線が太ると字形がくずれるので、太さは 400 に固定する
-    ctx.font = `400 ${fontSize}px ${kyokashoFontStack()}`;
-    // measureText の外形は基準点（textAlign / textBaseline）からの距離で返るので、
-    // 実測のまえに基準点を左・ベースラインに固定しておく。
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    const fit = fitGlyphToTemplate(ctx, ch, s, stateRef.current.paths);
-    if (fit) {
-      // 実測した字形の外形を、お手本ストロークの外形にぴったり重ねる
-      ctx.translate(fit.x, fit.y);
-      ctx.scale(fit.k, fit.k);
-      ctx.fillText(ch, 0, 0);
-    } else {
-      // かきじゅんデータがまだ無い／実測できないブラウザ：これまでどおり中央に
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-      ctx.fillText(ch, s / 2, s / 2);
-    }
+    ctx.scale(s / 109, s / 109);   // KanjiVG の 109 座標系にそろえる
+    ctx.strokeStyle = themeColor('--kkm-guide', '#e5ded0');
+    ctx.lineWidth = KVG_STROKE_W;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const d of paths) drawKvgStroke(ctx, d);
     ctx.restore();
   }
-  // 旧 inkRef（KanjiVG ストロークで完了画を表示）はガイドと字形が
-  // 揃わなくなったため使わない。クリアのみ。
+  // inkRef は書きおえた画を別レイヤーに出すための予備。いまは
+  // 子どもが書いた線（writeRef）がそのまま残るので、クリアするだけ。
   function redrawInk() {
     const c = inkRef.current; if (!c) return;
     const ctx = c.getContext('2d');
@@ -2386,12 +2397,15 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
           <div className="absolute left-1/2 top-0 bottom-0 border-l border-dashed border-shu-200 pointer-events-none z-[5]"/>
           <canvas ref={guideRef} className="absolute inset-0 w-full h-full z-[1]"/>
           <canvas ref={inkRef}   className="absolute inset-0 w-full h-full z-[10]"/>
-          {/* 始点ヒント（朱色の点滅マーカー） */}
+          {/* 始点ヒント（朱色の点滅マーカー）。
+              いれものは かならず 正方形（w-5 h-5）にして、中の丸を absolute で
+              ぴったり重ねる。inline-flex のままだと 行のベースラインぶんだけ
+              いれものが たてに のびて、点が 数 px 上にずれてしまう。 */}
           {startHint && (
-            <div className="absolute z-[15] pointer-events-none"
+            <div className="absolute z-[15] pointer-events-none w-5 h-5"
                  style={{ left: `${startHint.x}%`, top: `${startHint.y}%`, transform: 'translate(-50%, -50%)' }}>
-              <span className="absolute inset-0 inline-flex h-5 w-5 rounded-full bg-shu-400 opacity-70 animate-ping"/>
-              <span className="relative inline-flex rounded-full h-5 w-5 bg-shu-600 border-2 border-white shadow"/>
+              <span className="absolute inset-0 block rounded-full bg-shu-400 opacity-70 animate-ping"/>
+              <span className="absolute inset-0 block rounded-full bg-shu-600 border-2 border-white shadow"/>
             </div>
           )}
           <canvas ref={writeRef}
@@ -2595,7 +2609,8 @@ function StrokeOrderAnime({ paths, char, onClose }) {
     const lens = []; const placed = [];
     paths.forEach((d, i) => {
       const bg = document.createElementNS(svgNS,'path');
-      bg.setAttribute('d', d); bg.setAttribute('stroke', themeColor('--kkm-guide', '#eae2d2')); bg.setAttribute('stroke-width','6');
+      // うすい下じきの線。太さは 練習キャンバスのお手本と そろえる。
+      bg.setAttribute('d', d); bg.setAttribute('stroke', themeColor('--kkm-guide', '#eae2d2')); bg.setAttribute('stroke-width', KVG_STROKE_W);
       bg.setAttribute('fill','none'); bg.setAttribute('stroke-linecap','round'); bg.setAttribute('stroke-linejoin','round');
       bgG.appendChild(bg);
       // 長さと始点はキャッシュから（DOM 挿入なし）
@@ -2604,7 +2619,7 @@ function StrokeOrderAnime({ paths, char, onClose }) {
       const sp  = { x: se.s.x * 109, y: se.s.y * 109 };
       lens.push(len);
       const p = document.createElementNS(svgNS,'path');
-      p.setAttribute('d', d); p.setAttribute('stroke', themeColor('--kkm-sumi', '#2e2a25')); p.setAttribute('stroke-width','6');
+      p.setAttribute('d', d); p.setAttribute('stroke', themeColor('--kkm-sumi', '#2e2a25')); p.setAttribute('stroke-width', KVG_STROKE_W);
       p.setAttribute('fill','none'); p.setAttribute('stroke-linecap','round'); p.setAttribute('stroke-linejoin','round');
       p.id = `kkm-anime-${i}`;
       p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.style.opacity = '0';
