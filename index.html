@@ -545,7 +545,7 @@
         fetch('./manifest.webmanifest', { cache: 'no-store' })
           .then(function (r) { return r.json(); })
           .then(function (m) {
-            var here = new URL('./', location.href).pathname; // 例：/hiragana_katakan_kakikatamaster/
+            var here = new URL('./', location.href).pathname; // 例：/KANA_Master/
             var problems = [];
             ['id', 'scope', 'start_url'].forEach(function (k) {
               if (!m[k]) { problems.push(k + ' が未設定です'); return; }

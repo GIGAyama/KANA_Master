@@ -1,4 +1,4 @@
-# hiragana_katakan_kakikatamaster
+# KANA_Master
 ひらがな・カタカナかきかたマスター
 
 小学1年生が **じぶんから すすんで** ひらがな・カタカナを **ただしく** 身につけるための
@@ -10,6 +10,15 @@
 
 ブラウザで `index.html` をひらくだけで うごきます（ビルド不要）。
 GitHub Pages でも公開しています。
+
+**公開 URL： https://gigayama.github.io/KANA_Master/**
+
+> **リポジトリ名を変えたときは URL も変わります。**
+> GitHub Pages の URL は `https://<ユーザー名>.github.io/<リポジトリ名>/` なので、
+> リポジトリ名を変更したら `manifest.webmanifest` の
+> `id` / `scope` / `start_url` も 新しいリポジトリ名に 書きかえてください。
+> 古いままだと アプリとしてインストールしたときに 存在しない URL を開こうとして
+> 404（ここには GitHub Pages サイトはありません）になります。
 
 ---
 
@@ -264,7 +273,7 @@ MIM-PM に ならった **1 分 × 2 = 2 分** の みじかい 課題です（`
 インストールボタンが出なくなります。
 
 そのためこのアプリは配置パスを含む絶対パス
-`"id": "/hiragana_katakan_kakikatamaster/"` を明示しています。
+`"id": "/KANA_Master/"` を明示しています。
 **フォークして別のパスに配置する場合は、この値もそのパスに合わせて
 書き換えてください**（同一オリジン内で一意であれば OK）。
 
