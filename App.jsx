@@ -378,13 +378,18 @@ function isDakuonChar(c){ return HIRA_DAKUON_LIST.includes(c) || KATA_DAKUON_LIS
 function splitCells(w) { return Array.from(w || ''); }
 
 // 拍（はく）＝ 手を たたく かず。
-//   ・小さい ゃゅょ と のばす ー は 前の字と いっしょで 1 つ
-//   ・小さい っ（つまる おと）と ん（はねる おと）は それだけで 1 つ
-// 例：きゃ→1、きって→3、おかあさん→5、ケーキ→3
+//   ・小さい ゃゅょ だけが 前の字と いっしょで 1 つ（きゃ ＝ 2 もじ 1 拍）
+//   ・小さい っ・ん・のばす ー は、それぞれ それだけで 1 つ
+// 例：きゃ→1、きって→3、おかあさん→5、ケーキ→3、でんしゃ→3
+//
+// ★ のばす ー を 前の字に くっつけては いけない。
+//   ひらがなの「おとうさん」は「う」を 1 拍と かぞえるのに、
+//   カタカナの「ケーキ」だけ 2 拍に なってしまい、
+//   子どもに 教える きまりが 表と裏で くいちがう。
 function splitMora(w) {
   const out = [];
   for (const c of splitCells(w)) {
-    if (out.length > 0 && ((isSmallKana(c) && !isSokuon(c)) || c === CHOUON_MARK)) {
+    if (out.length > 0 && isSmallKana(c) && !isSokuon(c)) {
       out[out.length - 1] += c;
     } else {
       out.push(c);
@@ -680,6 +685,217 @@ function headWordCharsOf(script) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   1.86. 多層指導モデル MIM の 考えかたを 入れる
+
+   MIM（Multilayer Instruction Model／海津亜希子）は、読みの つまずきを
+   「顕在化する前」に つかまえて、子どもごとに 指導の あつさを かえる
+   モデル。とくに 特殊音節（っ・ゃゅょ・のばす おと）に 焦点を あてている
+   点が、このアプリの ねらいと そのまま かさなる。
+
+   このアプリに 取り入れたのは 次の 4 つ。
+
+   ① 視覚化（ドット）
+      目に見えない「おと」を ●（ドット）で 見えるようにする。
+        ねこ  → ● ●
+        ねっこ → ● ・ ●   （小さい ● ＝ 音を出さない ところ）
+      拗音は 2 もじで ● 1 つ、長音は ● どうしを 線でつなぐ。
+
+   ② 動作化（リズム）
+      ・清音・濁音・半濁音 … 手を 1 かい たたく
+      ・小さい っ         … 両手を グーに にぎって 音を出さない
+      ・のばす おと       … 手を よこに ひっぱる
+      道具を使わず 自分の体で ルールを 確かめられるようにする。
+
+   ③ 進みぐあいの ものさし（MIM-PM 型の ちからだめし）
+      2 分（1 分 × 2 つ）の みじかい 課題を くりかえし 受けて、
+      「正しい ことばを 見つける 速さ」の 変化を 折れ線で 追う。
+
+   ④ 3 つの ステージ（層）で 指導を かえる
+      ちからだめしの 結果から、その子に 合う あつさの 指導を 出す。
+        1st … みんなと同じ量。ヒントなし
+        2nd … 量をしぼり、ドットを つねに出す。2 たくにする
+        3rd … さらにしぼり、まず 動作化を 見せてから といてもらう
+
+   ※ ステージの さかいめ（点数）は このアプリ独自の めやすで、
+     MIM の正式な標準得点では ありません。あくまで
+     「いま どのくらいの 手あつさが 要りそうか」の 目じるしです。
+   ══════════════════════════════════════════════════════════════ */
+
+// かなの「だん（母音）」。長音（のばす おと）かどうかの 判定に つかう。
+const VOWEL_ROWS = {
+  a: 'あかさたなはまやらわがざだばぱゃァカサタナハマヤラワガザダバパャ',
+  i: 'いきしちにひみりぎじぢびぴィキシチニヒミリギジヂビピ',
+  u: 'うくすつぬふむゆるぐずづぶぷゅゥクスツヌフムユルグズヅブプュ',
+  e: 'えけせてねへめれげぜでべぺェケセテネヘメレゲゼデベペ',
+  o: 'おこそとのほもよろごぞどぼぽょォコソトノホモヨロゴゾドボポョ',
+};
+function vowelOf(kana) {
+  for (const v in VOWEL_ROWS) if (VOWEL_ROWS[v].indexOf(kana) >= 0) return v;
+  return null;
+}
+// 「のばす おと」になる くみあわせ（お＋う、え＋い など）
+const CHOUON_PAIRS = { a: 'あ', i: 'い', u: 'う', e: 'えい', o: 'おう' };
+
+/* 1 拍ぶんの しゅるいを きめる。ドットの 形と 手の うごきは これで きまる。
+     'plain'   … ふつうの おと（手を 1 かい たたく）
+     'sokuon'  … つまる おと（グーに にぎる。音は 出さない）
+     'youon'   … ねじれる おと（2 もじで 1 かい）
+     'chouon'  … のばす おと（手を よこに ひっぱる）
+     'hatsuon' … はねる おと（ん。1 かい たたく） */
+function moraKinds(word) {
+  const moras = splitMora(word);
+  return moras.map((m, i) => {
+    const chars = splitCells(m);
+    const last = chars[chars.length - 1];
+    if (isSokuon(m)) return 'sokuon';
+    if (m === 'ん' || m === 'ン') return 'hatsuon';
+    if (last === CHOUON_MARK) return 'chouon';
+    if (chars.length > 1 && isYouonSmall(last)) return 'youon';
+    // ひらがなの のばす おと：まえの だんと 合っていれば 長音
+    if (chars.length === 1 && i > 0) {
+      const prev = moras[i - 1];
+      const pv = vowelOf(splitCells(prev)[splitCells(prev).length - 1]);
+      if (pv && (CHOUON_PAIRS[pv] || '').indexOf(m) >= 0) return 'chouon';
+    }
+    return 'plain';
+  });
+}
+const MORA_KIND_INFO = {
+  plain:   { label: 'たたく',   hand: 'clap', hint: '手を 1 かい たたく' },
+  hatsuon: { label: 'たたく',   hand: 'clap', hint: '「ん」も 1 かい たたく' },
+  youon:   { label: 'まとめて', hand: 'clap', hint: '2 もじ まとめて 1 かい' },
+  sokuon:  { label: 'にぎる',   hand: 'fist', hint: 'グーに にぎって 音を出さない' },
+  chouon:  { label: 'ひっぱる', hand: 'pull', hint: '手を よこに ひっぱって のばす' },
+};
+
+/* ──────────────────────────────────────────────────────────────
+   1.56. ちからだめし（MIM-PM 型）の もんだい
+
+   MIM-PM の テスト①「絵に合うことば探し」に ならって、
+     清音 → 濁音・半濁音 → 長音 → 促音 → 拗音 → 拗長音 → カタカナ
+   の じゅんを 1 サイクルとして 5 回 くりかえす。
+   まちがい選択肢は MIM と同じく
+     形が にている／濁点の 有無／語順の 入れかえ／音が にている／
+     長音・促音・拗音の あやまり
+   から つくる。
+   ────────────────────────────────────────────────────────────── */
+const MIM_PM_ITEMS = [
+  // ── サイクル 1 ──
+  { w:'ねこ',        p:'cat',       k:'seion',   bad:['こね','ぬこ'] },
+  { w:'めがね',      p:'tool',      k:'dakuon',  bad:['めかね','めがれ'] },
+  { w:'おかあさん',  p:'person',    k:'chouon',  bad:['おかさん','おかわさん'] },
+  { w:'きって',      p:'tool',      k:'sokuon',  bad:['きて','きつて'] },
+  { w:'でんしゃ',    p:'train',     k:'youon',   bad:['でんしや','でしゃ'] },
+  { w:'きゅうしょく',p:'rice',      k:'youchou', bad:['きゆうしょく','きゅしょく'] },
+  { w:'ケーキ',      p:'sweet',     k:'kata',    bad:['ケエキ','ケーキー'] },
+  // ── サイクル 2 ──
+  { w:'くるま',      p:'car',       k:'seion',   bad:['るくま','くろま'] },
+  { w:'ぱんだ',      p:'animal',    k:'dakuon',  bad:['ばんだ','はんだ'] },
+  { w:'とけい',      p:'tool',      k:'chouon',  bad:['とけえ','とけ'] },
+  { w:'がっこう',    p:'school',    k:'sokuon',  bad:['がこう','がつこう'] },
+  { w:'きんぎょ',    p:'fish',      k:'youon',   bad:['きんぎよ','きぎょ'] },
+  { w:'びょういん',  p:'house',     k:'youchou', bad:['びよういん','びょいん'] },
+  { w:'ノート',      p:'book',      k:'kata',    bad:['ノオト','ノトー'] },
+  // ── サイクル 3 ──
+  { w:'たいこ',      p:'music',     k:'seion',   bad:['こいた','たいご'] },
+  { w:'ぶどう',      p:'fruit',     k:'dakuon',  bad:['ふどう','ぶとう'] },
+  { w:'おとうさん',  p:'person',    k:'chouon',  bad:['おとおさん','おとさん'] },
+  { w:'らっぱ',      p:'music',     k:'sokuon',  bad:['らぱ','らつぱ'] },
+  { w:'おもちゃ',    p:'ball',      k:'youon',   bad:['おもちや','おもちゅ'] },
+  { w:'ちょうちょ',  p:'bug',       k:'youchou', bad:['ちようちょ','ちょちょ'] },
+  { w:'ラーメン',    p:'rice',      k:'kata',    bad:['ラアメン','ラメーン'] },
+  // ── サイクル 4 ──
+  { w:'さかな',      p:'fish',      k:'seion',   bad:['かさな','さがな'] },
+  { w:'えんぴつ',    p:'pencil',    k:'dakuon',  bad:['えんひつ','えんびつ'] },
+  { w:'こおり',      p:'snow',      k:'chouon',  bad:['こうり','こり'] },
+  { w:'しっぽ',      p:'cat',       k:'sokuon',  bad:['しぽ','しつぽ'] },
+  { w:'しゅくだい',  p:'pencil',    k:'youon',   bad:['しゆくだい','しくだい'] },
+  { w:'きょうしつ',  p:'school',    k:'youchou', bad:['きようしつ','きょしつ'] },
+  { w:'コップ',      p:'drink',     k:'kata',    bad:['コプ','コツプ'] },
+  // ── サイクル 5 ──
+  { w:'はさみ',      p:'tool',      k:'seion',   bad:['さはみ','はざみ'] },
+  { w:'だんご',      p:'sweet',     k:'dakuon',  bad:['たんご','だんこ'] },
+  { w:'おねえさん',  p:'person',    k:'chouon',  bad:['おねいさん','おねさん'] },
+  { w:'なっとう',    p:'rice',      k:'sokuon',  bad:['なとう','なつとう'] },
+  { w:'しゃぼんだま',p:'ball',      k:'youon',   bad:['しやぼんだま','しゃぼだま'] },
+  { w:'にんぎょう',  p:'person',    k:'youchou', bad:['にんぎよう','にんぎょ'] },
+  { w:'スキー',      p:'snow',      k:'kata',    bad:['スキイ','スキ'] },
+];
+
+/* テスト②「3つの ことば さがし」。
+   くぎりの ない かなの ならびを 見て、ことばの きれめに 線を いれる。
+   まとまりで 読む ちから（流暢性）を みる。 */
+const MIM_PM_CHUNKS = [
+  ['あかい','かさ','とけい'],
+  ['ねこ','がっこう','ほん'],
+  ['でんしゃ','みかん','そら'],
+  ['おかあさん','りんご','うみ'],
+  ['きって','さかな','やま'],
+  ['ちょうちょ','はな','いぬ'],
+  ['せんせい','つくえ','まど'],
+  ['らっぱ','たいこ','うた'],
+  ['おもちゃ','はこ','いす'],
+  ['ゆき','こおり','さむい'],
+  ['あめ','かさ','ながぐつ'],
+  ['きゅうしょく','ぎゅうにゅう','パン'],
+];
+
+/* ──────────────────────────────────────────────────────────────
+   1.57. ステージ（層）の 判定
+
+   ちからだめしの 点数と、ふだんの とくべつな おとの 正答ぐあいから、
+   いま その子に 合う 指導の あつさを きめる。
+   ※ さかいめの 数字は このアプリ独自の めやす。
+   ────────────────────────────────────────────────────────────── */
+const KEY_MIM = 'kkm_v4_mim';   // ちからだめしの きろく
+const MIM_TIER_INFO = {
+  1: { key:1, name:'1st ステージ', short:'ふつう',   tone:'midori',
+       desc:'みんなと おなじ すすみかたで だいじょうぶ。',
+       teacher:'通常の量で進めます。ヒントは出さず、まちがえたぶんだけ復習に回します。' },
+  2: { key:2, name:'2nd ステージ', short:'すこし ていねい', tone:'ai',
+       desc:'ドットを つねに 出して、えらぶ かずを へらすよ。',
+       teacher:'語数をしぼり、ドット（視覚化）を常時表示、選択肢を2つに減らします。' },
+  3: { key:3, name:'3rd ステージ', short:'とても ていねい', tone:'shu',
+       desc:'まず リズムを 見てから、ゆっくり といて いこう。',
+       teacher:'語数をさらにしぼり、毎問ドット＋動作化（リズム）を先に見せてから解答させます。' },
+};
+// ちからだめし 1 かいぶんの 点数から ステージを きめる
+function tierFromScore(total) {
+  if (total >= 12) return 1;
+  if (total >= 6)  return 2;
+  return 3;
+}
+// いまの ステージ。ちからだめしが まだなら、ふだんの 正答ぐあいから 見る。
+function currentTier(mim, skill) {
+  const last = (mim?.log || [])[(mim?.log || []).length - 1];
+  if (last) return last.tier;
+  // まだ 受けていないときは、とくべつな おとの 成績から おおまかに
+  let ok = 0, ng = 0;
+  for (const id in (skill || {})) {
+    if (id.indexOf('s:') !== 0) continue;
+    ok += skill[id].ok || 0; ng += skill[id].ng || 0;
+  }
+  if (ok + ng < 10) return 1;              // データが すくないうちは ふつう
+  const rate = ok / (ok + ng);
+  if (rate >= 0.8) return 1;
+  if (rate >= 0.55) return 2;
+  return 3;
+}
+// ステージごとの 出題の あつさ
+function tierPlan(tier) {
+  if (tier >= 3) return { count: 4, words: 2, maxChoices: 2, dots: true,  rhythm: true  };
+  if (tier === 2) return { count: 5, words: 4, maxChoices: 2, dots: true,  rhythm: false };
+  return              { count: 6, words: 12, maxChoices: 3, dots: false, rhythm: false };
+}
+// ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
+const MIM_CHECK_INTERVAL_DAYS = 14;
+function mimCheckDue(mim) {
+  const log = mim?.log || [];
+  if (log.length === 0) return true;
+  return dayNumber() - (log[log.length - 1].day || 0) >= MIM_CHECK_INTERVAL_DAYS;
+}
+
+/* ══════════════════════════════════════════════════════════════
    1.9. わすれないための しくみ（かんかくを あけて ふくしゅう）
 
    おぼえた ことは 何もしないと わすれる。だから このアプリは
@@ -743,7 +959,7 @@ const MISSIONS = [
   { key: 'write',   goal: 2, title: 'もじを かく',       sub: 'あたらしい じ を 1つ',     view: 'write',   tone: 'ai',     icon: 'pen' },
   { key: 'special', goal: 6, title: 'とくべつな おと',   sub: 'っ ゃゅょ ん のばす',      view: 'special', tone: 'shu',    icon: 'brush' },
 ];
-function emptyDayRecord() { return { review: 0, write: 0, special: 0, words: 0, done: false }; }
+function emptyDayRecord() { return { review: 0, write: 0, special: 0, words: 0, check: 0, done: false }; }
 function isDayComplete(rec) {
   if (!rec) return false;
   return MISSIONS.every(m => (rec[m.key] || 0) >= m.goal);
@@ -4370,6 +4586,452 @@ function KanaDrawer({ children, onClose }) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   18.4. MIM の 視覚化（ドット）と 動作化（リズム）
+
+   目に見えない「おと」を、● と 手の うごきで つかめるようにする。
+   このアプリで 特殊音節を あつかう ところは、ぜんぶ ここを 通す。
+   ══════════════════════════════════════════════════════════════ */
+
+/* 手の うごきの えほんアイコン。
+   なるべく 小さくても わかるよう、実物そっくりではなく 記号にしている。 */
+const IconClap     = (p) => <SvgIcon {...p}><rect x="7" y="9" width="10" height="10" rx="3"/><path d="M9.5 9V6.6M12 9V5.6M14.5 9V6.6"/><path d="M4 5.6 5.9 7.2M20 5.6 18.1 7.2"/></SvgIcon>;
+const IconFist     = (p) => <SvgIcon {...p}><rect x="6" y="7.5" width="12" height="11" rx="4"/><path d="M9 11.5h6M9 14.5h6"/></SvgIcon>;
+const IconPullSide = (p) => <SvgIcon {...p}><rect x="3.5" y="7.5" width="8" height="10" rx="3"/><path d="M13.5 12.5h7M17.5 9.5l3 3-3 3"/></SvgIcon>;
+const HAND_ICONS = { clap: IconClap, fist: IconFist, pull: IconPullSide };
+
+/* 拍（おと）を ● で あらわす 1 行。マスの ま下に そろえて出す。
+     ふつうの おと … ぬりつぶした ●
+     つまる おと   … 小さい 白い ○（音を 出さない）
+     ねじれる おと … ● 1 つ ＋ 2 マスを つなぐ かっこ
+     のばす おと   … ● ＋ まえの ● とを つなぐ よこ線 */
+function MimDots({ word, cellSize = 52, gap = 6, activeMora = -1, className = '' }) {
+  const moras = splitMora(word);
+  const kinds = moraKinds(word);
+  return (
+    <div className={`flex ${className}`} style={{ gap }} aria-hidden="true">
+      {moras.map((m, i) => {
+        const span = splitCells(m).length;
+        const width = span * cellSize + (span - 1) * gap;
+        const kind = kinds[i];
+        const on = i === activeMora;
+        // まえの 拍の ● の まん中まで 線を のばす（拗長音でも ずれないように）
+        const prevSpan = i > 0 ? splitCells(moras[i - 1]).length : 1;
+        const prevHalf = (prevSpan * cellSize + (prevSpan - 1) * gap) / 2;
+        return (
+          <span key={i} className="relative flex items-center justify-center shrink-0" style={{ width, height: 20 }}>
+            {/* のばす おと：まえの ● とを 線でつなぐ */}
+            {kind === 'chouon' && i > 0 && (
+              <span className="absolute top-1/2 -translate-y-1/2 border-t-2 border-shu-500"
+                style={{ right: '50%', width: (width / 2) + gap + prevHalf }}/>
+            )}
+            {/* ねじれる おと：2 マスぶんを かっこで まとめる */}
+            {kind === 'youon' && (
+              <span className="absolute inset-x-1 top-0 h-2 border-t-2 border-x-2 border-fuji-400 rounded-t-md"/>
+            )}
+            <span className={`relative rounded-full transition-all duration-150 ${
+              kind === 'sokuon'
+                ? `border-2 border-dashed ${on ? 'border-shu-600 bg-shu-100' : 'border-sumi-400 bg-white'}`
+                : `${on ? 'bg-shu-600' : 'bg-sumi-500'}`
+            }`}
+              style={kind === 'sokuon'
+                ? { width: 10, height: 10 }
+                : { width: on ? 16 : 13, height: on ? 16 : 13 }}/>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/* 動作化：リズムに あわせて 手を うごかす。
+   ・ふつうの おと … たたく（音が 鳴る）
+   ・つまる おと   … にぎる（音を 鳴らさない）← ここが いちばん 大事
+   ・のばす おと   … よこに ひっぱる */
+function RhythmPlayer({ word, cellSize = 46, autoPlay = false, voiceOn = true, compact = false }) {
+  const [active, setActive] = useState(-1);
+  const [playing, setPlaying] = useState(false);
+  const timersRef = useRef([]);
+  const kinds = useMemo(() => moraKinds(word), [word]);
+  const moras = useMemo(() => splitMora(word), [word]);
+
+  const clearTimers = useCallback(() => { timersRef.current.forEach(clearTimeout); timersRef.current = []; }, []);
+  useEffect(() => clearTimers, [clearTimers]);
+
+  const play = useCallback(() => {
+    clearTimers();
+    setPlaying(true);
+    initAudio();
+    const step = 620;
+    moras.forEach((m, i) => {
+      timersRef.current.push(setTimeout(() => {
+        setActive(i);
+        hapticTick();
+        // つまる おと は 音を 出さない（グーに にぎる ところ）
+        if (kinds[i] === 'sokuon') return;
+        if (kinds[i] === 'chouon') playTone(587.33, 'sine', 0.42, 0.09);
+        else playTone(783.99, 'sine', 0.12, 0.09);
+      }, i * step));
+    });
+    timersRef.current.push(setTimeout(() => {
+      setActive(-1); setPlaying(false);
+      if (voiceOn) speakText(word, voiceOn);
+    }, moras.length * step + 250));
+  }, [moras, kinds, word, voiceOn, clearTimers]);
+
+  useEffect(() => {
+    setActive(-1); setPlaying(false); clearTimers();
+    if (autoPlay) { const t = setTimeout(play, 350); return () => clearTimeout(t); }
+    // eslint-disable-next-line
+  }, [word, autoPlay]);
+
+  const info = active >= 0 ? MORA_KIND_INFO[kinds[active]] : null;
+  const Hand = info ? HAND_ICONS[info.hand] : IconClap;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="inline-flex flex-col items-center gap-1">
+        <div className="flex" style={{ gap: 6 }}>
+          {splitCells(word).map((c, i) => <KanaCell key={i} char={c} size={cellSize}/>)}
+        </div>
+        <MimDots word={word} cellSize={cellSize} gap={6} activeMora={active}/>
+      </div>
+
+      {!compact && (
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border min-h-[42px] ${
+          info ? 'bg-shu-50 border-shu-300 text-shu-700' : 'bg-washi-100 border-sumi-200 text-sumi-400'
+        }`}>
+          <span className={info ? 'kkm-pop-in' : ''}><Hand size={22}/></span>
+          <span className="text-sm font-semibold">{info ? info.hint : '「リズム」を おしてね'}</span>
+        </div>
+      )}
+
+      <button onClick={play} disabled={playing}
+        className="kkm-btn kkm-ripple px-4 py-2 rounded-md bg-shu-600 text-white font-semibold text-sm border border-shu-700 flex items-center justify-center gap-2 disabled:opacity-60 min-h-[42px]">
+        <IconClap size={17}/> {playing ? 'てを たたこう…' : 'リズムで やってみる'}
+      </button>
+    </div>
+  );
+}
+
+/* 手の うごきの きまり（まなぶ画面で 見せる はやみ表） */
+function RhythmLegend() {
+  const rows = [
+    { kind:'plain',  ex:'か' },
+    { kind:'sokuon', ex:'っ' },
+    { kind:'chouon', ex:'う' },
+    { kind:'youon',  ex:'ゃ' },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {rows.map(r => {
+        const info = MORA_KIND_INFO[r.kind];
+        const Hand = HAND_ICONS[info.hand];
+        return (
+          <div key={r.kind} className="flex items-center gap-2 rounded-md border border-sumi-200 bg-washi-100 px-2 py-1.5">
+            <span className="kkm-glyph text-lg leading-none text-sumi-700 w-5 text-center">{r.ex}</span>
+            <span className="text-shu-600 shrink-0"><Hand size={18}/></span>
+            <span className="text-[11px] font-semibold text-sumi-600 leading-tight">{info.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18.45. <MimCheckView> ── ちからだめし「よみめいじん」
+
+   MIM-PM に ならった 2 分（1 分 × 2）の みじかい 課題。
+   点数そのものより、**まえの じぶんと くらべて のびているか** を見る。
+   結果から その子に 合う ステージ（指導の あつさ）を きめる。
+   ══════════════════════════════════════════════════════════════ */
+const MIM_TEST_SECONDS = 60;
+
+/* のこり時間の わっか */
+function CountDown({ left, total }) {
+  return (
+    <div className="flex items-center gap-2">
+      <ProgressRing pct={(left / total) * 100} size={38} stroke={4}
+        color={left <= 10 ? 'var(--kkm-shu)' : '#40608a'}>
+        <span className={`text-[11px] font-semibold tabular-nums ${left <= 10 ? 'text-shu-700' : 'text-ai-700'}`}>{left}</span>
+      </ProgressRing>
+      <span className="text-[11px] font-semibold text-sumi-500">びょう</span>
+    </div>
+  );
+}
+
+/* テスト②「3つの ことば さがし」の 1 もん。
+   もじと もじの あいだを タップして、ことばの きれめに 線を いれる。 */
+function ChunkQuestion({ chunk, onDone }) {
+  const text = chunk.join('');
+  const chars = splitCells(text);
+  const answer = useMemo(() => {
+    const out = []; let acc = 0;
+    for (let i = 0; i < chunk.length - 1; i++) { acc += splitCells(chunk[i]).length; out.push(acc); }
+    return out;
+  }, [chunk]);
+  const [cuts, setCuts] = useState([]);
+
+  function toggle(pos) {
+    setCuts(prev => {
+      const next = prev.includes(pos) ? prev.filter(p => p !== pos) : [...prev, pos].sort((a, b) => a - b);
+      if (next.length === answer.length) {
+        const ok = next.every((p, i) => p === answer[i]);
+        setTimeout(() => onDone(ok), 260);
+      }
+      return next;
+    });
+  }
+  const size = chars.length > 8 ? 34 : 42;
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="text-xs md:text-sm font-semibold text-sumi-600">3 つの ことばに 線で わけよう</div>
+      <div className="flex items-center flex-wrap justify-center">
+        {chars.map((c, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && (
+              <button onClick={() => toggle(i)} aria-label={`${i}ばんめの あとで きる`}
+                className="kkm-btn relative flex items-center justify-center shrink-0"
+                style={{ width: 16, height: size }}>
+                <span className={`block rounded-full transition-all ${
+                  cuts.includes(i) ? 'bg-shu-600 w-1' : 'bg-sumi-200 w-0.5'
+                }`} style={{ height: cuts.includes(i) ? size : size * 0.5 }}/>
+              </button>
+            )}
+            <KanaCell char={c} size={size}/>
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="text-[11px] font-medium text-sumi-400">もじの あいだを タップすると 線が ひけるよ</div>
+    </div>
+  );
+}
+
+function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked }) {
+  const [phase, setPhase] = useState('intro');   // intro / test1 / rest / test2 / result
+  const [left, setLeft] = useState(MIM_TEST_SECONDS);
+  const [idx, setIdx] = useState(0);
+  const [t1, setT1] = useState(0);
+  const [t2, setT2] = useState(0);
+  const [flash, setFlash] = useState(null);
+  const items1 = useMemo(() => shuffled(MIM_PM_ITEMS), []);
+  const items2 = useMemo(() => shuffled(MIM_PM_CHUNKS), []);
+
+  // タイマー
+  useEffect(() => {
+    if (phase !== 'test1' && phase !== 'test2') return;
+    setLeft(MIM_TEST_SECONDS);
+    const id = setInterval(() => {
+      setLeft(l => {
+        if (l <= 1) {
+          clearInterval(id);
+          setPhase(p => (p === 'test1' ? 'rest' : 'result'));
+          return 0;
+        }
+        return l - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // 結果を きろくする
+  const savedRef = useRef(false);
+  useEffect(() => {
+    if (phase !== 'result' || savedRef.current) return;
+    savedRef.current = true;
+    const total = t1 + t2;
+    const tier = tierFromScore(total);
+    setMim(prev => {
+      const log = [...((prev && prev.log) || []), { day: dayNumber(), date: todayKey(), t1, t2, total, tier }];
+      while (log.length > 24) log.shift();
+      return { ...(prev || {}), log };
+    });
+    onChecked && onChecked();
+    playFanfare(); burstConfetti(); hapticTriumph();
+    // eslint-disable-next-line
+  }, [phase]);
+
+  function answer1(choice, item) {
+    const ok = choice === item.w;
+    if (ok) { setT1(v => v + 1); playPingPong(); } else { playBuzzer(); }
+    setFlash(ok ? 'ok' : 'ng');
+    setTimeout(() => { setFlash(null); setIdx(i => i + 1); }, 260);
+  }
+  function answer2(ok) {
+    if (ok) { setT2(v => v + 1); playPingPong(); } else { playBuzzer(); }
+    setFlash(ok ? 'ok' : 'ng');
+    setTimeout(() => { setFlash(null); setIdx(i => i + 1); }, 320);
+  }
+
+  /* ── はじめの あんない ── */
+  if (phase === 'intro') {
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4">
+        <div className="max-w-xl mx-auto flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} aria-label="もどる"
+              className="kkm-btn w-9 h-9 shrink-0 rounded-md bg-white border border-sumi-300 text-sumi-500 flex items-center justify-center">
+              <IconX size={16}/>
+            </button>
+            <SectionTitle>ちからだめし「よみめいじん」</SectionTitle>
+          </div>
+          <div className="kkm-sheet rounded-lg p-4 flex items-center gap-3 border-l-4 border-l-ai-600">
+            <MascotFace size={48} mood="cheer"/>
+            <div className="text-sm md:text-base font-semibold text-sumi-800 leading-snug">
+              1 ぷんずつ、2 かい。<br/>
+              どれだけ はやく ただしい ことばを 見つけられるか ためしてみよう。
+            </div>
+          </div>
+          <ol className="flex flex-col gap-2">
+            {[
+              { n:'１', t:'えに あう ことば さがし', s:'えを見て、ただしい かきかたを えらぶ（1ぷん）' },
+              { n:'２', t:'3 つの ことば さがし',   s:'つながった もじを 3 つの ことばに わける（1ぷん）' },
+            ].map(x => (
+              <li key={x.n} className="kkm-sheet rounded-lg p-3 flex items-center gap-3">
+                <span className="kkm-glyph shrink-0 w-9 h-9 rounded-md bg-ai-50 border border-ai-300 text-ai-700 flex items-center justify-center text-lg">{x.n}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-sumi-800">{x.t}</span>
+                  <span className="block text-[11px] font-medium text-sumi-600">{x.s}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <div className="text-[11px] font-medium text-sumi-500 leading-relaxed kkm-sheet rounded-lg p-3">
+            まちがえても だいじょうぶ。この けっかで「いま どのくらい ていねいに
+            すすめると いいか」を きめるだけだよ。
+          </div>
+          <button onClick={() => { setIdx(0); setPhase('test1'); }}
+            className="kkm-btn kkm-ripple py-3.5 rounded-md bg-ai-600 text-white font-semibold text-base border border-ai-700 flex items-center justify-center gap-2 min-h-[52px]">
+            <IconPlay size={18}/> はじめる
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── 1 と 2 の あいだ ── */
+  if (phase === 'rest') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <MascotFace size={56} mood="wow"/>
+        <div className="text-xl font-semibold text-sumi-800">1 つめ おわり！</div>
+        <div className="text-sm font-medium text-sumi-600">
+          ただしく えらべたのは <span className="text-shu-700 font-semibold tabular-nums">{t1}</span> こ
+        </div>
+        <button onClick={() => { setIdx(0); setPhase('test2'); }}
+          className="kkm-btn kkm-ripple px-6 py-3 rounded-md bg-ai-600 text-white font-semibold border border-ai-700 min-h-[48px]">
+          つぎへ（3 つの ことば さがし）
+        </button>
+      </div>
+    );
+  }
+
+  /* ── 結果 ── */
+  if (phase === 'result') {
+    const total = t1 + t2;
+    const tier = tierFromScore(total);
+    const info = MIM_TIER_INFO[tier];
+    const t = TONES[info.tone];
+    const log = (mim?.log || []);
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4">
+        <div className="max-w-xl mx-auto flex flex-col gap-3 text-center">
+          <span className={`kkm-stamp mx-auto w-24 h-24 rounded-lg border-2 flex items-center justify-center ${t.solid} text-white`}>
+            <span className="text-4xl font-semibold tabular-nums">{total}</span>
+          </span>
+          <div className="text-xl font-semibold text-sumi-800">よく がんばりました！</div>
+          <div className="text-sm font-medium text-sumi-600">
+            えに あう ことば {t1} こ ・ 3 つの ことば {t2} もん
+          </div>
+          <div className={`kkm-sheet rounded-lg p-3 border-l-4 ${t.leftRule} text-left`}>
+            <div className={`text-sm font-semibold ${t.text}`}>これからの すすめかた：{info.short}</div>
+            <div className="text-xs font-medium text-sumi-600 mt-1 leading-snug">{info.desc}</div>
+          </div>
+          {/* きろくは 上の useEffect で すでに 足してある。ここで もう一度
+              足すと 同じ点が 2 つ ならぶので、そのまま 見せる。 */}
+          <MimHistoryChart log={log}/>
+          <button onClick={onClose}
+            className="kkm-btn kkm-ripple py-3 rounded-md bg-shu-600 text-white font-semibold border border-shu-700 min-h-[48px]">
+            おわる
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── テスト中 ── */
+  const isT1 = phase === 'test1';
+  const item = isT1 ? items1[idx % items1.length] : items2[idx % items2.length];
+  const choices = isT1 ? shuffled([item.w, ...item.bad]) : null;
+  return (
+    <div className={`flex-1 min-h-0 flex flex-col p-2 md:p-4 transition-colors duration-150 ${
+      flash === 'ok' ? 'bg-midori-50' : flash === 'ng' ? 'bg-shu-50' : ''
+    }`}>
+      <div className="shrink-0 flex items-center justify-between gap-2 px-1 pb-2">
+        <span className="text-xs font-semibold text-sumi-600 truncate">
+          {isT1 ? '① えに あう ことば さがし' : '② 3 つの ことば さがし'}
+        </span>
+        <span className="flex items-center gap-3 shrink-0">
+          <span className="text-xs font-semibold text-shu-700 tabular-nums">{isT1 ? t1 : t2} こ</span>
+          <CountDown left={left} total={MIM_TEST_SECONDS}/>
+        </span>
+      </div>
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4">
+        {isT1 ? (
+          <>
+            <div className="flex items-center justify-center w-24 h-24 rounded-lg bg-washi-100 border border-sumi-200 text-sumi-700">
+              <Pict name={item.p} size={58}/>
+            </div>
+            <div className="w-full max-w-md grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {choices.map((c, i) => (
+                <button key={i} onClick={() => answer1(c, item)}
+                  className="kkm-btn kkm-ripple rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 py-3 px-2 min-h-[56px] flex items-center justify-center">
+                  <span className="kkm-glyph text-lg md:text-xl text-sumi-800 leading-none">{c}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <ChunkQuestion key={idx} chunk={item} onDone={answer2}/>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ちからだめしの のびを 折れ線で 見せる（まえの じぶんとの くらべ） */
+function MimHistoryChart({ log }) {
+  const data = (log || []).slice(-8);
+  if (data.length === 0) return null;
+  const w = 280, h = 84, pad = 10;
+  const max = Math.max(20, ...data.map(d => d.total));
+  const pts = data.map((d, i) => {
+    const x = data.length === 1 ? w / 2 : pad + (i * (w - pad * 2)) / (data.length - 1);
+    const y = h - pad - ((d.total / max) * (h - pad * 2));
+    return { x, y, d };
+  });
+  return (
+    <div className="kkm-sheet rounded-lg p-3">
+      <div className="text-xs font-semibold text-sumi-600 mb-1 text-left">ちからだめしの のび</div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="ちからだめしの てんすうの うつりかわり">
+        <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="#ded8cd" strokeWidth="1.5"/>
+        {pts.length > 1 && (
+          <polyline fill="none" stroke="var(--kkm-shu)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
+            points={pts.map(p => `${p.x},${p.y}`).join(' ')}/>
+        )}
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="4" fill="#fff" stroke="var(--kkm-shu)" strokeWidth="2.5"/>
+            <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="10" fill="#5c554c" fontWeight="600">{p.d.total}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
    18.5. マス（原稿用紙）で 見せる しくみ
 
    このアプリの あたらしい 主役。「おと」と「マス」の 関係を、
@@ -4411,17 +5073,12 @@ function KanaCell({ char, size = 56, state = 'plain', onClick, ariaLabel }) {
 }
 
 /* ことばを マスに ならべて 見せる。あな（blanks）は こたえる ところ。 */
-function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1, judged = null, showMora = false, onTapCell }) {
+function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1, judged = null, showMora = false, activeMora = -1, onTapCell }) {
   const cells = splitCells(word);
-  // 拍（おと）の くぎり：何マス目から 何マス目までが 1 つの おとか
-  const groups = useMemo(() => {
-    const g = []; let i = 0;
-    for (const m of splitMora(word)) { const len = splitCells(m).length; g.push([i, i + len - 1]); i += len; }
-    return g;
-  }, [word]);
+  const moraNum = splitMora(word).length;
   return (
     <div className="inline-flex flex-col items-center gap-1">
-      <div className="flex gap-1 md:gap-1.5 flex-wrap justify-center">
+      <div className="flex gap-1.5 flex-wrap justify-center">
         {cells.map((c, i) => {
           const isBlank = blanks.includes(i);
           const put = filled[i];
@@ -4436,17 +5093,12 @@ function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1
                     ariaLabel={isBlank ? `${i+1}ばんめ の あな` : `${i+1}ばんめ ${c}`}/>;
         })}
       </div>
-      {showMora && (
-        <div className="flex gap-1 md:gap-1.5" aria-hidden="true">
-          {groups.map(([a, b], gi) => (
-            <span key={gi} className="rounded-b-full border-b-2 border-x-2 border-shu-400 h-2"
-              style={{ width: (b - a + 1) * size + (b - a) * (size >= 48 ? 6 : 4) }}/>
-          ))}
-        </div>
-      )}
+      {/* MIM の 視覚化：おと（拍）を ● で 見せる。
+          小さい ○ は「音を出さない」ところ（つまる おと）。 */}
+      {showMora && <MimDots word={word} cellSize={size} gap={6} activeMora={activeMora} className="mt-0.5"/>}
       {showMora && (
         <div className="text-[11px] md:text-xs font-semibold text-shu-700 tabular-nums">
-          おと {groups.length} つ ・ マス {cells.length} つ
+          おと {moraNum} つ ・ マス {cells.length} つ
         </div>
       )}
     </div>
@@ -4466,7 +5118,7 @@ function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1
    ══════════════════════════════════════════════════════════════ */
 const COUNT_CHOICES = [1, 2, 3, 4, 5, 6];
 
-function QuestionCard({ q, onAnswer, voiceOn }) {
+function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
   const [filled, setFilled] = useState({});
   const [judged, setJudged] = useState(null);   // { correct, chosen }
   const answeredRef = useRef(false);
@@ -4560,8 +5212,18 @@ function QuestionCard({ q, onAnswer, voiceOn }) {
         {q.word && (
           <WordCells word={q.word} blanks={blanks} filled={filled}
             activeBlank={activeBlank === undefined ? -1 : activeBlank}
-            judged={judged} showMora={!!judged && q.kind === 'count'}
+            judged={judged}
+            /* MIM：2nd・3rd ステージでは ドットを つねに 出しておく。
+               1st ステージでは こたえあわせの ときだけ 出す。 */
+            showMora={!!support?.dots || (!!judged && q.kind === 'count')}
             size={splitCells(q.word).length > 5 ? 40 : 52}/>
+        )}
+        {/* MIM の 動作化：3rd ステージでは といた あとに かならず
+            リズムで もう いちど 体に 入れてから つぎへ すすむ。 */}
+        {support?.rhythm && judged && q.word && (
+          <div className="kkm-sheet rounded-lg p-2 md:p-3 kkm-pop-in">
+            <RhythmPlayer word={q.word} cellSize={38} autoPlay voiceOn={voiceOn} compact/>
+          </div>
         )}
       </div>
 
@@ -4634,7 +5296,7 @@ function QuestionCard({ q, onAnswer, voiceOn }) {
 /* もんだいを ならべて 出す「れんしゅう 1 セット」。
    おわると 花丸の せいせきが 出て、まちがえた ものは あしたの
    ふくしゅうに もどる（SRS）。 */
-function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFinish, onQuit }) {
+function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFinish, onQuit, support = null }) {
   const [idx, setIdx] = useState(0);
   const [okCount, setOkCount] = useState(0);
   const [done, setDone] = useState(false);
@@ -4647,11 +5309,14 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
     else setWrongs(w => [...w, questions[idx]]);
     onAnswered && onAnswered(questions[idx], correct);
     const last = idx + 1 >= questions.length;
+    // MIM の 3rd ステージでは、こたえあわせの あとに リズム（動作化）を
+    // 見せるので、つぎへ すすむまでを ゆっくりにする。
+    const wait = support?.rhythm ? (correct ? 4200 : 5200) : (correct ? 1100 : 2200);
     setTimeout(() => {
       if (last) { setDone(true); playFanfare(); burstConfetti(); }
       else setIdx(i => i + 1);
-    }, correct ? 1100 : 2200);
-  }, [idx, questions, onAnswered]);
+    }, wait);
+  }, [idx, questions, onAnswered, support]);
 
   useEffect(() => {
     if (!done) return;
@@ -4726,7 +5391,7 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
           <Hanamaru size={15}/>{okCount}
         </span>
       </div>
-      <QuestionCard q={q} onAnswer={handleAnswer} voiceOn={voiceOn}/>
+      <QuestionCard q={q} onAnswer={handleAnswer} voiceOn={voiceOn} support={support}/>
     </div>
   );
 }
@@ -4813,8 +5478,10 @@ function makeConfuseQuestion(char) {
 }
 
 /* ④ とくべつな おと：どっちが ただしい かきかた？ */
-function makeSpellingQuestion(unit, wordObj) {
-  const bads = (wordObj.bad || []).slice(0, 2);
+function makeSpellingQuestion(unit, wordObj, maxChoices = 3) {
+  // MIM の 2nd・3rd ステージでは えらぶ かずを へらして、
+  // 「ちがいは どこか」だけに 気もちを 向けられるようにする。
+  const bads = (wordObj.bad || []).slice(0, Math.max(1, maxChoices - 1));
   if (bads.length === 0) return null;
   return {
     uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'choice', choiceLayout: 'word',
@@ -4826,11 +5493,11 @@ function makeSpellingQuestion(unit, wordObj) {
   };
 }
 /* ⑤ とくべつな おと：マスに いれよう */
-function makeFillQuestion(unit, wordObj) {
+function makeFillQuestion(unit, wordObj, maxChoices = 4) {
   const idx = specialCellsOf(wordObj.w, unit.key).slice(0, 1);
   const cells = splitCells(wordObj.w);
   const correct = cells[idx[0]];
-  const choices = cellChoicesFor(correct, unit.key);
+  const choices = cellChoicesFor(correct, unit.key).slice(0, Math.max(2, maxChoices));
   return {
     uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'cells',
     lead: unit.title, ask: 'あいた マスに はいる もじは どれ？',
@@ -4863,32 +5530,47 @@ function makeJoshiQuestion(unit, sentObj) {
   };
 }
 
-/* ある ユニットの もんだいを n もん つくる（ふくしゅう ゆうせん） */
-function buildSpecialQuestions(unitKey, n, skill) {
+/* ある ユニットの もんだいを つくる（ふくしゅう ゆうせん）。
+
+   plan は MIM の ステージ（層）から きまる 指導の あつさ。
+     count      … 何もん 出すか
+     words      … 何この ことばを つかうか（少ないほど くりかえす）
+     maxChoices … えらぶ かず（少ないほど やさしい）
+   ステージが 上がる（＝手あつくする）ほど、あつかう ことばを しぼって
+   おなじ ものを くりかえす。これが MIM の 2nd・3rd ステージの 考えかた。 */
+function buildSpecialQuestions(unitKey, n, skill, plan) {
   const unit = SPECIAL_UNIT_MAP[unitKey];
   if (!unit) return [];
+  const p = plan || tierPlan(1);
+  const count = n || p.count;
   if (unit.sentences) {
     const sorted = shuffled(unit.sentences).sort((a, b) => {
       const da = srsIsDue(skill?.[srsIdSpecial(unit.key, a.s)]) ? 0 : 1;
       const db = srsIsDue(skill?.[srsIdSpecial(unit.key, b.s)]) ? 0 : 1;
       return da - db;
     });
-    return sorted.slice(0, n).map(s => makeJoshiQuestion(unit, s));
+    const pool = sorted.slice(0, Math.max(2, Math.min(sorted.length, p.words)));
+    const out = [];
+    for (let i = 0; out.length < count; i++) out.push(makeJoshiQuestion(unit, pool[i % pool.length]));
+    return out;
   }
   const sorted = shuffled(unit.words).sort((a, b) => {
     const da = srsIsDue(skill?.[srsIdSpecial(unit.key, a.w)]) ? 0 : 1;
     const db = srsIsDue(skill?.[srsIdSpecial(unit.key, b.w)]) ? 0 : 1;
     return da - db;
   });
-  const makers = [makeSpellingQuestion, makeFillQuestion, makeCountQuestion];
+  const pool = sorted.slice(0, Math.max(2, Math.min(sorted.length, p.words)));
+  const makers = [
+    (u, w) => makeSpellingQuestion(u, w, p.maxChoices),
+    (u, w) => makeFillQuestion(u, w, p.maxChoices + 1),
+    makeCountQuestion,
+  ];
   const out = [];
-  for (let i = 0; out.length < n && i < sorted.length * 3; i++) {
-    const w = sorted[i % sorted.length];
-    const mk = makers[i % makers.length];
-    const q = mk(unit, w);
+  for (let i = 0; out.length < count && i < pool.length * 4; i++) {
+    const q = makers[i % makers.length](unit, pool[i % pool.length]);
     if (q) out.push(q);
   }
-  return out.slice(0, n);
+  return out.slice(0, count);
 }
 
 /* よむ ちからの もんだいを n もん つくる。
@@ -5096,9 +5778,10 @@ function YouonTable() {
 }
 
 /* 「まなぶ」カード：この おとの きまりを ひとことで つたえる */
-function UnitLesson({ unit, onStart, onBack, onWrite }) {
+function UnitLesson({ unit, onStart, onBack, onWrite, voiceOn, tier = 1 }) {
   const t = TONES[unit.tone] || TONES.shu;
   const sample = unit.words[0] || (unit.sentences ? null : null);
+  const tierInfo = MIM_TIER_INFO[tier] || MIM_TIER_INFO[1];
   // この単元で 手で 書けるように しておきたい 小さい字
   const writeChars = unit.key === 'sokuon' ? ['っ'] : unit.key === 'youon' ? ['ゃ','ゅ','ょ'] : [];
   return (
@@ -5117,13 +5800,17 @@ function UnitLesson({ unit, onStart, onBack, onWrite }) {
           <div className="text-sm md:text-lg font-semibold text-sumi-800 leading-snug">{unit.rule}</div>
         </div>
 
+        {/* MIM の 中心：おとを ● で 見せて（視覚化）、
+            手の うごきで 体に 入れる（動作化）。 */}
         {sample && (
-          <div className="kkm-sheet rounded-lg p-3 flex flex-col items-center gap-2">
-            <div className="text-xs font-semibold text-sumi-500">マスと おとの かんけい</div>
-            <WordCells word={sample.w} showMora size={46}/>
+          <div className="kkm-sheet rounded-lg p-3 flex flex-col items-center gap-2.5">
+            <div className="text-xs font-semibold text-sumi-500">おとを ● で 見て、手で たしかめよう</div>
+            <RhythmPlayer word={sample.w} cellSize={46} voiceOn={voiceOn}/>
             <div className="text-[11px] md:text-xs font-medium text-sumi-600 text-center leading-snug">
-              マスは 1 もじに 1 つ。ちいさい じも かならず 1 マス つかうよ。
+              マスは 1 もじに 1 つ。ちいさい じも かならず 1 マス つかうよ。<br/>
+              小さい ○ の ところは、口を とじて 音を 出さない ところ。
             </div>
+            <RhythmLegend/>
           </div>
         )}
 
@@ -5156,18 +5843,26 @@ function UnitLesson({ unit, onStart, onBack, onWrite }) {
           </div>
         )}
 
+        {tier > 1 && (
+          <div className={`rounded-lg border p-2.5 text-[11px] font-medium leading-snug ${TONES[tierInfo.tone].chip}`}>
+            {tierInfo.desc}
+          </div>
+        )}
+
         <button onClick={onStart}
           className="kkm-btn kkm-ripple py-3.5 rounded-md bg-shu-600 text-white font-semibold text-base border border-shu-700 flex items-center justify-center gap-2 min-h-[52px]">
-          <IconPlay size={18}/> といて みる（6 もん）
+          <IconPlay size={18}/> といて みる（{tierPlan(tier).count} もん）
         </button>
       </div>
     </div>
   );
 }
 
-function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, onConsumeInitial, onGoWrite }) {
+function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, onConsumeInitial, onGoWrite, tier = 1 }) {
   const [openUnit, setOpenUnit] = useState(null);   // ユニットの key
   const [running, setRunning] = useState(null);
+  // MIM：ちからだめしの けっかから きまる「指導の あつさ」
+  const plan = useMemo(() => tierPlan(tier), [tier]);
 
   useEffect(() => {
     if (initialUnit) { setOpenUnit(initialUnit); onConsumeInitial && onConsumeInitial(); }
@@ -5175,7 +5870,7 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
   }, [initialUnit]);
 
   function startUnit(key) {
-    const qs = buildSpecialQuestions(key, 6, skill);
+    const qs = buildSpecialQuestions(key, plan.count, skill, plan);
     playPickup();
     setRunning({ key, questions: qs });
   }
@@ -5186,6 +5881,7 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
       <div className="flex-1 min-h-0 flex flex-col p-2 md:p-4 kkm-main-pad">
         <div className="kkm-sheet rounded-lg p-2 md:p-3 flex-1 min-h-0 flex flex-col">
           <QuizRunner title={unit.title} tone={unit.tone} questions={running.questions} voiceOn={voiceOn}
+            support={{ dots: plan.dots, rhythm: plan.rhythm }}
             onAnswered={(q, ok) => { answerSkill(q.id, ok); bumpMission('special'); }}
             onQuit={() => { setRunning(null); setOpenUnit(null); }}/>
         </div>
@@ -5197,7 +5893,8 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
     const unit = SPECIAL_UNIT_MAP[openUnit];
     return (
       <div className="flex-1 min-h-0 flex flex-col p-2 md:p-4 kkm-main-pad">
-        <UnitLesson unit={unit} onStart={() => startUnit(openUnit)} onBack={() => setOpenUnit(null)} onWrite={onGoWrite}/>
+        <UnitLesson unit={unit} onStart={() => startUnit(openUnit)} onBack={() => setOpenUnit(null)}
+          onWrite={onGoWrite} voiceOn={voiceOn} tier={tier}/>
       </div>
     );
   }
@@ -5298,7 +5995,7 @@ function StampCalendar({ log }) {
           if (!d) return <div key={i}/>;
           const rec = log[todayKey(new Date(year, month, d))];
           const stamped = rec?.done;
-          const touched = rec && !stamped && (rec.review || rec.write || rec.special);
+          const touched = rec && !stamped && (rec.review || rec.write || rec.special || rec.check);
           return (
             <div key={i} className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-semibold border ${
               stamped ? 'bg-shu-50 border-shu-300 text-shu-700'
@@ -5318,14 +6015,14 @@ function StampCalendar({ log }) {
 
    子どもの画面を じゃましないよう、たたんである。ここだけは 大人の
    ことばで、「いま どこで つまずいているか」を はっきり書く。 */
-function GuardianPanel({ progress, skill, log, words }) {
+function GuardianPanel({ progress, skill, log, words, mim, tier, onCheck }) {
   const info = useMemo(() => {
     // この 30 日で れんしゅうした 日数
     let days = 0;
     for (let i = 0; i < 30; i++) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const r = log[todayKey(d)];
-      if (r && (r.review || r.write || r.special || r.words)) days++;
+      if (r && (r.review || r.write || r.special || r.words || r.check)) days++;
     }
     // にがて（まちがえた ままの もの）を 単元ごとに かぞえる
     const byUnit = {};
@@ -5346,7 +6043,11 @@ function GuardianPanel({ progress, skill, log, words }) {
     ? `いま いちばん つまずいているのは「${SPECIAL_UNIT_MAP[info.worstUnit]?.title || info.worstUnit}」です。この単元を いっしょに 音読しながら もう一度どうぞ。`
     : info.weakChars.length > 0
       ? '形の にた文字（ぬ／め、シ／ツ など）で つまずいています。「よむ」の「にた もじ さがし」が ききます。'
-      : '大きな つまずきは ありません。1日 5分の 3つのめあてを つづけてください。';
+      : tier >= 3
+        ? 'ちからだめしの結果から、いまは手あつい支援が要る段階です。「とくべつ」の各単元を、リズム（動作化）をいっしょにやりながら少しずつ進めてください。'
+        : tier === 2
+          ? 'ちからだめしの結果から、少していねいに進める段階です。ドットを見せながら、同じことばをくり返し扱うのが有効です。'
+          : '大きな つまずきは ありません。1日 5分の 3つのめあてを つづけてください。';
 
   return (
     <details className="kkm-sheet rounded-lg overflow-hidden">
@@ -5354,6 +6055,26 @@ function GuardianPanel({ progress, skill, log, words }) {
         <IconSearch size={15}/> おうちの方・先生へ（学習のようす）
       </summary>
       <div className="px-3 pb-3 pt-1 flex flex-col gap-2 text-xs md:text-sm">
+        {/* 多層指導モデル MIM の考え方にならった「いまの指導の層」 */}
+        <div className={`rounded-md border p-2.5 ${TONES[(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).tone].stat}`}>
+          <div className="flex items-center justify-between gap-2">
+            <span className={`font-semibold ${TONES[(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).tone].statValue}`}>
+              いまの指導ステージ：{(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).name}
+            </span>
+            <button onClick={onCheck}
+              className="kkm-btn shrink-0 px-2 py-1 rounded border border-sumi-300 bg-white text-[11px] font-semibold text-sumi-600">
+              ちからだめしを する
+            </button>
+          </div>
+          <div className="text-[11px] font-medium text-sumi-600 mt-1 leading-relaxed">
+            {(MIM_TIER_INFO[tier] || MIM_TIER_INFO[1]).teacher}
+          </div>
+          <div className="text-[10px] font-medium text-sumi-400 mt-1 leading-relaxed">
+            ※ 多層指導モデル MIM の考え方（アセスメントと指導の連動）にならった、
+            このアプリ独自の目安です。MIM-PM の正式な標準得点ではありません。
+          </div>
+        </div>
+        {(mim?.log || []).length > 0 && <MimHistoryChart log={mim.log}/>}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
             { label:'この30日の学習日数', value:`${info.days}日`,        tone:'shu' },
@@ -5392,7 +6113,7 @@ function GuardianPanel({ progress, skill, log, words }) {
   );
 }
 
-function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, setKanaMode, onGo, words }) {
+function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, setKanaMode, onGo, words, mim, tier }) {
   const allDone = isDayComplete(todayRec);
   const nextChar = useMemo(() => {
     const order = learnOrderOf(kanaMode);
@@ -5430,6 +6151,24 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
           </div>
           {allDone && <span className="shrink-0 kkm-stamp text-shu-600"><Hanamaru size={40} draw/></span>}
         </div>
+
+        {/* MIM：ちからだめし（2 しゅうかんに 1 かい）。
+            のびを はかって、指導の あつさを 見なおす きっかけにする。 */}
+        {mimCheckDue(mim) && (
+          <button onClick={() => onGo('mim')}
+            className="kkm-btn kkm-ripple kkm-sheet rounded-lg p-3 flex items-center gap-3 text-left border-l-4 border-l-ai-600 kkm-pulse-ring">
+            <span className="shrink-0 w-12 h-12 rounded-md bg-ai-50 border border-ai-300 text-ai-700 flex items-center justify-center">
+              <IconClock size={24}/>
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[11px] font-semibold text-ai-700">2 ふんの ちからだめし</span>
+              <span className="block text-sm font-semibold text-sumi-800 mt-0.5">
+                {(mim?.log || []).length === 0 ? 'よみめいじんに ちょうせん してみよう' : 'まえより のびたか ためして みよう'}
+              </span>
+            </span>
+            <IconArrow size={18} className="shrink-0 text-sumi-400"/>
+          </button>
+        )}
 
         {/* きょうの めあて 3 つ */}
         <div>
@@ -5522,7 +6261,8 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
         </div>
 
         <StampCalendar log={log}/>
-        <GuardianPanel progress={progress} skill={skill} log={log} words={words}/>
+        <GuardianPanel progress={progress} skill={skill} log={log} words={words} mim={mim} tier={tier}
+          onCheck={() => onGo('mim')}/>
       </div>
     </div>
   );
@@ -5608,6 +6348,9 @@ function App() {
   // あたらしい学習モデルの 2 本柱：ふくしゅうの はこ（SRS）と きょうの きろく
   const { skill, answerSkill } = useSkill();
   const { log: dayLog, todayRec, bumpMission } = useDayLog();
+  // MIM：ちからだめしの きろくと、そこから きまる 指導の ステージ（層）
+  const [mim, setMim] = useLocalStorage(KEY_MIM, { log: [] });
+  const tier = useMemo(() => currentTier(mim, skill), [mim, skill]);
   // ホームから「この もじを かこう」と とんでくるときの うけわたし
   const [requestedChar, setRequestedChar] = useState(null);
   const [requestedUnit, setRequestedUnit] = useState(null);
@@ -5812,7 +6555,12 @@ function App() {
           <HomeView progress={progress} mastered={mastered} skill={skill}
             todayRec={todayRec} log={dayLog} streak={streak}
             kanaMode={kanaMode} setKanaMode={setKanaMode}
-            words={words} onGo={goTo}/>
+            words={words} onGo={goTo} mim={mim} tier={tier}/>
+        )}
+        {view === 'mim' && (
+          <MimCheckView mim={mim} setMim={setMim} voiceOn={voiceOn}
+            onChecked={() => bumpMission('check')}
+            onClose={() => setView('home')}/>
         )}
         {view === 'write' && (
           <MainBoard kanaMode={kanaMode} setKanaMode={setKanaMode}
@@ -5836,7 +6584,7 @@ function App() {
           <SpecialView skill={skill} answerSkill={answerSkill}
             bumpMission={bumpMission} voiceOn={voiceOn}
             initialUnit={requestedUnit} onConsumeInitial={() => setRequestedUnit(null)}
-            onGoWrite={(c) => goTo('write', c)}/>
+            onGoWrite={(c) => goTo('write', c)} tier={tier}/>
         )}
         {view === 'words' && (
           <CollectionView kanaMode={kanaMode} setKanaMode={setKanaMode}
