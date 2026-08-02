@@ -2334,6 +2334,36 @@ function weakLabelOf(id) {
   return a;                                                           // よむ・にたもの・はんたい
 }
 
+/* ══════════════════════════════════════════════════════════════
+   4.6. 学習ログ（study.v1）への 橋わたし
+
+   おなじサイト（gigayama.github.io）の 学習アプリは、学習のたびに
+   共通形式のログを 端末（localStorage の `study.records.v1`）に ためる。
+   先生は「まなびクエスト」から それを まとめて 見る。
+   仕様書：学習ログ共通スキーマ `study.v1` §3.10
+
+   ここは **知らせるだけ** の うすい層で、なにを 1 レコードにするかは
+   studySession.js が きめる。保存は studyLog.js が うけもつ。
+
+   ・アプリは **保存だけ**。外部への送信は 一切 行わない（§0-1）
+   ・氏名・出席番号などは **持たない**。だれの記録かは 送信ページが つける（§0-2）
+   ・モジュールが 読みこめていなくても アプリは そのまま うごく（§5.1.1）
+   ══════════════════════════════════════════════════════════════ */
+const KANA_STUDY = (typeof globalThis !== 'undefined' && globalThis.KanaStudy) || null;
+const STUDY = KANA_STUDY ? KANA_STUDY.getRecorder() : null;
+
+/* ふくしゅうの はこ（SRS）の いまの ようすを ext に そえる。
+   `weakIds` は `s:sokuon:きって` のように **単元と語が ID に 入っている** ので、
+   学級で 集計すると「促音の『きって』を 12 人が 落とした」が 直接 見える（§3.10.5）。 */
+function studySkillExt(skill) {
+  let learned = 0, due = 0;
+  for (const id in (skill || {})) {
+    if (srsIsLearned(skill[id])) learned++;
+    if (srsIsDue(skill[id])) due++;
+  }
+  return { srsLearned: learned, srsDue: due, weakIds: weakItems(skill, '').slice(0, 40) };
+}
+
 /* 配列を まぜる（出題の じゅんばんを 毎回かえる） */
 function shuffled(arr) {
   const a = arr.slice();
@@ -3071,7 +3101,7 @@ function stageMascotMessage(char, stage, so) {
   return '花丸！ もう いちど かいてみる？';
 }
 
-function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, practiceCount, voiceOn, onGoToWords, fetchError, onRetryFetch }) {
+function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, onWriteAttempt, practiceCount, voiceOn, onGoToWords, fetchError, onRetryFetch }) {
   const writeRef = useRef(null);
   const inkRef   = useRef(null);
   const guideRef = useRef(null);
@@ -3108,6 +3138,20 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
   function clearResetTimer() {
     if (resetTimerRef.current) { clearTimeout(resetTimerRef.current); resetTimerRef.current = 0; }
   }
+  /* 学習ログ：1 かい ぶん（1 文字を 書きおえる／採点する）の 記録に つかう。
+     ・roundStartRef … その 1 かいを 書きはじめた 時刻（`item.ms`）
+     ・roundMissRef  … その 1 かいの 中で まちがえた かず（`item.tries`）
+     ・roundHintRef  … かきじゅんアニメ を 見たか（`item.hint`）
+     どれも 画面には ださない。1 かいが おわるたび 0 に もどす。 */
+  const roundStartRef = useRef(Date.now());
+  const roundMissRef  = useRef(0);
+  const roundHintRef  = useRef(false);
+  function resetRoundLog() {
+    roundStartRef.current = Date.now();
+    roundMissRef.current = 0;
+    roundHintRef.current = false;
+  }
+
   // まちがえたときに マスを ゆらす（アニメーションが終わったら class を外す）
   const [shaking, setShaking] = useState(false);
   const shakeTimerRef = useRef(0);
@@ -3139,6 +3183,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     }
     setMascotMsg(char ? stageMascotMessage(char, initialStage, stageObj) : '');
     setMascotMood(initialStage >= 4 ? 'wow' : 'cheer');
+    resetRoundLog();
     clearAll();
     if (char) requestAnimationFrame(() => { resize(); redrawGuide(); });
     if (char && voiceOn) setTimeout(() => speakText(char, voiceOn), 200);
@@ -3472,6 +3517,20 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
         // これまで true にする箇所が無く、演出がまったく出ていなかった。
         setIsCleared(true);
         onRoundComplete(ch, !hm);
+        /* 学習ログ：なぞり書きの 1 かい（§3.10.2）。
+           お手本を なぞって 書けたので `ok: true`、けれど **お手本という
+           こたえが 出ている** ので `hint: true` かつ `firstTry: false` にする。
+           なぞりを 初回正答に 数えると、なぞりを くりかえす 児童ほど
+           正答率が 高く 見える 逆転が 起きる。
+           このレコードは `ext.guided: true` が つくので、受信側でも
+           正答率の 集計から 外れる（§9.3.1）。 */
+        onWriteAttempt && onWriteAttempt(ch, {
+          guided: true, stage: st,
+          ok: true, firstTry: false, hint: true,
+          tries: roundMissRef.current + 1,
+          ms: Date.now() - roundStartRef.current,
+        });
+        resetRoundLog();
         clearResetTimer();
         resetTimerRef.current = setTimeout(() => {
           resetTimerRef.current = 0;
@@ -3497,6 +3556,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     playBuzzer();
     hapticErr();
     setHasMistaken(true);
+    roundMissRef.current += 1;
     // まちがえたことが 目でもわかるように、マスを ひとゆすりする
     setShaking(true);
     clearShakeTimer();
@@ -3519,10 +3579,14 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       }
     });
   }
+  // かきじゅんアニメ＝**こたえそのもの**。見た 1 かいは 初回正答に 数えない（§2.10）
+  useEffect(() => { if (showAnime) roundHintRef.current = true; }, [showAnime]);
+
   function restart() {
     clearResetTimer();
     setCurrentStroke(0); setIsCleared(false);
     setMistakes(0); setHasMistaken(false);
+    resetRoundLog();
     clearAll(); redrawGuide();
     setMascotMsg('もう いっかい がんばろう！'); setMascotMood('cheer');
   }
@@ -3544,6 +3608,16 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       if (voiceOn) setTimeout(() => speakText('かくすうが ちがいます。もういちど かきじゅんから みてみよう', voiceOn), 150);
       onMistakeStreakReset && onMistakeStreakReset(ch);
       onStrokeCountMismatch && onStrokeCountMismatch(ch);
+      /* 学習ログ：画数が ちがう＝この 1 かいは 書けていない。
+         採点まで たどりつかないので `onRoundComplete` は 呼ばれないが、
+         ここで 落とすと「書こうとして できなかった」が まるごと 消える。 */
+      onWriteAttempt && onWriteAttempt(ch, {
+        guided: false, stage: st,
+        ok: false, firstTry: false, hint: roundHintRef.current,
+        tries: roundMissRef.current + 1,
+        ms: Date.now() - roundStartRef.current,
+      });
+      resetRoundLog();
       // ステージダウン effect でキャンバス・ストローク履歴がクリアされる
       return;
     }
@@ -3554,6 +3628,20 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     else { playPingPong(); hapticOk(); }
     if (voiceOn) setTimeout(() => speakText(`${result.total}てん`, voiceOn), 150);
     onRoundComplete(ch, result.passed);
+    /* 学習ログ：自力書きの 1 かい（§3.10.2）。
+       **初回正答は 自力書きだけ から 数える。** ここでの 初回正答は
+       「かきじゅんアニメ（＝こたえ）を 見ず、やり直しも せずに 合格した」こと。
+       ヒントを 見て 合格した 回を 初回正答に すると、支援を 多く うけた
+       児童ほど 成績が よく 見える 逆転が 起きる（§2.10）。 */
+    onWriteAttempt && onWriteAttempt(ch, {
+      guided: false, stage: st,
+      ok: result.passed,
+      firstTry: result.passed && roundMissRef.current === 0 && !roundHintRef.current,
+      hint: roundHintRef.current,
+      tries: roundMissRef.current + 1,
+      ms: Date.now() - roundStartRef.current,
+    });
+    resetRoundLog();
   }
   function closeScorePopup() {
     clearResetTimer();
@@ -4906,7 +4994,7 @@ function InstallGuideModal({ platform, onClose }) {
 /* ──────────────────────────────────────────────────────────────
    21. <MainBoard>
    ────────────────────────────────────────────────────────────── */
-function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mastered, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, practiceCount, voiceOn, onGoToWords, requestedChar, onConsumeRequested }) {
+function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mastered, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, onWriteAttempt, practiceCount, voiceOn, onGoToWords, requestedChar, onConsumeRequested }) {
   const [currentChar, setCurrentChar] = useState(null);
   const [paths, setPaths] = useState(null);
   const [fetchError, setFetchError] = useState(false);
@@ -4915,9 +5003,21 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
   // 並行に複数のフェッチを起動した場合、最後に選んだ文字の結果だけ反映するため
   // 連番で識別する
   const fetchSeqRef = useRef(0);
+  // selectChar は毎回作りなおしたくない（effect の依存に入っている）ので、
+  // いまの progress は ref ごしに読む
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
 
   const selectChar = useCallback(async (c, mode='free') => {
     const seq = ++fetchSeqRef.current;
+    /* 学習ログ：**かくは 文字ごとに 1 レコード**（§3.10.5）。
+       文字を えらんだ ときに はじめると、かきじゅんアニメを 見ている 時間も
+       その 文字に 取りくんだ 時間として のこる。前の 文字の レコードは
+       ここで しめられる（beginWrite の 中で 前のを 終わらせている）。 */
+    if (STUDY && c) {
+      const st = getStage(progressRef.current, c);
+      STUDY.beginWrite(c, st, st < 2, scriptOf(c));
+    }
     setPlayMode(mode); setCurrentChar(c); setPaths(null); setFetchError(false);
     const p = await fetchKanjiVG(c);
     if (seq !== fetchSeqRef.current) return; // 古い結果は捨てる
@@ -5027,6 +5127,7 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
       onRoundComplete={onRoundComplete}
       onMistakeStreakReset={onMistakeStreakReset}
       onStrokeCountMismatch={onStrokeCountMismatch}
+      onWriteAttempt={onWriteAttempt}
       practiceCount={practiceCount} voiceOn={voiceOn}
       onGoToWords={onGoToWords}
       fetchError={fetchError} onRetryFetch={retryFetch}/>
@@ -5336,7 +5437,7 @@ function ChunkQuestion({ chunk, onDone }) {
   );
 }
 
-function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked }) {
+function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked, tier = 1 }) {
   const [phase, setPhase] = useState('intro');   // intro / test1 / rest / test2 / result
   const [left, setLeft] = useState(MIM_TEST_SECONDS);
   const [idx, setIdx] = useState(0);
@@ -5380,13 +5481,49 @@ function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked }) {
     // eslint-disable-next-line
   }, [phase]);
 
+  /* ── 学習ログ（§3.10.4）──
+     ちからだめしは 1 ぷん×2 の みじかい 課題。**2 つの課題は べつの もの**なので、
+     `ext.testType`（spelling / segmentation）で 分けて 1 かいずつ レコードに する。
+     この 点数を 他アプリの 正答率と ならべては ならない（制限時間つきの 流暢性課題で
+     性質が ちがう）。受信側は `mode: "mimcheck"` を 正答率の 集計から 外している。
+     時間切れが この課題の「おわり」なので、完走＝時間いっぱい やりきったとき。 */
+  const askedRef = useRef(Date.now());
+  const scoreRef = useRef(0);
+  useEffect(() => {
+    if (!STUDY || !KANA_STUDY) return;
+    if (phase === 'test1' || phase === 'test2') {
+      scoreRef.current = 0;
+      askedRef.current = Date.now();
+      STUDY.begin({ ...KANA_STUDY.mimUnit(),
+        ext: { tier, testType: phase === 'test1' ? 'spelling' : 'segmentation', score: 0 } });
+    } else if (phase === 'rest' || phase === 'result') {
+      STUDY.markCompleted();
+      STUDY.end('completed');
+    }
+    // eslint-disable-next-line
+  }, [phase]);
+
+  function noteMimAnswer(qText, ok, chosen) {
+    if (!STUDY || !KANA_STUDY) return;
+    scoreRef.current += ok ? 1 : 0;
+    const ms = Date.now() - askedRef.current;
+    askedRef.current = Date.now();
+    STUDY.item({ q: KANA_STUDY.questionId(qText), ok, firstTry: ok, tries: 1, ms,
+      wrong: ok ? undefined : chosen });
+    STUDY.patchExt({ score: scoreRef.current });
+  }
+
   function answer1(choice, item) {
     const ok = choice === item.w;
+    noteMimAnswer(item.w, ok, choice);
     if (ok) { setT1(v => v + 1); playPingPong(); } else { playBuzzer(); }
     setFlash(ok ? 'ok' : 'ng');
     setTimeout(() => { setFlash(null); setIdx(i => i + 1); }, 260);
   }
   function answer2(ok) {
+    // 3 つの ことばを つないだ 文字れつ は 20 文字を こえうるので、
+    // 設問 ID は きまった ハッシュ（djb2）で みじかくする（§2.10）
+    noteMimAnswer(items2[idx % items2.length].join(''), ok, null);
     if (ok) { setT2(v => v + 1); playPingPong(); } else { playBuzzer(); }
     setFlash(ok ? 'ok' : 'ng');
     setTimeout(() => { setFlash(null); setIdx(i => i + 1); }, 320);
@@ -5671,7 +5808,9 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
     if (correct) { playPingPong(); hapticOk(); }
     else { playBuzzer(); hapticErr(); }
     if (voiceOn && q.answerSay) setTimeout(() => speakText(q.answerSay, voiceOn), 350);
-    onAnswer(correct);
+    // えらんだ ものも いっしょに わたす。まちがえた ときの 中身は
+    // 学習ログの `item.wrong` になり、先生が つまずきの 中身を たどれる（§2.10）
+    onAnswer(correct, chosen);
   }
 
   function tapChoice(v) {
@@ -5831,11 +5970,15 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
   const [wrongs, setWrongs] = useState([]);
   const t = TONES[tone] || TONES.shu;
   const q = questions[idx];
+  // この もんだいを 出した 時刻。学習ログの `item.ms`（設問ごとの 解答時間）に つかう。
+  // 「正解だが 20 びょう かかった＝まだ 定着していない」を つかまえる ための 値。
+  const askedAtRef = useRef(Date.now());
+  useEffect(() => { askedAtRef.current = Date.now(); }, [idx]);
 
-  const handleAnswer = useCallback((correct) => {
+  const handleAnswer = useCallback((correct, chosen) => {
     if (correct) setOkCount(c => c + 1);
     else setWrongs(w => [...w, questions[idx]]);
-    onAnswered && onAnswered(questions[idx], correct);
+    onAnswered && onAnswered(questions[idx], correct, Date.now() - askedAtRef.current, chosen);
     const last = idx + 1 >= questions.length;
     // MIM の 3rd ステージでは、こたえあわせの あとに リズム（動作化）を
     // 見せるので、つぎへ すすむまでを ゆっくりにする。
@@ -6283,6 +6426,14 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
       qs = words.map(makeOppositeQuestion).filter(Boolean).slice(0, 8);
     }
     if (course.key === 'mix')     qs = buildReviewQuestions(8, progress, skill, kanaMode);
+    // 学習ログ：この コース 1 かいぶんが 1 レコード（§3.10.5）。
+    // 「よむ」と「ことば」は たがいに 代わりが 利かない ちからなので、
+    // `mode` を 分けて 出す（合算した 正答率を 主指標に しない・§3.7.1）。
+    const meta = KANA_STUDY && KANA_STUDY.soundUnitOf(course.key);
+    if (STUDY && meta) {
+      STUDY.begin({ ...meta, count: qs.length,
+        ext: { ability: meta.mode, kanaMode, ...studySkillExt(skill) } });
+    }
     playPickup();
     setRunning({ ...course, questions: qs });
   }
@@ -6292,9 +6443,15 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
       <div className="flex-1 min-h-0 flex flex-col p-2 md:p-4 kkm-main-pad">
         <div className="kkm-sheet rounded-lg p-2 md:p-3 flex-1 min-h-0 flex flex-col">
           <QuizRunner title={running.title} tone={running.tone} questions={running.questions} voiceOn={voiceOn}
-            onAnswered={(q, ok) => { answerSkill(q.id, ok); bumpMission('review'); }}
-            onFinish={() => {}}
-            onQuit={() => setRunning(null)}/>
+            onAnswered={(q, ok, ms, chosen) => {
+              answerSkill(q.id, ok); bumpMission('review');
+              // 1 もんは 1 かいしか こたえられないので、初回正答＝正答（§2.7）。
+              // `q.id` は SRS の ID（`r:あ` / `g:animal` など）で、単元と同じく 不変。
+              STUDY && STUDY.item({ q: q.id, ok, firstTry: ok, tries: 1, ms,
+                wrong: ok ? undefined : chosen });
+            }}
+            onFinish={() => { if (STUDY) { STUDY.markCompleted(); STUDY.end('completed'); } }}
+            onQuit={() => { STUDY && STUDY.end('aborted'); setRunning(null); }}/>
         </div>
       </div>
     );
@@ -6489,6 +6646,15 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
 
   function startUnit(key) {
     const qs = buildSpecialQuestions(key, plan.count, skill, plan);
+    // 学習ログ：ユニット 1 かいぶんが 1 レコード。
+    // **`ext.tier` を かならず 記録する**（§3.10.3）。えらぶ かずが 3→2 に へれば
+    // あてずっぽうの 正答率が 33%→50% に 上がるため、tier を 見ずに 正答率を
+    // ならべると **手あつい 指導を うけている 児童ほど 成績が よく 見える** 逆転が 起きる。
+    const meta = KANA_STUDY && KANA_STUDY.specialUnitOf(key);
+    if (STUDY && meta) {
+      STUDY.begin({ ...meta, count: qs.length,
+        ext: { ability: 'special', unitKey: key, tier, ...studySkillExt(skill) } });
+    }
     playPickup();
     setRunning({ key, questions: qs });
   }
@@ -6500,8 +6666,13 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
         <div className="kkm-sheet rounded-lg p-2 md:p-3 flex-1 min-h-0 flex flex-col">
           <QuizRunner title={unit.title} tone={unit.tone} questions={running.questions} voiceOn={voiceOn}
             support={{ dots: plan.dots, rhythm: plan.rhythm }}
-            onAnswered={(q, ok) => { answerSkill(q.id, ok); bumpMission('special'); }}
-            onQuit={() => { setRunning(null); setOpenUnit(null); }}/>
+            onAnswered={(q, ok, ms, chosen) => {
+              answerSkill(q.id, ok); bumpMission('special');
+              STUDY && STUDY.item({ q: q.id, ok, firstTry: ok, tries: 1, ms,
+                wrong: ok ? undefined : chosen });
+            }}
+            onFinish={() => { if (STUDY) { STUDY.markCompleted(); STUDY.end('completed'); } }}
+            onQuit={() => { STUDY && STUDY.end('aborted'); setRunning(null); setOpenUnit(null); }}/>
         </div>
       </div>
     );
@@ -7096,6 +7267,28 @@ function App() {
     });
   }, []);
 
+  /* 学習ログ：かくの 1 かい ぶんを レコードに ためる（§3.10.2）。
+     なぞり書き（`guided: true`）と 自力書き（`guided: false`）は **混ぜない**。
+     切りかわった 時点で レコードが 分かれる（studySession.js の writeAttempt）。 */
+  const onWriteAttempt = useCallback((char, attempt) => {
+    if (STUDY) STUDY.writeAttempt(char, attempt, scriptOf(char));
+  }, []);
+
+  /* かくモードの 段階（4 段階）を、いま 記録中の レコードに 反映する。
+     レコードの 中で 段階が 上がると `ext.stageUp: true` が 立ち、
+     先生は「今週 かんぺきに なった 字」を 数えられる（§3.10.2）。 */
+  useEffect(() => {
+    if (!STUDY) return;
+    const uid = STUDY.currentUnitId();
+    if (!uid || uid.indexOf('kana-') !== 0) return;
+    STUDY.noteStage(getStage(progress, uid.slice(5)));
+  }, [progress]);
+
+  /* 画面を はなれたら、記録中の レコードを その場で しめる（§3.10.5）。
+     タブごと 消えた ときは studySession.js の `pagehide` が 受けもつ。
+     1 年生は タブを 閉じる 操作が 多いので、両方 いる。 */
+  useEffect(() => () => { if (STUDY) STUDY.end('aborted'); }, [view]);
+
   // 画数が一致しなかったとき：採点せず、かきじゅんアニメ→なぞり書きのサイクルへ戻す
   const onStrokeCountMismatch = useCallback((char) => {
     if (!char) return;
@@ -7147,12 +7340,19 @@ function App() {
   // localStorage.clear() は gigayama.github.io というサイト全体の保存を消すので、
   // 同じサイトに置いた他のアプリ（けいさんカードなど）の学習記録まで
   // 巻きぞえで消えてしまう。必ず kkm 接頭辞の付いたキーだけを削除すること。
+  //
+  // **`study.records.v1` は ぜったいに 消さない**（仕様書 §1.2）。
+  // これは 9 つの アプリで 共有している 学習ログで、このアプリ専用の キーでは ない。
+  // 先生へ 送るまえに 消すと、児童が 学習した きろくが 誰にも 気づかれないまま
+  // 永久に 失われる。接頭辞で しぼっている ので いまも 対象外だが、
+  // 将来の 書きかえで 巻きぞえに ならないよう、名指しでも 外しておく。
   const resetAll = () => {
     try {
+      const keep = (KANA_STUDY && globalThis.StudyLog && globalThis.StudyLog.STUDY_LOG_KEY) || 'study.records.v1';
       const mine = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith(STORAGE_PREFIX)) mine.push(k);
+        if (k && k !== keep && k.startsWith(STORAGE_PREFIX)) mine.push(k);
       }
       mine.forEach((k) => localStorage.removeItem(k));
     } catch (e) { /* 消せなくても再読み込みはする */ }
@@ -7179,7 +7379,7 @@ function App() {
             words={words} onGo={goTo} mim={mim} tier={tier}/>
         )}
         {view === 'mim' && (
-          <MimCheckView mim={mim} setMim={setMim} voiceOn={voiceOn}
+          <MimCheckView mim={mim} setMim={setMim} voiceOn={voiceOn} tier={tier}
             onChecked={() => bumpMission('check')}
             onClose={() => setView('home')}/>
         )}
@@ -7191,6 +7391,7 @@ function App() {
             onRoundComplete={onRoundComplete}
             onMistakeStreakReset={onMistakeStreakReset}
             onStrokeCountMismatch={onStrokeCountMismatch}
+            onWriteAttempt={onWriteAttempt}
             practiceCount={practiceCount} voiceOn={voiceOn}
             requestedChar={requestedChar}
             onConsumeRequested={() => setRequestedChar(null)}

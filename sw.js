@@ -8,7 +8,7 @@
    ============================================================== */
 
 // App.jsx などを更新したら必ず数字を上げること（古いキャッシュを破棄するため）
-const VERSION = 'v11';
+const VERSION = 'v12';
 
 // このアプリ専用の目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io というサイト全体で
@@ -24,6 +24,8 @@ const SHELL_ASSETS = [
   './',
   './index.html',
   './App.jsx',
+  './studyLog.js',
+  './studySession.js',
   './manifest.webmanifest',
   './favicon.png',
   './icon-192.png',
