@@ -5,9 +5,9 @@
 
    ＜たのしさUPの追加機能＞
    - 音声よみあげ（タップで読んでくれる）
-   - マスコット「ひよこさん」のおうえん
-   - 連続学習日数のストリーク 🔥
-   - レベル（しょうごう）と バッジ図鑑 🎖
+   - マスコット「ことりせんせい」のおうえん
+   - 連続学習日数のストリーク
+   - レベル（しょうごう）と ごほうびの はんこ図鑑
    - きょうの もじ（デイリーチャレンジ）
 
    先生がカスタマイズしたい場合は、下の "// ★カスタマイズポイント"
@@ -74,11 +74,13 @@ const HIRA_ALL_LIST = [...HIRA_LIST, ...HIRA_DAKUON_LIST, ...HIRA_HANDAKUON_LIST
 const KATA_ALL_LIST = [...KATA_LIST, ...KATA_DAKUON_LIST, ...KATA_HANDAKUON_LIST, ...KATA_YOUON_LIST];
 
 // 文字のしゅるい（清音／濁音／半濁音／拗音・促音）
+// short: せまい画面むけの みじかい見出し／label: ひろい画面むけの ただしい名まえ
 const KANA_KINDS = [
-  { key: 'seion',     label: 'せいおん',  short: 'せいおん',  icon: '🌸' },
-  { key: 'dakuon',    label: 'だくおん',  short: '゛',        icon: '🌟' },
-  { key: 'handakuon', label: 'はんだくおん', short: '゜',     icon: '⭐' },
-  { key: 'youon',     label: 'ようおん・そくおん', short: 'ゃゅょっ', icon: '✨' },
+  // label: ゆとりのあるとき／mid: せまい枠のとき／short: スマホのとき
+  { key: 'seion',     label: 'せいおん',          mid: 'せいおん',   short: 'せい' },
+  { key: 'dakuon',    label: 'だくおん',          mid: 'だくおん',   short: 'だく' },
+  { key: 'handakuon', label: 'はんだくおん',      mid: 'はんだくおん', short: 'はん' },
+  { key: 'youon',     label: 'ようおん・そくおん', mid: 'ようおん',   short: 'よう' },
 ];
 function getKanaTable(kanaMode, kanaKind) {
   if (kanaMode === 'katakana') {
@@ -102,114 +104,165 @@ function getKindOfChar(c) {
   return 'seion';
 }
 
+/* ──────────────────────────────────────────────────────────────
+   ことばの さしえ（ピクトグラム）
+
+   絵文字は使わず、線だけで描いた かんたんな アイコン（PICTS）で表す。
+   端末やフォントによって見た目が変わらず、教科書のさしえのように
+   おちついたトーンでそろう。
+
+   ことばのデータは絵文字ではなく「p: 'dog'」のように PICTS のキーを持つ。
+   ★カスタマイズポイント: さしえを増やしたいときは PICTS にキーを足して、
+   ここの p: に書くだけでよい。
+   ────────────────────────────────────────────────────────────── */
+
 // ★カスタマイズポイント: 「ことばあつめ」のヒント
 const WORD_HINTS_HIRA = [
-  { w:'あめ', e:'🍬' }, { w:'いぬ', e:'🐶' }, { w:'うみ', e:'🌊' }, { w:'えき', e:'🚉' },
-  { w:'おに', e:'👹' }, { w:'かに', e:'🦀' }, { w:'きく', e:'🌼' }, { w:'くも', e:'☁️' },
-  { w:'こま', e:'🪀' }, { w:'さくら', e:'🌸' }, { w:'すいか', e:'🍉' }, { w:'そら', e:'🌌' },
-  { w:'たこ', e:'🐙' }, { w:'つき', e:'🌙' }, { w:'にじ', e:'🌈' }, { w:'はな', e:'🌺' },
-  { w:'ふね', e:'🚢' }, { w:'ほし', e:'⭐' }, { w:'みず', e:'💧' }, { w:'もも', e:'🍑' },
-  { w:'やま', e:'⛰️' }, { w:'ゆき', e:'❄️' }, { w:'りんご', e:'🍎' }, { w:'れもん', e:'🍋' },
+  { w:'あめ', p:'sweet' }, { w:'いぬ', p:'dog' }, { w:'うみ', p:'water' }, { w:'えき', p:'train' },
+  { w:'おに', p:'person' }, { w:'かに', p:'octopus' }, { w:'きく', p:'flower' }, { w:'くも', p:'cloud' },
+  { w:'こま', p:'tool' }, { w:'さくら', p:'flower' }, { w:'すいか', p:'fruit' }, { w:'そら', p:'cloud' },
+  { w:'たこ', p:'octopus' }, { w:'つき', p:'moon' }, { w:'にじ', p:'rainbow' }, { w:'はな', p:'flower' },
+  { w:'ふね', p:'ship' }, { w:'ほし', p:'star' }, { w:'みず', p:'water' }, { w:'もも', p:'fruit' },
+  { w:'やま', p:'mountain' }, { w:'ゆき', p:'snow' }, { w:'りんご', p:'fruit' }, { w:'れもん', p:'fruit' },
   // 濁音
-  { w:'ぞう', e:'🐘' }, { w:'でんわ', e:'☎️' }, { w:'ぶどう', e:'🍇' }, { w:'かばん', e:'🎒' },
-  { w:'だんご', e:'🍡' }, { w:'べんとう', e:'🍱' },
+  { w:'ぞう', p:'animal' }, { w:'でんわ', p:'tool' }, { w:'ぶどう', p:'fruit' }, { w:'かばん', p:'bag' },
+  { w:'だんご', p:'sweet' }, { w:'べんとう', p:'rice' },
   // 半濁音
-  { w:'ぱんだ', e:'🐼' }, { w:'えんぴつ', e:'✏️' }, { w:'ぷりん', e:'🍮' }, { w:'たんぽぽ', e:'🌼' },
+  { w:'ぱんだ', p:'animal' }, { w:'えんぴつ', p:'pencil' }, { w:'ぷりん', p:'sweet' }, { w:'たんぽぽ', p:'flower' },
   // 拗音・促音
-  { w:'ちょう', e:'🦋' }, { w:'きって', e:'📮' }, { w:'でんしゃ', e:'🚃' }, { w:'がっこう', e:'🏫' },
+  { w:'ちょう', p:'bug' }, { w:'きって', p:'tool' }, { w:'でんしゃ', p:'train' }, { w:'がっこう', p:'school' },
 ];
 const WORD_HINTS_KATA = [
-  { w:'アイス', e:'🍦' }, { w:'イルカ', e:'🐬' }, { w:'ウサギ', e:'🐰' }, { w:'エビ', e:'🦐' },
-  { w:'オムレツ', e:'🍳' }, { w:'カバ', e:'🦛' }, { w:'キリン', e:'🦒' }, { w:'クマ', e:'🐻' },
-  { w:'ケーキ', e:'🍰' }, { w:'コアラ', e:'🐨' }, { w:'サメ', e:'🦈' }, { w:'シマウマ', e:'🦓' },
-  { w:'スイカ', e:'🍉' }, { w:'タコ', e:'🐙' }, { w:'チーズ', e:'🧀' }, { w:'トマト', e:'🍅' },
-  { w:'ネコ', e:'🐱' }, { w:'ヘビ', e:'🐍' }, { w:'バナナ', e:'🍌' }, { w:'ライオン', e:'🦁' },
+  { w:'アイス', p:'sweet' }, { w:'イルカ', p:'fish' }, { w:'ウサギ', p:'rabbit' }, { w:'エビ', p:'octopus' },
+  { w:'オムレツ', p:'rice' }, { w:'カバ', p:'animal' }, { w:'キリン', p:'animal' }, { w:'クマ', p:'animal' },
+  { w:'ケーキ', p:'sweet' }, { w:'コアラ', p:'animal' }, { w:'サメ', p:'fish' }, { w:'シマウマ', p:'animal' },
+  { w:'スイカ', p:'fruit' }, { w:'タコ', p:'octopus' }, { w:'チーズ', p:'rice' }, { w:'トマト', p:'vegetable' },
+  { w:'ネコ', p:'cat' }, { w:'ヘビ', p:'animal' }, { w:'バナナ', p:'fruit' }, { w:'ライオン', p:'animal' },
   // 濁音
-  { w:'ゴリラ', e:'🦍' }, { w:'ダチョウ', e:'🐦' }, { w:'ブタ', e:'🐷' }, { w:'ゾウ', e:'🐘' },
+  { w:'ゴリラ', p:'animal' }, { w:'ダチョウ', p:'bird' }, { w:'ブタ', p:'animal' }, { w:'ゾウ', p:'animal' },
   // 半濁音
-  { w:'パンダ', e:'🐼' }, { w:'ピアノ', e:'🎹' }, { w:'プリン', e:'🍮' }, { w:'ペンギン', e:'🐧' },
+  { w:'パンダ', p:'animal' }, { w:'ピアノ', p:'music' }, { w:'プリン', p:'sweet' }, { w:'ペンギン', p:'bird' },
   // 拗音・促音
-  { w:'チョコ', e:'🍫' }, { w:'コップ', e:'🥤' }, { w:'ジャム', e:'🍓' },
+  { w:'チョコ', p:'sweet' }, { w:'コップ', p:'drink' }, { w:'ジャム', p:'fruit' },
 ];
-const EMOJI_CHOICES = ['😀','🍎','🐶','🐱','🌸','⭐','🌈','🍰','🚗','⚽','🎈','💧','🌙','☀️','🦋','🐟','🍓','🍙','🚀','🎵'];
+
+// 「ことばを つくろう」でこどもが えらべる さしえ
+const PICT_CHOICES = [
+  'fruit','sweet','rice','drink','vegetable',
+  'dog','cat','rabbit','bird','fish',
+  'octopus','bug','animal','flower','tree',
+  'leaf','star','moon','sun','cloud',
+  'rain','snow','rainbow','mountain','water',
+  'car','train','ship','plane','house',
+  'school','book','pencil','ball','music',
+  'person','heart','bag','cloth','tool',
+];
+
+// 旧バージョン（絵文字で保存された ことば）を さしえに読みかえる表。
+// 保存ずみの学習記録をこわさないための移行用で、新しく増やす必要はない。
+const EMOJI_TO_PICT = {
+  '😀':'person','🍎':'fruit','🐶':'dog','🐱':'cat','🌸':'flower','⭐':'star','🌈':'rainbow',
+  '🍰':'sweet','🚗':'car','⚽':'ball','🎈':'ball','💧':'water','🌙':'moon','☀':'sun',
+  '🦋':'bug','🐟':'fish','🍓':'fruit','🍙':'rice','🚀':'plane','🎵':'music',
+  '🍬':'sweet','🌊':'water','🚉':'train','👹':'person','🦀':'octopus','🌼':'flower','☁':'cloud',
+  '🪀':'tool','🍉':'fruit','🌌':'cloud','🐙':'octopus','🌺':'flower','🚢':'ship','🍑':'fruit',
+  '⛰':'mountain','❄':'snow','🍋':'fruit','🐘':'animal','☎':'tool','🍇':'fruit','🎒':'bag',
+  '🍡':'sweet','🍱':'rice','🐼':'animal','✏':'pencil','🍮':'sweet','📮':'tool','🚃':'train',
+  '🏫':'school','🍦':'sweet','🐬':'fish','🐰':'rabbit','🦐':'octopus','🍳':'rice','🦛':'animal',
+  '🦒':'animal','🐻':'animal','🐨':'animal','🦈':'fish','🦓':'animal','🧀':'rice','🍅':'vegetable',
+  '🐍':'animal','🍌':'fruit','🦁':'animal','🦍':'animal','🐦':'bird','🐷':'animal','🎹':'music',
+  '🐧':'bird','🍫':'sweet','🥤':'drink','✨':'star',
+};
+// 保存ずみの ことばから さしえのキーを求める（旧データもここで吸収する）
+function pictOf(word) {
+  if (!word) return 'shape';
+  if (word.pict) return word.pict;
+  if (word.emoji) {
+    // 絵文字の異体字セレクタ（U+FE0F）は取りのぞいて照合する
+    const bare = String(word.emoji).replace(/️/g, '');
+    if (EMOJI_TO_PICT[bare]) return EMOJI_TO_PICT[bare];
+  }
+  return 'shape';
+}
 
 // コンピュータがしりとりで使う単語リスト（ひらがな）
 const SHIRITORI_CPU_WORDS = [
-  {w:'あり',e:'🐜'},{w:'あひる',e:'🦆'},{w:'あさ',e:'🌅'},{w:'あき',e:'🍂'},{w:'あかい',e:'❤️'},
-  {w:'いか',e:'🦑'},{w:'いちご',e:'🍓'},{w:'いえ',e:'🏠'},{w:'いし',e:'🪨'},{w:'いもうと',e:'👧'},
-  {w:'うし',e:'🐄'},{w:'うちわ',e:'🪭'},{w:'うさぎ',e:'🐰'},{w:'うた',e:'🎵'},{w:'うで',e:'💪'},
-  {w:'えき',e:'🚉'},{w:'えんぴつ',e:'✏️'},{w:'えほん',e:'📚'},{w:'えび',e:'🦐'},{w:'えいが',e:'🎬'},
-  {w:'おに',e:'👹'},{w:'おかし',e:'🍰'},{w:'おつき',e:'🌙'},{w:'おはな',e:'🌺'},{w:'おおかみ',e:'🐺'},
-  {w:'かに',e:'🦀'},{w:'かめ',e:'🐢'},{w:'かさ',e:'☂️'},{w:'かえる',e:'🐸'},{w:'かぜ',e:'💨'},{w:'かわ',e:'🏞️'},
-  {w:'きつね',e:'🦊'},{w:'きのこ',e:'🍄'},{w:'きりん',e:'🦒'},{w:'きく',e:'🌼'},{w:'きじ',e:'🐦'},
-  {w:'くじら',e:'🐋'},{w:'くり',e:'🌰'},{w:'くるま',e:'🚗'},{w:'くも',e:'☁️'},{w:'くさ',e:'🌿'},
-  {w:'けむり',e:'💨'},{w:'けいと',e:'🧶'},{w:'けが',e:'🩹'},{w:'けむし',e:'🐛'},
-  {w:'こうもり',e:'🦇'},{w:'こども',e:'👶'},{w:'こうえん',e:'🌳'},{w:'こおり',e:'🧊'},{w:'こま',e:'🪀'},{w:'こころ',e:'💗'},
-  {w:'さかな',e:'🐟'},{w:'さる',e:'🐒'},{w:'さんぽ',e:'🚶'},{w:'さくら',e:'🌸'},{w:'さとう',e:'🍬'},{w:'さむい',e:'🥶'},
-  {w:'しか',e:'🦌'},{w:'しろ',e:'🏰'},{w:'しお',e:'🧂'},{w:'したぎ',e:'👕'},{w:'しんかんせん',e:'🚄'},
-  {w:'すずめ',e:'🐦'},{w:'すみれ',e:'🌸'},{w:'すいか',e:'🍉'},{w:'すもう',e:'🤼'},{w:'すな',e:'🏖️'},{w:'すき',e:'❤️'},
-  {w:'せみ',e:'🦟'},{w:'せかい',e:'🌍'},{w:'せんせい',e:'👨‍🏫'},{w:'せっけん',e:'🧼'},{w:'せわ',e:'🫂'},
-  {w:'そら',e:'🌌'},{w:'そうじ',e:'🧹'},{w:'そと',e:'🌿'},{w:'そり',e:'🛷'},{w:'そば',e:'🍜'},
-  {w:'たこ',e:'🐙'},{w:'たぬき',e:'🦝'},{w:'たまご',e:'🥚'},{w:'たき',e:'💦'},{w:'たいよう',e:'☀️'},{w:'たか',e:'🦅'},
-  {w:'ちょう',e:'🦋'},{w:'ちきゅう',e:'🌍'},{w:'ちゃわん',e:'🍵'},{w:'ちから',e:'💪'},
-  {w:'つき',e:'🌙'},{w:'つる',e:'🦢'},{w:'つみき',e:'🧱'},{w:'つばさ',e:'🪶'},{w:'つち',e:'🌱'},{w:'つゆ',e:'💧'},
-  {w:'てんき',e:'⛅'},{w:'てがみ',e:'✉️'},{w:'てんとう',e:'🐞'},{w:'てつ',e:'⚙️'},{w:'てら',e:'⛩️'},
-  {w:'とり',e:'🐦'},{w:'とら',e:'🐯'},{w:'とまと',e:'🍅'},{w:'とうふ',e:'🫙'},{w:'とかげ',e:'🦎'},{w:'ともだち',e:'👫'},
-  {w:'なみ',e:'🌊'},{w:'なし',e:'🍐'},{w:'なつ',e:'☀️'},{w:'なまこ',e:'🦑'},{w:'なわ',e:'🪢'},
-  {w:'にじ',e:'🌈'},{w:'にわ',e:'🌿'},{w:'にんじん',e:'🥕'},{w:'にく',e:'🥩'},{w:'にわとり',e:'🐔'},{w:'にほん',e:'🎌'},
-  {w:'ぬの',e:'🧵'},{w:'ぬいぐるみ',e:'🧸'},{w:'ぬりえ',e:'🖍️'},
-  {w:'ねこ',e:'🐱'},{w:'ねずみ',e:'🐭'},{w:'ねんど',e:'🎨'},{w:'ねむい',e:'😴'},
-  {w:'のり',e:'🌿'},{w:'のはら',e:'🌾'},{w:'のこぎり',e:'🪚'},{w:'のみもの',e:'🥤'},
-  {w:'はな',e:'🌺'},{w:'はと',e:'🕊️'},{w:'はし',e:'🌉'},{w:'はる',e:'🌸'},{w:'はりねずみ',e:'🦔'},{w:'はやし',e:'🌲'},
-  {w:'ひよこ',e:'🐥'},{w:'ひつじ',e:'🐑'},{w:'ひこうき',e:'✈️'},{w:'ひかり',e:'💡'},{w:'ひまわり',e:'🌻'},{w:'ひみつ',e:'🤫'},
-  {w:'ふね',e:'🚢'},{w:'ふくろう',e:'🦉'},{w:'ふうせん',e:'🎈'},{w:'ふゆ',e:'❄️'},{w:'ふで',e:'🖌️'},{w:'ふじさん',e:'🗻'},
-  {w:'へび',e:'🐍'},{w:'へや',e:'🏠'},{w:'へいわ',e:'☮️'},{w:'へそ',e:'🫙'},
-  {w:'ほし',e:'⭐'},{w:'ほたる',e:'✨'},{w:'ほおずき',e:'🏮'},{w:'ほんや',e:'📚'},{w:'ほね',e:'🦴'},
-  {w:'まつ',e:'🌲'},{w:'まくら',e:'🛏️'},{w:'まめ',e:'🫘'},{w:'まち',e:'🏙️'},{w:'まいにち',e:'📅'},{w:'まぐろ',e:'🐟'},
-  {w:'みず',e:'💧'},{w:'みかん',e:'🍊'},{w:'みつばち',e:'🐝'},{w:'みち',e:'🛣️'},{w:'みそしる',e:'🍲'},{w:'みんな',e:'👥'},
-  {w:'むし',e:'🐛'},{w:'むらさき',e:'🔮'},{w:'むすび',e:'🍙'},{w:'むかし',e:'📜'},{w:'むぎ',e:'🌾'},
-  {w:'めだか',e:'🐟'},{w:'めがね',e:'👓'},{w:'めがみ',e:'👸'},{w:'めし',e:'🍚'},{w:'めいろ',e:'🗺️'},
-  {w:'もも',e:'🍑'},{w:'もり',e:'🌲'},{w:'もぐら',e:'🐭'},{w:'もち',e:'🍡'},{w:'もくば',e:'🎠'},{w:'もみじ',e:'🍁'},
-  {w:'やすみ',e:'😴'},{w:'やま',e:'⛰️'},{w:'やね',e:'🏠'},{w:'やかん',e:'🫖'},{w:'やど',e:'🏨'},
-  {w:'ゆき',e:'❄️'},{w:'ゆび',e:'☝️'},{w:'ゆうひ',e:'🌅'},{w:'ゆかた',e:'👘'},{w:'ゆめ',e:'💭'},{w:'ゆか',e:'🪵'},
-  {w:'よる',e:'🌙'},{w:'よこ',e:'↔️'},{w:'よつば',e:'🍀'},{w:'よみもの',e:'📖'},
-  {w:'らいおん',e:'🦁'},{w:'らっこ',e:'🦦'},{w:'らくだ',e:'🐪'},{w:'らくがき',e:'🖍️'},
-  {w:'りんご',e:'🍎'},{w:'りす',e:'🐿️'},{w:'りゅう',e:'🐉'},{w:'りか',e:'🔬'},
-  {w:'るすばん',e:'🔐'},{w:'るりいろ',e:'💙'},
-  {w:'れもん',e:'🍋'},{w:'れんこん',e:'🥗'},{w:'れっしゃ',e:'🚂'},{w:'れいぞうこ',e:'🧊'},{w:'れんしゅう',e:'✏️'},
-  {w:'ろうそく',e:'🕯️'},{w:'ろば',e:'🫏'},{w:'ろけっと',e:'🚀'},{w:'ろうか',e:'🏫'},
-  {w:'わに',e:'🐊'},{w:'わかめ',e:'🌿'},{w:'わたあめ',e:'🍭'},{w:'わかば',e:'🌱'},{w:'わらい',e:'😄'},{w:'わすれもの',e:'🎒'},
+  {w:'あり',p:'bug'},{w:'あひる',p:'bird'},{w:'あさ',p:'sun'},{w:'あき',p:'leaf'},{w:'あかい',p:'heart'},
+  {w:'いか',p:'octopus'},{w:'いちご',p:'fruit'},{w:'いえ',p:'house'},{w:'いし',p:'mountain'},{w:'いもうと',p:'person'},
+  {w:'うし',p:'animal'},{w:'うちわ',p:'tool'},{w:'うさぎ',p:'rabbit'},{w:'うた',p:'music'},{w:'うで',p:'person'},
+  {w:'えき',p:'train'},{w:'えんぴつ',p:'pencil'},{w:'えほん',p:'book'},{w:'えび',p:'octopus'},{w:'えいが',p:'tool'},
+  {w:'おに',p:'person'},{w:'おかし',p:'sweet'},{w:'おつき',p:'moon'},{w:'おはな',p:'flower'},{w:'おおかみ',p:'animal'},
+  {w:'かに',p:'octopus'},{w:'かめ',p:'animal'},{w:'かさ',p:'rain'},{w:'かえる',p:'animal'},{w:'かぜ',p:'cloud'},{w:'かわ',p:'water'},
+  {w:'きつね',p:'animal'},{w:'きのこ',p:'vegetable'},{w:'きりん',p:'animal'},{w:'きく',p:'flower'},{w:'きじ',p:'bird'},
+  {w:'くじら',p:'fish'},{w:'くり',p:'vegetable'},{w:'くるま',p:'car'},{w:'くも',p:'cloud'},{w:'くさ',p:'leaf'},
+  {w:'けむり',p:'cloud'},{w:'けいと',p:'tool'},{w:'けが',p:'tool'},{w:'けむし',p:'bug'},
+  {w:'こうもり',p:'animal'},{w:'こども',p:'person'},{w:'こうえん',p:'tree'},{w:'こおり',p:'snow'},{w:'こま',p:'tool'},{w:'こころ',p:'heart'},
+  {w:'さかな',p:'fish'},{w:'さる',p:'animal'},{w:'さんぽ',p:'person'},{w:'さくら',p:'flower'},{w:'さとう',p:'sweet'},{w:'さむい',p:'snow'},
+  {w:'しか',p:'animal'},{w:'しろ',p:'house'},{w:'しお',p:'rice'},{w:'したぎ',p:'cloth'},{w:'しんかんせん',p:'train'},
+  {w:'すずめ',p:'bird'},{w:'すみれ',p:'flower'},{w:'すいか',p:'fruit'},{w:'すもう',p:'person'},{w:'すな',p:'mountain'},{w:'すき',p:'heart'},
+  {w:'せみ',p:'bug'},{w:'せかい',p:'star'},{w:'せんせい',p:'person'},{w:'せっけん',p:'tool'},{w:'せわ',p:'person'},
+  {w:'そら',p:'cloud'},{w:'そうじ',p:'tool'},{w:'そと',p:'leaf'},{w:'そり',p:'snow'},{w:'そば',p:'rice'},
+  {w:'たこ',p:'octopus'},{w:'たぬき',p:'animal'},{w:'たまご',p:'rice'},{w:'たき',p:'water'},{w:'たいよう',p:'sun'},{w:'たか',p:'bird'},
+  {w:'ちょう',p:'bug'},{w:'ちきゅう',p:'star'},{w:'ちゃわん',p:'drink'},{w:'ちから',p:'person'},
+  {w:'つき',p:'moon'},{w:'つる',p:'bird'},{w:'つみき',p:'tool'},{w:'つばさ',p:'bird'},{w:'つち',p:'leaf'},{w:'つゆ',p:'rain'},
+  {w:'てんき',p:'cloud'},{w:'てがみ',p:'pencil'},{w:'てんとう',p:'bug'},{w:'てつ',p:'tool'},{w:'てら',p:'house'},
+  {w:'とり',p:'bird'},{w:'とら',p:'animal'},{w:'とまと',p:'vegetable'},{w:'とうふ',p:'rice'},{w:'とかげ',p:'animal'},{w:'ともだち',p:'person'},
+  {w:'なみ',p:'water'},{w:'なし',p:'fruit'},{w:'なつ',p:'sun'},{w:'なまこ',p:'octopus'},{w:'なわ',p:'tool'},
+  {w:'にじ',p:'rainbow'},{w:'にわ',p:'leaf'},{w:'にんじん',p:'vegetable'},{w:'にく',p:'rice'},{w:'にわとり',p:'bird'},{w:'にほん',p:'mountain'},
+  {w:'ぬの',p:'cloth'},{w:'ぬいぐるみ',p:'tool'},{w:'ぬりえ',p:'pencil'},
+  {w:'ねこ',p:'cat'},{w:'ねずみ',p:'animal'},{w:'ねんど',p:'tool'},{w:'ねむい',p:'moon'},
+  {w:'のり',p:'leaf'},{w:'のはら',p:'leaf'},{w:'のこぎり',p:'tool'},{w:'のみもの',p:'drink'},
+  {w:'はな',p:'flower'},{w:'はと',p:'bird'},{w:'はし',p:'tool'},{w:'はる',p:'flower'},{w:'はりねずみ',p:'animal'},{w:'はやし',p:'tree'},
+  {w:'ひよこ',p:'bird'},{w:'ひつじ',p:'animal'},{w:'ひこうき',p:'plane'},{w:'ひかり',p:'light'},{w:'ひまわり',p:'flower'},{w:'ひみつ',p:'person'},
+  {w:'ふね',p:'ship'},{w:'ふくろう',p:'bird'},{w:'ふうせん',p:'ball'},{w:'ふゆ',p:'snow'},{w:'ふで',p:'pencil'},{w:'ふじさん',p:'mountain'},
+  {w:'へび',p:'animal'},{w:'へや',p:'house'},{w:'へいわ',p:'heart'},{w:'へそ',p:'person'},
+  {w:'ほし',p:'star'},{w:'ほたる',p:'light'},{w:'ほおずき',p:'light'},{w:'ほんや',p:'book'},{w:'ほね',p:'tool'},
+  {w:'まつ',p:'tree'},{w:'まくら',p:'cloth'},{w:'まめ',p:'vegetable'},{w:'まち',p:'house'},{w:'まいにち',p:'book'},{w:'まぐろ',p:'fish'},
+  {w:'みず',p:'water'},{w:'みかん',p:'fruit'},{w:'みつばち',p:'bug'},{w:'みち',p:'tool'},{w:'みそしる',p:'drink'},{w:'みんな',p:'person'},
+  {w:'むし',p:'bug'},{w:'むらさき',p:'shape'},{w:'むすび',p:'rice'},{w:'むかし',p:'book'},{w:'むぎ',p:'leaf'},
+  {w:'めだか',p:'fish'},{w:'めがね',p:'tool'},{w:'めがみ',p:'person'},{w:'めし',p:'rice'},{w:'めいろ',p:'book'},
+  {w:'もも',p:'fruit'},{w:'もり',p:'tree'},{w:'もぐら',p:'animal'},{w:'もち',p:'sweet'},{w:'もくば',p:'tool'},{w:'もみじ',p:'leaf'},
+  {w:'やすみ',p:'moon'},{w:'やま',p:'mountain'},{w:'やね',p:'house'},{w:'やかん',p:'drink'},{w:'やど',p:'house'},
+  {w:'ゆき',p:'snow'},{w:'ゆび',p:'person'},{w:'ゆうひ',p:'sun'},{w:'ゆかた',p:'cloth'},{w:'ゆめ',p:'moon'},{w:'ゆか',p:'tree'},
+  {w:'よる',p:'moon'},{w:'よこ',p:'shape'},{w:'よつば',p:'leaf'},{w:'よみもの',p:'book'},
+  {w:'らいおん',p:'animal'},{w:'らっこ',p:'octopus'},{w:'らくだ',p:'animal'},{w:'らくがき',p:'pencil'},
+  {w:'りんご',p:'fruit'},{w:'りす',p:'animal'},{w:'りゅう',p:'animal'},{w:'りか',p:'tool'},
+  {w:'るすばん',p:'tool'},{w:'るりいろ',p:'shape'},
+  {w:'れもん',p:'fruit'},{w:'れんこん',p:'vegetable'},{w:'れっしゃ',p:'train'},{w:'れいぞうこ',p:'snow'},{w:'れんしゅう',p:'pencil'},
+  {w:'ろうそく',p:'light'},{w:'ろば',p:'animal'},{w:'ろけっと',p:'plane'},{w:'ろうか',p:'school'},
+  {w:'わに',p:'animal'},{w:'わかめ',p:'leaf'},{w:'わたあめ',p:'sweet'},{w:'わかば',p:'leaf'},{w:'わらい',p:'person'},{w:'わすれもの',p:'bag'},
 ];
 
 // ★カスタマイズポイント: レベル（しょうごう）
+// icon は PICTS のキー、color は Tailwind のクラス（index.html の配色定義より）
 const LEVELS = [
-  { min:  0, title: 'みならい',       icon: '🌱', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-  { min:  5, title: 'がんばりや',     icon: '🌷', color: 'bg-rose-100 text-rose-700 border-rose-300' },
-  { min: 15, title: 'もじチャレンジャー', icon: '🌟', color: 'bg-amber-100 text-amber-700 border-amber-300' },
-  { min: 30, title: 'もじはかせ',     icon: '📖', color: 'bg-sky-100 text-sky-700 border-sky-300' },
-  { min: 50, title: 'もじマスター',   icon: '👑', color: 'bg-violet-100 text-violet-700 border-violet-300' },
-  { min: 80, title: 'もじキング',     icon: '🏆', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-  { min: 92, title: 'でんせつの もじびと', icon: '🐉', color: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300' },
+  { min:  0, title: 'みならい',            icon: 'leaf',     color: 'bg-midori-50 text-midori-700 border-midori-300' },
+  { min:  5, title: 'がんばりや',          icon: 'flower',   color: 'bg-shu-50 text-shu-700 border-shu-300' },
+  { min: 15, title: 'もじチャレンジャー',  icon: 'star',     color: 'bg-yamabuki-50 text-yamabuki-700 border-yamabuki-300' },
+  { min: 30, title: 'もじはかせ',          icon: 'book',     color: 'bg-ai-50 text-ai-700 border-ai-300' },
+  { min: 50, title: 'もじマスター',        icon: 'pencil',   color: 'bg-fuji-50 text-fuji-700 border-fuji-300' },
+  { min: 80, title: 'もじキング',          icon: 'mountain', color: 'bg-yamabuki-100 text-yamabuki-800 border-yamabuki-400' },
+  { min: 92, title: 'でんせつの もじびと', icon: 'sun',      color: 'bg-shu-100 text-shu-800 border-shu-400' },
 ];
 function getCurrentLevel(masteredCount) {
   return [...LEVELS].reverse().find(l => masteredCount >= l.min) || LEVELS[0];
 }
 
-// ★カスタマイズポイント: バッジ（ごほうびシール）
+// ★カスタマイズポイント: バッジ（ごほうびの はんこ）
 const BADGES = [
-  { id: 'first',     title: 'はじめの いっぽ',   icon: '🌱', desc: 'はじめての じを マスター',     check: ({m,w,s}) => m.length >= 1 },
-  { id: 'hira5',     title: 'ひらがな ５じ',     icon: '🌷', desc: 'ひらがなを ５じ おぼえた',     check: ({m})     => m.filter(c => HIRA_LIST.includes(c)).length >= 5 },
-  { id: 'hira23',    title: 'ひらがな はんぶん', icon: '🌸', desc: 'ひらがなを ２３じ おぼえた',   check: ({m})     => m.filter(c => HIRA_LIST.includes(c)).length >= 23 },
-  { id: 'hiraAll',   title: 'ひらがな かんぺき', icon: '🌻', desc: 'ひらがなを ぜんぶ おぼえた',   check: ({m})     => HIRA_LIST.every(c => m.includes(c)) },
-  { id: 'kata5',     title: 'カタカナ ５じ',     icon: '⭐', desc: 'カタカナを ５じ おぼえた',     check: ({m})     => m.filter(c => KATA_LIST.includes(c)).length >= 5 },
-  { id: 'kata23',    title: 'カタカナ はんぶん', icon: '✨', desc: 'カタカナを ２３じ おぼえた',   check: ({m})     => m.filter(c => KATA_LIST.includes(c)).length >= 23 },
-  { id: 'kataAll',   title: 'カタカナ かんぺき', icon: '🎀', desc: 'カタカナを ぜんぶ おぼえた',   check: ({m})     => KATA_LIST.every(c => m.includes(c)) },
-  { id: 'word5',     title: 'ことば あつめ びと', icon: '🍎', desc: 'ことばを ５こ あつめた',       check: ({w})     => w.length >= 5 },
-  { id: 'word20',    title: 'ことば コレクター', icon: '🍰', desc: 'ことばを ２０こ あつめた',     check: ({w})     => w.length >= 20 },
-  { id: 'word50',    title: 'ことば はかせ',     icon: '👑', desc: 'ことばを ５０こ あつめた',     check: ({w})     => w.length >= 50 },
-  { id: 'streak3',   title: '３にち つづけた',   icon: '🔥', desc: '３にち れんぞくで れんしゅう', check: ({s})     => s >= 3 },
-  { id: 'streak7',   title: '１しゅうかん',      icon: '🚀', desc: '７にち れんぞくで れんしゅう', check: ({s})     => s >= 7 },
-  { id: 'allKana',   title: 'もじキング！',      icon: '🏆', desc: 'ひらがな・カタカナ ぜんぶ',    check: ({m})     => HIRA_LIST.every(c => m.includes(c)) && KATA_LIST.every(c => m.includes(c)) },
+  { id: 'first',     title: 'はじめの いっぽ',   icon: 'leaf',     desc: 'はじめての じを マスター',     check: ({m,w,s}) => m.length >= 1 },
+  { id: 'hira5',     title: 'ひらがな ５じ',     icon: 'flower',   desc: 'ひらがなを ５じ おぼえた',     check: ({m})     => m.filter(c => HIRA_LIST.includes(c)).length >= 5 },
+  { id: 'hira23',    title: 'ひらがな はんぶん', icon: 'tree',     desc: 'ひらがなを ２３じ おぼえた',   check: ({m})     => m.filter(c => HIRA_LIST.includes(c)).length >= 23 },
+  { id: 'hiraAll',   title: 'ひらがな かんぺき', icon: 'sun',      desc: 'ひらがなを ぜんぶ おぼえた',   check: ({m})     => HIRA_LIST.every(c => m.includes(c)) },
+  { id: 'kata5',     title: 'カタカナ ５じ',     icon: 'star',     desc: 'カタカナを ５じ おぼえた',     check: ({m})     => m.filter(c => KATA_LIST.includes(c)).length >= 5 },
+  { id: 'kata23',    title: 'カタカナ はんぶん', icon: 'moon',     desc: 'カタカナを ２３じ おぼえた',   check: ({m})     => m.filter(c => KATA_LIST.includes(c)).length >= 23 },
+  { id: 'kataAll',   title: 'カタカナ かんぺき', icon: 'rainbow',  desc: 'カタカナを ぜんぶ おぼえた',   check: ({m})     => KATA_LIST.every(c => m.includes(c)) },
+  { id: 'word5',     title: 'ことば あつめ びと', icon: 'fruit',   desc: 'ことばを ５こ あつめた',       check: ({w})     => w.length >= 5 },
+  { id: 'word20',    title: 'ことば コレクター', icon: 'bag',      desc: 'ことばを ２０こ あつめた',     check: ({w})     => w.length >= 20 },
+  { id: 'word50',    title: 'ことば はかせ',     icon: 'book',     desc: 'ことばを ５０こ あつめた',     check: ({w})     => w.length >= 50 },
+  { id: 'streak3',   title: '３にち つづけた',   icon: 'light',    desc: '３にち れんぞくで れんしゅう', check: ({s})     => s >= 3 },
+  { id: 'streak7',   title: '１しゅうかん',      icon: 'school',   desc: '７にち れんぞくで れんしゅう', check: ({s})     => s >= 7 },
+  { id: 'allKana',   title: 'もじキング！',      icon: 'mountain', desc: 'ひらがな・カタカナ ぜんぶ',    check: ({m})     => HIRA_LIST.every(c => m.includes(c)) && KATA_LIST.every(c => m.includes(c)) },
 ];
 
 // LocalStorage キー
@@ -233,16 +286,44 @@ const KEY_SIRI_BEST = 'kkm_siri_best';  // しりとりの最高記録
 // 1: 書き順アニメをみた
 // 2: なぞり書きを TRACE_REQUIRED 回 こなした
 // 3: ガイドなしで FREE_REQUIRED 回 れんぞくでせいかい（ほぼマスター）
-// 4: その文字を使ったことばを 1つ以上あつめた（完全マスター 💮）
+// 4: その文字を使ったことばを 1つ以上あつめた（完全マスター＝花丸）
 const TRACE_REQUIRED = 2;
 const FREE_REQUIRED  = 3;
 
+/* 色の組みあわせ表。
+
+   Tailwind のクラス名は `text-${tone}-600` のような文字列の足し算では作らず、
+   かならずこの表から まるごと取り出すこと。クラス名を組み立ててしまうと、
+   ビルド時に「使われているクラス」として見つけてもらえず、色が出なくなる。
+
+     text     … 見出しなど こい文字色
+     icon     … アイコン・しるしの色
+     chip     … うすい下地の小さな札（背景＋文字＋わく）
+     solid    … ぬりつぶしのボタン（背景＋わく。文字は白）
+     topRule  … カードの上ぶちに引く色つきの線
+     leftRule … カードの左ぶちに引く色つきの線
+     markRing … もじ表のかどにつける しるしの わくと文字
+     stat     … 数字をならべる小さなカード                            */
+const TONES = {
+  shu:      { text:'text-shu-700',      icon:'text-shu-600',      chip:'bg-shu-50 text-shu-700 border-shu-300',           solid:'bg-shu-600 border-shu-700',           topRule:'border-t-shu-600',      leftRule:'border-shu-400 border-l-shu-600',           markRing:'border-shu-300 text-shu-600',      stat:'bg-shu-50 border-shu-200',           statLabel:'text-shu-600',      statValue:'text-shu-700' },
+  ai:       { text:'text-ai-700',       icon:'text-ai-600',       chip:'bg-ai-50 text-ai-700 border-ai-300',              solid:'bg-ai-600 border-ai-700',             topRule:'border-t-ai-600',       leftRule:'border-ai-400 border-l-ai-600',             markRing:'border-ai-300 text-ai-600',        stat:'bg-ai-50 border-ai-200',             statLabel:'text-ai-600',       statValue:'text-ai-700' },
+  midori:   { text:'text-midori-700',   icon:'text-midori-600',   chip:'bg-midori-50 text-midori-700 border-midori-300',  solid:'bg-midori-600 border-midori-700',     topRule:'border-t-midori-600',   leftRule:'border-midori-400 border-l-midori-600',     markRing:'border-midori-300 text-midori-600',stat:'bg-midori-50 border-midori-200',     statLabel:'text-midori-600',   statValue:'text-midori-700' },
+  fuji:     { text:'text-fuji-700',     icon:'text-fuji-600',     chip:'bg-fuji-50 text-fuji-700 border-fuji-300',        solid:'bg-fuji-600 border-fuji-700',         topRule:'border-t-fuji-600',     leftRule:'border-fuji-400 border-l-fuji-600',         markRing:'border-fuji-300 text-fuji-600',    stat:'bg-fuji-50 border-fuji-200',         statLabel:'text-fuji-600',     statValue:'text-fuji-700' },
+  yamabuki: { text:'text-yamabuki-700', icon:'text-yamabuki-600', chip:'bg-yamabuki-50 text-yamabuki-700 border-yamabuki-300', solid:'bg-yamabuki-600 border-yamabuki-700', topRule:'border-t-yamabuki-600', leftRule:'border-yamabuki-400 border-l-yamabuki-600', markRing:'border-yamabuki-300 text-yamabuki-600', stat:'bg-yamabuki-50 border-yamabuki-200', statLabel:'text-yamabuki-600', statValue:'text-yamabuki-700' },
+  sumi:     { text:'text-sumi-700',     icon:'text-sumi-500',     chip:'bg-sumi-50 text-sumi-600 border-sumi-300',        solid:'bg-sumi-600 border-sumi-700',         topRule:'border-t-sumi-600',     leftRule:'border-sumi-400 border-l-sumi-600',         markRing:'border-sumi-300 text-sumi-500',    stat:'bg-sumi-50 border-sumi-200',         statLabel:'text-sumi-600',     statValue:'text-sumi-700' },
+};
+
+/* 学習の 4 だんかい。画面のどこでも おなじ 順番・おなじ 色・おなじ しるし
+   で見えるように、名まえ・色・アイコンを ここに一元化する。
+   ・num   … 見出しにつける漢数字（教科書の「一 二 三 四」）
+   ・icon  … UI アイコンの名まえ（ICONS のキー）
+   ・tone  … TONES のキー */
 const STAGE_INFO = [
-  { key: 0, icon: '🔒', label: 'みがくぜん',    color: 'text-slate-400'   },
-  { key: 1, icon: '📺', label: 'かきじゅん',   color: 'text-sky-500'     },
-  { key: 2, icon: '✏️', label: 'なぞりがき',   color: 'text-emerald-500' },
-  { key: 3, icon: '✒️', label: 'じぶんでかく', color: 'text-violet-500'  },
-  { key: 4, icon: '💮', label: 'かんぺき',     color: 'text-amber-500'   },
+  { key: 0, num: '',  icon: 'lock',   label: 'みがくぜん',   tone: 'sumi'   },
+  { key: 1, num: '一', icon: 'play',   label: 'かきじゅん',   tone: 'ai'     },
+  { key: 2, num: '二', icon: 'brush',  label: 'なぞりがき',   tone: 'midori' },
+  { key: 3, num: '三', icon: 'pen',    label: 'じぶんでかく', tone: 'fuji'   },
+  { key: 4, num: '四', icon: 'maru',   label: 'かんぺき',     tone: 'shu'    },
 ];
 
 function newStageObj(stage=0) {
@@ -286,6 +367,18 @@ const KYOKASHO_FONT_FALLBACK =
   "'UD デジタル 教科書体 NP-R','UDデジタル教科書体NP-R','UD Digi Kyokasho NP-R'," +
   "'YuKyokasho Yoko','YuKyokasho','游教科書体','Klee One'," +
   "'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
+/* キャンバス（お手本・なぞり書きの線）で使う色。
+   色の定義は index.html の CSS 変数ただ 1 か所なので、ここでは読み出すだけ。
+   読めない環境のために ひかえの値を持っておく。 */
+const __cssVarCache = {};
+function themeColor(name, fallback) {
+  if (__cssVarCache[name] != null) return __cssVarCache[name];
+  let v = '';
+  try { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch (e) {}
+  __cssVarCache[name] = v || fallback;
+  return __cssVarCache[name];
+}
+
 let __kyokashoStack = '';
 function kyokashoFontStack() {
   if (__kyokashoStack) return __kyokashoStack;
@@ -397,7 +490,8 @@ function burstConfetti() {
   canvas.style.width  = cssW + 'px';
   canvas.style.height = cssH + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const colors = ['#fde68a','#fca5a5','#bae6fd','#a7f3d0','#c7d2fe','#fbcfe8'];
+  // 和の色（朱・金・藍・若竹・和紙）。にぎやかすぎない色みでそろえる。
+  const colors = ['#c85a3c','#d97e65','#d9a840','#e8c470','#6081a6','#6d9872','#eae2d2'];
   const particles = Array.from({ length: 80 }, () => ({
     x: cssW/2, y: cssH/2,
     r: Math.random()*8+4,
@@ -812,7 +906,7 @@ function getPathLength(pathStr) {
    3.9. お手本（フォント）と かきじゅんデータ（KanjiVG）の位置合わせ
 
    ＜なおした不具合＞
-   うすいお手本の文字はフォントで描き、🔴 の書きはじめマーカー・書き順アニメ・
+   うすいお手本の文字はフォントで描き、朱色の書きはじめマーカー・書き順アニメ・
    採点は KanjiVG のストロークで持っている。この 2 つは別々の座標系なので、
    これまでは「フォントを 0.86em で マスの中央に置く」という決め打ちで
    重ねていた。そのため
@@ -1163,12 +1257,21 @@ function useInstallPrompt() {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   5. アイコン（lucide風）
+   5. アイコン
+
+   絵文字はつかわない。すべて 線だけで描いた SVG にそろえる。
+   ・端末やフォントによって見た目が変わらない
+   ・currentColor をつかうので、まわりの文字色にすっとなじむ
+   ・線の太さ・角のまるさをそろえてあるので、ならべても うるさくならない
+
+   ふたつの種類がある。
+     SvgIcon  … 操作をあらわす UI アイコン（ボタン・見出し）
+     Pict     … ことばの さしえ（いぬ・はな・でんしゃ など）
    ────────────────────────────────────────────────────────────── */
-const SvgIcon = ({ size=20, className='', children }) => (
+const SvgIcon = ({ size=20, className='', children, strokeWidth=1.9 }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
-       fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-       className={className}>{children}</svg>
+       fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+       className={className} aria-hidden="true" focusable="false">{children}</svg>
 );
 const IconPencil   = (p) => <SvgIcon {...p}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></SvgIcon>;
 const IconBook     = (p) => <SvgIcon {...p}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></SvgIcon>;
@@ -1187,22 +1290,193 @@ const IconVolumeX  = (p) => <SvgIcon {...p}><path d="M11 5 6 9H2v6h4l5 4zM22 9l-
 const IconFlame    = (p) => <SvgIcon {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17c1.4 0 2.5-1 2.5-2.5 0-1.2-.5-2.2-1.5-3 .5-1 1.5-1.5 3-1.5A4.5 4.5 0 0 1 19 14.5c0 4-3 7.5-7 7.5s-7-3-7-7c0-1.7.6-3.4 2-4.5C8 11.7 8.5 13 8.5 14.5zM13 12V8c0-1.8-1.2-3-3-3 .5 2-1 4-3 4 0 0 1.4 1 1.4 3.5"/></SvgIcon>;
 const IconTrophy   = (p) => <SvgIcon {...p}><path d="M6 9H4a2 2 0 0 1-2-2V5h4M18 9h2a2 2 0 0 0 2-2V5h-4M6 5h12v6a6 6 0 0 1-12 0zM12 17v4M8 21h8"/></SvgIcon>;
 const IconCalendar = (p) => <SvgIcon {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></SvgIcon>;
+const IconGrid     = (p) => <SvgIcon {...p}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></SvgIcon>;
+const IconLock     = (p) => <SvgIcon {...p}><rect x="4.5" y="10" width="15" height="10.5" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></SvgIcon>;
+const IconBrush    = (p) => <SvgIcon {...p}><path d="M9.5 14.5 19 5a2.1 2.1 0 0 0-3-3l-9.5 9.5z"/><path d="M6.5 11.5c-2 .8-3 2.4-3 4.7 0 .8-.4 1.6-1 2.2 1 .9 2.4 1.4 3.8 1.4 2.7 0 4.7-1.8 4.7-4.3z"/></SvgIcon>;
+const IconPen      = (p) => <SvgIcon {...p}><path d="M12.5 2.5 15 5 6.5 20 3 21l1-3.5z"/><path d="m11 4 2.5 2.5"/><path d="M17 21h4"/></SvgIcon>;
+const IconSeal     = (p) => <SvgIcon {...p}><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12h8M12 8v8"/></SvgIcon>;
+const IconMaru     = (p) => <SvgIcon {...p}><circle cx="12" cy="12" r="8.5"/></SvgIcon>;
+const IconLink     = (p) => <SvgIcon {...p}><path d="M9.5 14.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.2 1.2"/><path d="M14.5 9.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.2-1.2"/></SvgIcon>;
+const IconDownload = (p) => <SvgIcon {...p}><path d="M12 3v11M7.5 10 12 14.5 16.5 10"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></SvgIcon>;
+const IconTarget   = (p) => <SvgIcon {...p}><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/></SvgIcon>;
+const IconAlert    = (p) => <SvgIcon {...p}><path d="M12 3.5 21.5 20H2.5z"/><path d="M12 9.5v4.5M12 17.2v.1"/></SvgIcon>;
+const IconSearch   = (p) => <SvgIcon {...p}><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></SvgIcon>;
+const IconArrow    = (p) => <SvgIcon {...p}><path d="M4 12h15M13 6l6 6-6 6"/></SvgIcon>;
+const IconWifiOff  = (p) => <SvgIcon {...p}><path d="M3 3.5 20.5 21"/><path d="M2.5 9.5A15 15 0 0 1 7 6.6M21.5 9.5a15 15 0 0 0-8-3.4M6 13.3a10 10 0 0 1 2.6-1.7M18 13.3a10 10 0 0 0-3.4-2"/><path d="M9.3 16.9a5 5 0 0 1 5.4.4"/><path d="M12 20.4v.1"/></SvgIcon>;
+const IconOffice   = (p) => <SvgIcon {...p}><path d="M3.5 20.5V9l6-4 6 4v11.5"/><path d="M15.5 12.5h5v8"/><path d="M6.5 11h3M6.5 14.5h3M12 20.5V16h-2.5v4.5"/><path d="M2 20.5h20"/></SvgIcon>;
+const IconClock    = (p) => <SvgIcon {...p}><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.3l3.3 2"/></SvgIcon>;
+const IconShuffle  = (p) => <SvgIcon {...p}><path d="M16.5 3.5 20 7l-3.5 3.5M16.5 13.5 20 17l-3.5 3.5"/><path d="M4 7h3.2c1.6 0 2.6.9 3.6 2.4l2.4 3.6c1 1.5 2 2.4 3.6 2.4H20"/><path d="M4 17h3.2c1.6 0 2.6-.9 3.6-2.4M16.8 7H20"/></SvgIcon>;
+
+/* --- ことばの さしえ（ピクトグラム） ---
+   すべて 24×24 のマスに、おなじ線の太さで描く。
+   ★カスタマイズポイント: あたらしい さしえは ここに足す。 */
+const PICTS = {
+  animal:   <><rect x="4.2" y="8.6" width="12.2" height="6.4" rx="2.6"/><circle cx="19.2" cy="6.8" r="2.6"/><path d="m17.6 8.8-1.8 1.6"/><path d="m18.3 4.6-.5-2.2 2 1.3"/><path d="M6.6 15v4.4M9.9 15v4.4M13.2 15v4.4M15.6 15v4.4"/><path d="M4.3 10.8C2.7 9.9 2.2 8.3 3 6.4"/></>,
+  dog:      <><path d="M6 5 4.6 9.8V14a5.5 5.5 0 0 0 5.5 5.5h3.8A5.5 5.5 0 0 0 19.4 14V9.8L18 5l-3.2 2.6H9.2z"/><circle cx="9.6" cy="12" r=".85" fill="currentColor" stroke="none"/><circle cx="14.4" cy="12" r=".85" fill="currentColor" stroke="none"/><path d="M12 14.6v1.2M10.4 17.4h3.2"/></>,
+  cat:      <><path d="M12 20.5A6.5 6.5 0 0 1 5.5 14V6.2l3.6 2.6a7 7 0 0 1 5.8 0l3.6-2.6V14a6.5 6.5 0 0 1-6.5 6.5z"/><circle cx="9.8" cy="12.6" r=".85" fill="currentColor" stroke="none"/><circle cx="14.2" cy="12.6" r=".85" fill="currentColor" stroke="none"/><path d="M11.2 15.4h1.6M3 12.6h2.6M18.4 12.6H21M3.4 15.6l2.3-.8M20.6 15.6l-2.3-.8"/></>,
+  rabbit:   <><path d="M9.2 9.6C9 7 8.4 3.6 6.9 3.7S5.3 7.3 6.6 10.2M14.8 9.6c.2-2.6.8-6 2.3-5.9s1.6 3.6.3 6.5"/><path d="M12 20.6a5.9 5.9 0 0 1-5.9-5.9 5.9 5.9 0 0 1 11.8 0 5.9 5.9 0 0 1-5.9 5.9z"/><circle cx="10" cy="14" r=".8" fill="currentColor" stroke="none"/><circle cx="14" cy="14" r=".8" fill="currentColor" stroke="none"/><path d="M12 16.2v1"/></>,
+  bird:     <><ellipse cx="11" cy="14.6" rx="6" ry="5"/><circle cx="15.6" cy="8.4" r="3.3"/><path d="m18.6 7.1 3.2-.9-2.2 2.5"/><circle cx="16.3" cy="7.9" r=".7" fill="currentColor" stroke="none"/><path d="M9 19.4v2M13 19.4v2"/></>,
+  fish:     <><path d="M14.6 12c0 3-2.7 5.5-6 5.5S2.5 15 2.5 12s2.8-5.5 6.1-5.5 6 2.5 6 5.5z"/><path d="m14.6 12 4.6-3.6v7.2z"/><circle cx="6.2" cy="10.6" r=".8" fill="currentColor" stroke="none"/></>,
+  octopus:  <><path d="M6 12.5a6 6 0 0 1 12 0V15H6z"/><path d="M6 15c0 2-1 3.2-2.6 3.7M9.6 15c0 2.3-.6 3.7-1.6 4.7M14.4 15c0 2.3.6 3.7 1.6 4.7M18 15c0 2 1 3.2 2.6 3.7"/><circle cx="9.8" cy="11.2" r=".8" fill="currentColor" stroke="none"/><circle cx="14.2" cy="11.2" r=".8" fill="currentColor" stroke="none"/></>,
+  bug:      <><ellipse cx="12" cy="13.8" rx="5.4" ry="6.4"/><path d="M12 7.4v12.8M6.7 11h10.6M6.7 16.6h10.6"/><circle cx="12" cy="5.6" r="2.1"/><path d="m10.2 3.8-1.6-2M13.8 3.8l1.6-2"/></>,
+  flower:   <><circle cx="12" cy="5.6" r="2.5"/><circle cx="16.4" cy="8.8" r="2.5"/><circle cx="14.7" cy="14" r="2.5"/><circle cx="9.3" cy="14" r="2.5"/><circle cx="7.6" cy="8.8" r="2.5"/><circle cx="12" cy="10.2" r="2.1"/><path d="M12 16.4V22"/><path d="M12 19c1.6 0 2.7-1 3-2.4-1.6-.2-2.7.7-3 2.4z"/></>,
+  tree:     <><path d="M12 2.8 5.3 12h3.3L4 18.6h16L15.4 12h3.3z"/><path d="M12 18.6V22"/></>,
+  leaf:     <><path d="M20.5 3.5c0 8.3-5.7 13.5-11.4 13.5a5.2 5.2 0 0 1-1.8-.3C5.3 9.1 11.5 3.5 20.5 3.5z"/><path d="M3.5 20.5C5.6 14.3 10.3 9.6 16 7"/></>,
+  fruit:    <><path d="M12 7.6c-1-1-2.4-1.6-3.8-1.4C5.6 6.5 4 9 4 12.1c0 4.4 3 8 5.5 8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c2.5 0 5.5-3.6 5.5-8 0-3.1-1.6-5.6-4.2-5.9-1.4-.2-2.8.4-3.8 1.4z"/><path d="M12 7.6V4.4"/><path d="M12 4.4c2 0 3.5-1 4-2.6-2.2-.3-3.6.8-4 2.6z"/></>,
+  vegetable:<><path d="M12 22c-2.9-2.7-4.5-6-4.5-9 0-2.4 2-4.4 4.5-4.4s4.5 2 4.5 4.4c0 3-1.6 6.3-4.5 9z"/><path d="M8.9 13.6h6.2M9.8 16.6h4.4M10.8 19.3h2.4"/><path d="M12 9V6.3"/><path d="M12 6.3c-1.9-.5-2.9-2-2.7-3.9 1.8.3 2.7 1.7 2.7 3.9zM12 6.3c1.9-.5 2.9-2 2.7-3.9-1.8.3-2.7 1.7-2.7 3.9z"/></>,
+  rice:     <><path d="M11 3.7a2 2 0 0 1 2 0c.5.3.8.8 1.1 1.3l5.6 10.3c1 1.8-.3 4-2.4 4H6.7c-2.1 0-3.4-2.2-2.4-4L9.9 5c.3-.5.6-1 1.1-1.3z"/><path d="M7.6 15.6h8.8v3.7H7.6z"/></>,
+  sweet:    <><path d="M1.4 12h3.6"/><circle cx="8.5" cy="12" r="3.4"/><circle cx="14.6" cy="12" r="3.4"/><circle cx="20.4" cy="12" r="3.2"/></>,
+  drink:    <><path d="M4.6 7h13.2l-1.2 11.2a2 2 0 0 1-2 1.8H7.8a2 2 0 0 1-2-1.8z"/><path d="M17.6 10.2h1.9a2.3 2.3 0 0 1 0 4.6h-1.5"/><path d="M4 7h14.4"/></>,
+  sun:      <><circle cx="12" cy="12" r="4.4"/><path d="M12 2v2.6M12 19.4V22M2 12h2.6M19.4 12H22M4.9 4.9l1.9 1.9M17.2 17.2l1.9 1.9M4.9 19.1l1.9-1.9M17.2 6.8l1.9-1.9"/></>,
+  moon:     <><path d="M20.2 14.6A8.6 8.6 0 0 1 9.4 3.8 8.6 8.6 0 1 0 20.2 14.6z"/></>,
+  star:     <><path d="m12 2.8 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.6l-5.8 3.1 1.1-6.5L2.6 9.6l6.5-.9z"/></>,
+  cloud:    <><path d="M7 18.6a4.6 4.6 0 0 1 .4-9.2 5.6 5.6 0 0 1 10.5 1.6 4 4 0 0 1-.4 7.6z"/></>,
+  rain:     <><path d="M12 3.4a8.6 8.6 0 0 1 8.6 8.6H3.4A8.6 8.6 0 0 1 12 3.4z"/><path d="M12 12v6.6a2 2 0 0 1-4 0"/><path d="M12 3.4V1.8"/></>,
+  snow:     <><path d="M12 2v20M3.3 7l17.4 10M20.7 7 3.3 17"/><path d="m9.2 3.9 2.8 1.8 2.8-1.8M9.2 20.1l2.8-1.8 2.8 1.8"/><path d="m4.3 10.5.3-3.4 3.3-.6M19.7 13.5l-.3 3.4-3.3.6M19.7 10.5l-.3-3.4-3.3-.6M4.3 13.5l.3 3.4 3.3.6"/></>,
+  rainbow:  <><path d="M2.8 18.5a9.2 9.2 0 0 1 18.4 0"/><path d="M6.5 18.5a5.5 5.5 0 0 1 11 0"/><path d="M10 18.5a2 2 0 0 1 4 0"/></>,
+  mountain: <><path d="M2.2 19.6 9 7.4l3.8 6.8L15.4 9.8l6.4 9.8z"/><path d="M6.6 13.2 9 7.4l2.3 4.1c-1.4 1-3.1 1.5-4.7 1.7z"/></>,
+  water:    <><path d="M2 8.4q2.5-3 5 0t5 0 5 0 5 0"/><path d="M2 13.4q2.5-3 5 0t5 0 5 0 5 0"/><path d="M2 18.4q2.5-3 5 0t5 0 5 0 5 0"/></>,
+  car:      <><path d="M3 16.6v-3.3c0-.6.2-1.1.6-1.5l1.6-1.6 1.4-3A2 2 0 0 1 8.4 6h7.2a2 2 0 0 1 1.8 1.2l1.4 3 1.6 1.6c.4.4.6.9.6 1.5v3.3z"/><path d="M5.4 10.4h13.2"/><circle cx="7.6" cy="16.6" r="1.9"/><circle cx="16.4" cy="16.6" r="1.9"/></>,
+  train:    <><rect x="5" y="3.4" width="14" height="13" rx="3"/><path d="M5 10h14"/><circle cx="8.8" cy="13.3" r="1.1"/><circle cx="15.2" cy="13.3" r="1.1"/><path d="m7.6 16.4-2 4M16.4 16.4l2 4M9.2 20.4h5.6"/></>,
+  ship:     <><path d="M2.8 16.4h18.4l-2.2 3.4a2 2 0 0 1-1.7.9H6.7a2 2 0 0 1-1.7-.9z"/><path d="M5.6 16.4v-4h12.8v4"/><path d="M12 12.4V3.6l6 4.6h-6"/></>,
+  plane:    <><path d="M11 2.6c.6 0 1.1.5 1.1 1.1v6l8.6 4.8v2.2l-8.6-2.6v3.9l2.7 1.8v1.4L11 20.1l-3.8 1.1v-1.4l2.7-1.8v-3.9l-8.6 2.6v-2.2l8.6-4.8v-6c0-.6.5-1.1 1.1-1.1z"/></>,
+  house:    <><path d="M3.2 10.6 12 3.4l8.8 7.2"/><path d="M5.4 9.7V20.4h13.2V9.7"/><path d="M9.8 20.4v-5.6h4.4v5.6"/></>,
+  school:   <><path d="M3.4 20.4V9.4L12 3.8l8.6 5.6v11z"/><path d="M12 3.8V1.4l3.6 1.1L12 3.8"/><path d="M9.4 20.4v-5.2h5.2v5.2"/><path d="M6.6 11.2h2.6M14.8 11.2h2.6"/><path d="M2 20.4h20"/></>,
+  book:     <><path d="M3.6 4.4h5.6A2.6 2.6 0 0 1 11.8 7v12.4a2 2 0 0 0-2-2H3.6z"/><path d="M20.4 4.4h-5.6A2.6 2.6 0 0 0 12.2 7v12.4a2 2 0 0 1 2-2h6.2z"/></>,
+  pencil:   <><path d="M16.4 3.2 20.8 7.6 8 20.4l-5.2 1.4 1.4-5.2z"/><path d="m14.2 5.4 4.4 4.4M3.9 16.3l3.8 3.8"/></>,
+  ball:     <><circle cx="12" cy="12" r="9"/><path d="M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9M12 3C9.4 5.6 8.1 8.6 8.1 12s1.3 6.4 3.9 9"/><path d="M3.3 10.4h17.4M3.3 13.6h17.4"/></>,
+  music:    <><path d="M9 17.6V5.4l10-2v12"/><path d="m9 9.4 10-2"/><ellipse cx="6.4" cy="18.2" rx="2.6" ry="2.1"/><ellipse cx="16.4" cy="16.2" rx="2.6" ry="2.1"/></>,
+  person:   <><circle cx="12" cy="7.4" r="3.6"/><path d="M4.4 20.6a7.6 7.6 0 0 1 15.2 0z"/></>,
+  heart:    <><path d="M12 20.4S3.4 14.8 3.4 9.1a4.7 4.7 0 0 1 8.6-2.7 4.7 4.7 0 0 1 8.6 2.7c0 5.7-8.6 11.3-8.6 11.3z"/></>,
+  bag:      <><rect x="3.8" y="8" width="16.4" height="12.4" rx="2.6"/><path d="M8.4 8V6a3.6 3.6 0 0 1 7.2 0v2"/><path d="M3.8 13.4h16.4"/><rect x="10.4" y="11.8" width="3.2" height="3.2" rx=".8"/></>,
+  cloth:    <><path d="M8.6 3.4 4 6l1.5 4.1 2-1v11.5h9V9.1l2 1L20 6l-4.6-2.6L12 5.5z"/></>,
+  tool:     <><rect x="3.4" y="8.6" width="17.2" height="11.8" rx="1.6"/><path d="M3.4 12.6h17.2M12 8.6v11.8"/><path d="M12 8.6C10.4 5 8.9 3.4 7.4 4S6.4 8.1 12 8.6zM12 8.6c1.6-3.6 3.1-5.2 4.6-4.6s1 4.1-4.6 4.6z"/></>,
+  light:    <><path d="M9.2 18h5.6M10.2 21h3.6"/><path d="M12 2.8a6.6 6.6 0 0 1 3.9 12c-.6.5-1 1.2-1 2H9.1c0-.8-.4-1.5-1-2A6.6 6.6 0 0 1 12 2.8z"/></>,
+  shop:     <><path d="M4 10v9.5h16V10"/><path d="M2.5 10 4.6 4.8h14.8L21.5 10z"/><path d="M2.5 10a2.4 2.4 0 0 0 4.75 0 2.4 2.4 0 0 0 4.75 0 2.4 2.4 0 0 0 4.75 0 2.4 2.4 0 0 0 4.75 0"/><path d="M9.2 19.5v-5h5.6v5"/></>,
+  castle:   <><path d="M12 2.4 4.6 6.8h14.8z"/><path d="M6.4 6.8v3.6h11.2V6.8"/><path d="M4.4 10.4 2.6 14.6h18.8l-1.8-4.2z"/><path d="M5.2 14.6v6h13.6v-6"/><path d="M2 20.6h20"/><path d="M10 20.6v-4h4v4"/></>,
+  shape:    <><circle cx="7.2" cy="8" r="4"/><rect x="13" y="4" width="8" height="8" rx="1.2"/><path d="m12 14 5 8H7z"/></>,
+};
+/* ことばの さしえ 1 つ。size は px。 */
+const Pict = ({ name, size=24, className='', strokeWidth=1.6 }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+       fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+       className={className} aria-hidden="true" focusable="false">
+    {PICTS[name] || PICTS.shape}
+  </svg>
+);
+
+/* --- 花丸（はなまる） ---
+   「かんぺき」をあらわす、このアプリでいちばん大事なしるし。
+   先生が赤ペンで書いてくれる花丸を、朱色の線でそのまま描く。
+
+   形は計算でつくる（座標を手で書かない）。花びらは「まんなかから rm はなれた
+   ところに置いた 半径 rp の円」をぐるりと n 個ならべ、となりあう円の交点
+   （＝谷）どうしを 円弧でつないだもの。こうすると花びらの先が まるくなり、
+   星形ではなく ちゃんと花に見える。
+
+     rm … 花びらの中心までのきょり    tip  （とがった先）= rm + rp
+     rp … 花びらの半径                notch（花びらの谷）= 計算で出る
+   ★カスタマイズポイント: 花びらの数・大きさは下の LARGE / SMALL を変える。 */
+function hanamaruPath(n, rm, rp, cx = 50, cy = 50) {
+  const step = (Math.PI * 2) / n, half = step / 2;
+  const h2 = rp * rp - Math.pow(rm * Math.sin(half), 2);
+  if (h2 <= 0) return '';   // となりの花びらと交わらない組みあわせ（形にならない）
+  const rn = rm * Math.cos(half) - Math.sqrt(h2);   // 谷の半径
+  const notch = (i) => {
+    const a = -Math.PI / 2 + (i + 0.5) * step;
+    return `${(cx + rn * Math.cos(a)).toFixed(2)} ${(cy + rn * Math.sin(a)).toFixed(2)}`;
+  };
+  let d = `M${notch(-1)}`;
+  // 大きいほうの弧（large-arc=1）を、時計まわり（sweep=1）にたどる
+  for (let i = 0; i < n; i++) d += ` A${rp} ${rp} 0 1 1 ${notch(i)}`;
+  return d + ' Z';
+}
+// ちいさく出すときは 花びらを へらして線を太くする。
+// 花びらが 8 枚のままだと 15px くらいでは つぶれて 歯車のように見えてしまう。
+const HANAMARU_LARGE = { d: hanamaruPath(8, 31, 13), w: 5.5, r: 15 };
+const HANAMARU_SMALL = { d: hanamaruPath(5, 27, 18), w: 7,   r: 11 };
+
+function Hanamaru({ size = 24, className = '', draw = false, duration = 0.9, color = 'currentColor' }) {
+  const s = size < 24 ? HANAMARU_SMALL : HANAMARU_LARGE;
+  // 線を引いていく演出のために、実際の線の長さを測る（結果はキャッシュされる）。
+  // draw を使わないときは測らない＝ふだんの表示に余計な計算をかけない。
+  const drawStyle = draw
+    ? { '--kkm-dash': Math.ceil(getPathLength(s.d)) + 8, '--kkm-draw-dur': `${duration}s` }
+    : undefined;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 100 100"
+         fill="none" stroke={color} strokeWidth={s.w} strokeLinecap="round" strokeLinejoin="round"
+         className={className} aria-hidden="true" focusable="false">
+      <path d={s.d} className={draw ? 'kkm-draw' : undefined} style={drawStyle}/>
+      <circle cx="50" cy="50" r={s.r} className={draw ? 'kkm-draw' : undefined}
+              style={draw ? { '--kkm-dash': Math.ceil(2 * Math.PI * s.r) + 4, '--kkm-draw-dur': `${duration * 0.6}s`, '--kkm-draw-delay': `${duration * 0.75}s` } : undefined}/>
+    </svg>
+  );
+}
+
+/* 名まえから UI アイコンを引く（STAGE_INFO などの設定から使う） */
+const ICONS = {
+  lock: IconLock, play: IconPlay, brush: IconBrush, pen: IconPen, maru: IconMaru,
+  check: IconCheck, star: IconStar, trophy: IconTrophy, book: IconBook, pencil: IconPencil,
+};
 
 /* ──────────────────────────────────────────────────────────────
-   6. <Mascot> ── ひよこさんが応援
+   6. <Mascot> ── 「ことりせんせい」が声をかける
+
+   絵文字のひよこは使わず、線だけで描いた ことり にした。
+   きもち（mood）で 目・口・うごきだけが変わり、形はいつも同じ。
    ────────────────────────────────────────────────────────────── */
-function Mascot({ message, mood = 'happy', size = 'normal' }) {
-  // mood: happy / cheer / wow / sad
-  const face = { happy: '🐤', cheer: '🐥', wow: '🌟🐤', sad: '🐣' }[mood] || '🐤';
-  const wrap = size === 'small' ? 'text-2xl' : 'text-4xl md:text-5xl';
-  const anim = mood === 'wow' ? 'kkm-sparkle' : mood === 'cheer' ? 'animate-bounce' : 'kkm-float';
+const MASCOT_MOODS = {
+  happy: { anim: 'kkm-float',   eye: 'dot',   beakUp: false },
+  cheer: { anim: 'kkm-breathe', eye: 'dot',   beakUp: true  },
+  wow:   { anim: 'kkm-breathe', eye: 'wide',  beakUp: true  },
+  sad:   { anim: '',            eye: 'droop', beakUp: false },
+};
+function MascotFace({ size = 40, mood = 'happy' }) {
+  const m = MASCOT_MOODS[mood] || MASCOT_MOODS.happy;
   return (
-    <div className="flex items-end gap-2">
-      <div className={`${wrap} ${anim}`} style={anim === 'animate-bounce' ? { animationDuration: '1.4s' } : undefined}>{face}</div>
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"
+         className={m.anim}>
+      {/* からだ */}
+      <path d="M24 43c-8.3 0-15-6.3-15-14.5S15.7 14 24 14s15 6.3 15 14.5S32.3 43 24 43z"
+            fill="#faf7f0" stroke="#443f38" strokeWidth="2.2" strokeLinejoin="round"/>
+      {/* あたまの毛 */}
+      <path d="M24 14V8M24 8c-1.6-1.8-1.3-3.8.7-5 .8 2 .4 3.7-.7 5z"
+            stroke="#443f38" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      {/* つばさ */}
+      <path d="M11.5 27c2.6 1 4 3.2 4.2 6.5-2.6-.4-4.2-2.5-4.2-6.5zM36.5 27c-2.6 1-4 3.2-4.2 6.5 2.6-.4 4.2-2.5 4.2-6.5z"
+            fill="#f4cec2" stroke="#443f38" strokeWidth="1.8" strokeLinejoin="round"/>
+      {/* め */}
+      {m.eye === 'wide' ? (
+        <><circle cx="19" cy="25" r="2.6" fill="#443f38"/><circle cx="29" cy="25" r="2.6" fill="#443f38"/>
+          <circle cx="19.9" cy="24" r=".9" fill="#fff"/><circle cx="29.9" cy="24" r=".9" fill="#fff"/></>
+      ) : m.eye === 'droop' ? (
+        <path d="M16.6 25.6q2.4-2.4 4.8 0M26.6 25.6q2.4-2.4 4.8 0"
+              stroke="#443f38" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+      ) : (
+        <><circle cx="19" cy="25" r="1.9" fill="#443f38"/><circle cx="29" cy="25" r="1.9" fill="#443f38"/></>
+      )}
+      {/* くちばし */}
+      {m.beakUp
+        ? <path d="M21 30h6l-3 3.4z" fill="#b34328" stroke="#93331e" strokeWidth="1.4" strokeLinejoin="round"/>
+        : <path d="M21.5 30.5h5l-2.5 2.8z" fill="#b34328" stroke="#93331e" strokeWidth="1.4" strokeLinejoin="round"/>}
+      {/* ほっぺ */}
+      <circle cx="15.4" cy="29.5" r="2" fill="#f4cec2"/><circle cx="32.6" cy="29.5" r="2" fill="#f4cec2"/>
+    </svg>
+  );
+}
+function Mascot({ message, mood = 'happy', size = 'normal' }) {
+  const px = size === 'small' ? 34 : 52;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="shrink-0"><MascotFace size={px} mood={mood}/></div>
       {message && (
-        <div className="relative bg-white border-2 border-amber-300 rounded-2xl rounded-bl-none px-3 py-1.5 shadow-sm kkm-pop-in">
-          <span className="text-xs md:text-sm font-black text-amber-700">{message}</span>
-          <span className="absolute -top-2 -right-2 text-sm kkm-sparkle">✨</span>
+        <div key={message}
+          className="relative bg-white border border-shu-200 rounded-lg px-2.5 py-1.5 shadow-sm kkm-pop-in min-w-0">
+          {/* ふきだしの しっぽ */}
+          <span aria-hidden="true"
+            className="absolute left-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 bg-white border-l border-b border-shu-200"/>
+          <span className="relative text-[11px] md:text-sm font-semibold text-sumi-700 leading-snug">{message}</span>
         </div>
       )}
     </div>
@@ -1216,16 +1490,17 @@ function LevelBadge({ masteredCount, onClick }) {
   const lv = getCurrentLevel(masteredCount);
   return (
     <button onClick={onClick}
-      className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-xs font-black shadow-sm transition-all active:scale-95 ${lv.color}`}>
-      <span>{lv.icon}</span><span>{lv.title}</span>
+      className={`kkm-btn hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-semibold ${lv.color}`}>
+      <Pict name={lv.icon} size={15}/><span>{lv.title}</span>
     </button>
   );
 }
 function StreakBadge({ streak }) {
   if (streak <= 0) return null;
   return (
-    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border-2 border-orange-300 text-xs font-black shadow-sm">
-      🔥 {streak}<span className="hidden md:inline">にち</span>
+    <div className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-shu-50 text-shu-700 border border-shu-200 text-xs font-semibold tabular-nums"
+         title={`${streak}にち れんぞくで れんしゅうちゅう`}>
+      <IconCalendar size={13}/>{streak}<span className="hidden md:inline">にち</span>
     </div>
   );
 }
@@ -1233,68 +1508,82 @@ function StreakBadge({ streak }) {
 /* ──────────────────────────────────────────────────────────────
    8. <Header>
    ────────────────────────────────────────────────────────────── */
+// 上下のタブ（もじをかく／ことばずかん／しりとり）はここ 1 か所で定義する。
+// パソコンのヘッダーと スマホの下タブで、順番も名まえも かならず そろう。
+const VIEW_TABS = [
+  { key: 'practice',  label: 'もじをかく',   Icon: IconPencil },
+  { key: 'words',     label: 'ことばずかん', Icon: IconBook   },
+  { key: 'shiritori', label: 'しりとり',     Icon: IconLink   },
+];
+
+/* アプリのしるし＝朱印（しゅいん）。教科書の おわりに押してある はんこのイメージ。 */
+function AppSeal({ size = 36 }) {
+  return (
+    <div className="shrink-0 rounded-md bg-shu-600 text-white flex items-center justify-center shadow-sm border border-shu-700"
+         style={{ width: size, height: size }} aria-hidden="true">
+      <span className="kkm-glyph leading-none" style={{ fontSize: size * 0.5 }}>か</span>
+    </div>
+  );
+}
+
 function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceOn, setVoiceOn, earnedCount, showInstall, installReady, onInstall }) {
   return (
-    <nav className="shrink-0 bg-white/90 backdrop-blur border-b-4 border-amber-500 px-3 md:px-6 py-1.5 md:py-2.5 flex justify-between items-center shadow-sm z-10 gap-2 relative overflow-hidden">
-      {/* 装飾：背景に浮かぶ絵文字 */}
-      <span className="kkm-decor kkm-float-slow text-base md:text-xl" style={{ top: '4px', left: '40%', animationDelay: '0s' }}>⭐</span>
-      <span className="kkm-decor kkm-float-slow text-base md:text-xl" style={{ bottom: '2px', left: '55%', animationDelay: '1.2s' }}>🌈</span>
-      <span className="kkm-decor kkm-float-slow text-base md:text-xl" style={{ top: '3px', left: '70%', animationDelay: '2.4s' }}>✨</span>
-      {/* 左：ロゴ + アプリ名 */}
-      <div className="flex items-center gap-2 md:gap-3 shrink-0 min-w-0 relative z-10">
-        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-white flex items-center justify-center shadow-md text-xl shrink-0 kkm-wiggle">🐤</div>
-        <h1 className="text-sm md:text-xl font-black tracking-tight leading-tight truncate kkm-text-rainbow">
-          ひらがな・カタカナ<br className="md:hidden"/>かきかたマスター
+    <nav className="shrink-0 bg-white/95 backdrop-blur border-b-2 border-shu-600 px-3 md:px-5 py-1.5 md:py-2 flex justify-between items-center z-10 gap-2 relative">
+      {/* 左：しるし + アプリ名。せまい画面では名前のほうを縮める（タブは縮めない）。 */}
+      <div className="flex items-center gap-2 md:gap-2.5 min-w-0 shrink">
+        <AppSeal size={34}/>
+        <h1 className="text-[13px] md:text-lg font-semibold leading-tight truncate text-sumi-800 tracking-wide">
+          ひらがな・カタカナ<br className="md:hidden"/><span className="hidden md:inline"> </span>かきかたマスター
         </h1>
       </div>
 
-      {/* 中央：ビュー切替 */}
-      <div className="hidden sm:flex bg-amber-50 rounded-full p-1 shadow-inner border border-amber-100 relative z-10">
-        <button onClick={() => setView('practice')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-black transition-all active:scale-95 ${
-            view === 'practice' ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-md' : 'text-amber-700 hover:bg-amber-100'
-          }`}><IconPencil size={16}/> もじをかく</button>
-        <button onClick={() => setView('words')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-black transition-all active:scale-95 ${
-            view === 'words' ? 'bg-gradient-to-br from-pink-400 to-violet-500 text-white shadow-md' : 'text-amber-700 hover:bg-amber-100'
-          }`}><IconBook size={16}/> ことばずかん</button>
-        <button onClick={() => setView('shiritori')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-black transition-all active:scale-95 ${
-            view === 'shiritori' ? 'bg-gradient-to-br from-sky-400 to-blue-500 text-white shadow-md' : 'text-amber-700 hover:bg-amber-100'
-          }`}>🎮 しりとり</button>
+      {/* 中央：ビュー切替（教科書のインデックスのように、朱の下線でいまの場所を示す） */}
+      <div className="hidden sm:flex items-end gap-1 self-stretch shrink-0 -mb-1.5 md:-mb-2">
+        {VIEW_TABS.map(t => {
+          const on = view === t.key;
+          return (
+            <button key={t.key} onClick={() => setView(t.key)} aria-current={on ? 'page' : undefined}
+              className={`kkm-btn relative flex items-center gap-1.5 px-2.5 lg:px-4 pt-2 pb-2.5 text-sm font-semibold rounded-t-md whitespace-nowrap ${
+                on ? 'text-shu-700 bg-shu-50' : 'text-sumi-500 hover:text-shu-600 hover:bg-washi-100'
+              }`}>
+              <t.Icon size={16}/> {t.label}
+              {on && <span aria-hidden="true" className="kkm-underline absolute left-2 right-2 bottom-0 h-[3px] rounded-full bg-shu-600"/>}
+            </button>
+          );
+        })}
       </div>
 
       {/* 右：ステータス類 */}
-      <div className="flex items-center gap-1.5 md:gap-2 shrink-0 relative z-10">
+      <div className="flex items-center gap-1.5 shrink-0">
         {showInstall && (
           <button onClick={onInstall} title="この がめんを アプリとして ついかする"
             aria-label="この がめんを アプリとして ついかする"
-            className={`flex items-center gap-1 px-2.5 md:px-3 h-11 min-h-[44px] rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-xs md:text-sm font-black shadow-md border-2 border-emerald-500 transition-all active:scale-95 kkm-pop ${installReady ? 'kkm-pulse-ring' : ''}`}>
-            <span className="text-base" aria-hidden="true">📲</span>
+            className={`kkm-btn kkm-ripple flex items-center gap-1.5 px-2.5 md:px-3 h-10 min-h-[40px] rounded-md bg-midori-600 text-white text-xs md:text-sm font-semibold border border-midori-700 ${installReady ? 'kkm-pulse-ring' : ''}`}>
+            <IconDownload size={16}/>
             <span className="hidden sm:inline">アプリにする</span>
           </button>
         )}
-        <StreakBadge streak={streak}/>
+        <span className="hidden xl:block"><StreakBadge streak={streak}/></span>
         <LevelBadge masteredCount={mastered.length} onClick={onOpenBadges}/>
-        <button onClick={onOpenBadges} title="ごほうびシール" aria-label="ごほうびシール ずかん を ひらく"
-          className="relative w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-700 flex items-center justify-center transition-all active:scale-95 shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-          <IconTrophy size={20}/>
+        <button onClick={onOpenBadges} title="ごほうびの はんこ" aria-label="ごほうびの はんこ ずかん を ひらく"
+          className="kkm-btn relative w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-yamabuki-50 hover:bg-yamabuki-100 text-yamabuki-700 border border-yamabuki-200 flex items-center justify-center">
+          <IconTrophy size={19}/>
           {earnedCount > 0 && (
-            <span aria-hidden="true" className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{earnedCount}</span>
+            <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 bg-shu-600 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 tabular-nums">{earnedCount}</span>
           )}
         </button>
         <button onClick={() => setVoiceOn(v => !v)}
           title={voiceOn ? 'おとを オフにする' : 'おとを オンにする'}
           aria-label={voiceOn ? 'おとを オフにする' : 'おとを オンにする'}
           aria-pressed={voiceOn}
-          className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all active:scale-95 shadow-sm focus:outline-none focus:ring-2 ${
-            voiceOn ? 'bg-sky-100 text-sky-700 hover:bg-sky-200 focus:ring-sky-400' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 focus:ring-slate-400'
+          className={`kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center border ${
+            voiceOn ? 'bg-ai-50 text-ai-700 border-ai-200 hover:bg-ai-100' : 'bg-sumi-50 text-sumi-400 border-sumi-200 hover:bg-sumi-100'
           }`}>
-          {voiceOn ? <IconVolume size={20}/> : <IconVolumeX size={20}/>}
+          {voiceOn ? <IconVolume size={19}/> : <IconVolumeX size={19}/>}
         </button>
         <button onClick={onReset} title="データをリセット" aria-label="れんしゅうデータをリセット"
-          className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-500 flex items-center justify-center transition-all active:scale-95 shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-300">
-          <IconSettings size={20}/>
+          className="kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-sumi-50 hover:bg-shu-50 text-sumi-500 hover:text-shu-600 border border-sumi-200 flex items-center justify-center">
+          <IconSettings size={19}/>
         </button>
       </div>
     </nav>
@@ -1306,10 +1595,10 @@ function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceO
    ────────────────────────────────────────────────────────────── */
 function Footer() {
   return (
-    <footer className="shrink-0 w-full bg-white border-t border-slate-200 py-1 text-center text-[10px] md:text-xs text-slate-600 font-bold">
+    <footer className="shrink-0 w-full bg-white border-t border-sumi-200 py-1 text-center text-[10px] md:text-xs text-sumi-500 font-medium">
       ©2026 ひらがな・カタカナかきかたマスター ・
       <a href="https://note.com/cute_borage86" target="_blank" rel="noopener noreferrer"
-         className="text-amber-700 hover:text-amber-800 hover:underline ml-1">GIGA山</a>
+         className="text-shu-700 hover:text-shu-800 hover:underline ml-1">GIGA山</a>
     </footer>
   );
 }
@@ -1319,19 +1608,29 @@ function Footer() {
    ────────────────────────────────────────────────────────────── */
 function ModeTabsMobile({ view, setView }) {
   return (
-    <div className="sm:hidden flex bg-white rounded-full p-1 shadow-sm border border-amber-100 mx-3 mt-2 relative z-10">
-      <button onClick={() => setView('practice')}
-        className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-full text-xs font-black transition-all active:scale-95 ${
-          view === 'practice' ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow' : 'text-amber-700'
-        }`}><IconPencil size={13}/> もじをかく</button>
-      <button onClick={() => setView('words')}
-        className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-full text-xs font-black transition-all active:scale-95 ${
-          view === 'words' ? 'bg-gradient-to-br from-pink-400 to-violet-500 text-white shadow' : 'text-amber-700'
-        }`}><IconBook size={13}/> ことばずかん</button>
-      <button onClick={() => setView('shiritori')}
-        className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-full text-xs font-black transition-all active:scale-95 ${
-          view === 'shiritori' ? 'bg-gradient-to-br from-sky-400 to-blue-500 text-white shadow' : 'text-amber-700'
-        }`}>🎮 しりとり</button>
+    <div className="sm:hidden flex bg-white border-b border-sumi-200 relative z-10">
+      {VIEW_TABS.map(t => {
+        const on = view === t.key;
+        return (
+          <button key={t.key} onClick={() => setView(t.key)} aria-current={on ? 'page' : undefined}
+            className={`kkm-btn relative flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold ${
+              on ? 'text-shu-700 bg-shu-50' : 'text-sumi-500'
+            }`}>
+            <t.Icon size={14}/> {t.label}
+            {on && <span aria-hidden="true" className="kkm-underline absolute left-3 right-3 bottom-0 h-[3px] rounded-full bg-shu-600"/>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* 教科書の見出し。朱色の縦罫＋見出し文字で、どのセクションでも同じ形にする。 */
+function SectionTitle({ children, right, className = '' }) {
+  return (
+    <div className={`flex items-center justify-between gap-2 shrink-0 ${className}`}>
+      <h2 className="kkm-heading-rule text-sm md:text-base font-semibold text-sumi-800 truncate">{children}</h2>
+      {right}
     </div>
   );
 }
@@ -1345,19 +1644,21 @@ function DailyChallenge({ char, kanaMode, progress, onPick }) {
   const isMastered = stage >= 4;
   return (
     <button onClick={() => onPick(char)}
-      className="w-full bg-gradient-to-r from-amber-100 via-pink-100 to-sky-100 border-2 border-amber-300 rounded-2xl p-2 md:p-3 flex items-center gap-2 md:gap-3 shadow-sm hover:shadow-md transition-all active:scale-[0.99] kkm-shimmer">
-      <div className="flex items-center justify-center bg-white rounded-xl w-10 h-10 md:w-16 md:h-16 border-2 border-amber-400 shadow-inner shrink-0 kkm-float">
-        <span className="kkm-glyph text-2xl md:text-4xl text-amber-700">{char}</span>
+      className="kkm-btn kkm-ripple w-full kkm-sheet border-l-4 border-l-shu-600 rounded-md p-2 md:p-2.5 flex items-center gap-3 text-left">
+      <div className="flex items-center justify-center bg-washi-100 rounded-md w-11 h-11 md:w-14 md:h-14 border border-shu-200 shrink-0">
+        <span className="kkm-glyph text-2xl md:text-3xl text-shu-700">{char}</span>
       </div>
-      <div className="flex-1 text-left min-w-0">
-        <div className="text-[10px] md:text-xs font-black text-amber-600 flex items-center gap-1">
-          <IconCalendar size={12}/> きょうの もじ ・ {kanaMode === 'katakana' ? 'カタカナ' : 'ひらがな'}
+      <div className="flex-1 min-w-0">
+        <div className="text-[10px] md:text-xs font-semibold text-shu-700 flex items-center gap-1">
+          <IconTarget size={12}/> きょうの もじ ・ {kanaMode === 'katakana' ? 'カタカナ' : 'ひらがな'}
         </div>
-        <div className="text-xs md:text-base font-black text-slate-700 truncate">
-          {isMastered ? '💮 もう おぼえたよ！ もう いっかい かいてみよう' : 'チャレンジ してみよう！'}
+        <div className="text-xs md:text-sm font-semibold text-sumi-700 truncate mt-0.5">
+          {isMastered ? 'もう おぼえたよ。もう いっかい かいてみよう' : 'この もじに チャレンジ してみよう'}
         </div>
       </div>
-      <div className="text-xl md:text-3xl shrink-0 kkm-sparkle">✨</div>
+      {isMastered
+        ? <span className="shrink-0 text-shu-600"><Hanamaru size={26}/></span>
+        : <span className="shrink-0 text-shu-500"><IconArrow size={18}/></span>}
     </button>
   );
 }
@@ -1365,98 +1666,152 @@ function DailyChallenge({ char, kanaMode, progress, onPick }) {
 /* ──────────────────────────────────────────────────────────────
    12. <KanaTable>
    ────────────────────────────────────────────────────────────── */
+/* 学習だんかいの しるし（もじ表のかどに出す小さな印） */
+function StageMark({ stage, className = '' }) {
+  if (!stage) return null;
+  if (stage >= 4) {
+    return <span className={`text-shu-600 ${className}`}><Hanamaru size={14}/></span>;
+  }
+  const info = STAGE_INFO[stage];
+  const Icon = ICONS[info.icon] || IconMaru;
+  return (
+    <span className={`inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-white border ${TONES[info.tone].markRing} ${className}`}>
+      <Icon size={9}/>
+    </span>
+  );
+}
+
+/* 五十音表の 行（ぎょう）の見出し。「あ行」「か行」のように、
+   教科書とおなじ かたまりで もじを つかめるようにする。 */
+function rowLabelOf(rowChars) {
+  const filled = rowChars.filter(Boolean);
+  if (filled.length === 0) return '';
+  const leader = filled[0];
+  if (filled.length === 1 && (leader === 'ん' || leader === 'ン')) return leader;
+  return leader + '行';
+}
+
 function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, currentChar, onSelect, onSequence, onRandom }) {
   const table = getKanaTable(kanaMode, kanaKind);
-  // いま見ている表の「かんぺき（💮）」進捗（がんばりゲージ）
+  // いま見ている表の「かんぺき（花丸）」進捗
   const { doneCount, totalCount, pct } = useMemo(() => {
     const list = table.filter(Boolean);
     const done = list.filter(c => getStage(progress, c) >= 4).length;
     return { doneCount: done, totalCount: list.length, pct: list.length ? Math.round((done / list.length) * 100) : 0 };
   }, [table, progress]);
   const allDone = totalCount > 0 && doneCount === totalCount;
+
+  // 5 つずつの「行」にまとめる。5 でわりきれない表（ゃゅょっ）は行見出しを出さない。
+  const rows = useMemo(() => {
+    const out = [];
+    for (let i = 0; i < table.length; i += 5) out.push(table.slice(i, i + 5));
+    return out;
+  }, [table]);
+  const showRowLabels = table.length % 5 === 0;
+
   return (
-    <div className="bg-white/95 backdrop-blur rounded-2xl shadow-sm border-2 border-amber-100 p-2 md:p-4 flex flex-col h-full min-h-0">
-      <div className="flex gap-1.5 md:gap-2 mb-1.5 md:mb-2 shrink-0">
-        <button onClick={() => setKanaMode('hiragana')}
-          className={`flex-1 py-1.5 md:py-2 rounded-xl font-black text-sm md:text-lg transition-all active:scale-95 border-2 ${
-            kanaMode === 'hiragana' ? 'bg-gradient-to-br from-pink-400 to-rose-500 text-white border-pink-500 shadow-md' : 'bg-amber-50 text-amber-600 border-amber-100'
-          }`}>🌸 ひらがな</button>
-        <button onClick={() => setKanaMode('katakana')}
-          className={`flex-1 py-1.5 md:py-2 rounded-xl font-black text-sm md:text-lg transition-all active:scale-95 border-2 ${
-            kanaMode === 'katakana' ? 'bg-gradient-to-br from-sky-400 to-indigo-500 text-white border-sky-500 shadow-md' : 'bg-amber-50 text-amber-600 border-amber-100'
-          }`}>⚡ カタカナ</button>
+    <div className="kkm-sheet rounded-lg p-2 md:p-3 flex flex-col h-full min-h-0">
+      {/* ① どの文字を学ぶか：ひらがな／カタカナ */}
+      <div className="flex gap-1.5 mb-1.5 shrink-0">
+        <button onClick={() => setKanaMode('hiragana')} aria-pressed={kanaMode === 'hiragana'}
+          className={`kkm-btn kkm-ripple flex-1 py-1.5 md:py-2 rounded-md font-semibold text-sm md:text-base border ${
+            kanaMode === 'hiragana' ? 'bg-shu-600 text-white border-shu-700' : 'bg-washi-100 text-sumi-500 border-sumi-200 hover:bg-washi-200'
+          }`}>ひらがな</button>
+        <button onClick={() => setKanaMode('katakana')} aria-pressed={kanaMode === 'katakana'}
+          className={`kkm-btn kkm-ripple flex-1 py-1.5 md:py-2 rounded-md font-semibold text-sm md:text-base border ${
+            kanaMode === 'katakana' ? 'bg-ai-600 text-white border-ai-700' : 'bg-washi-100 text-sumi-500 border-sumi-200 hover:bg-washi-200'
+          }`}>カタカナ</button>
       </div>
 
-      {/* しゅるい（清音／濁音／半濁音／拗音・促音）のサブタブ */}
-      <div className="grid grid-cols-4 gap-1 mb-2 md:mb-3 shrink-0">
+      {/* ② どの しゅるい を学ぶか：せいおん／だくおん／はんだくおん／ようおん */}
+      <div className="grid grid-cols-4 gap-1 mb-2 shrink-0">
         {KANA_KINDS.map(k => (
-          <button key={k.key} onClick={() => setKanaKind(k.key)}
-            className={`py-1 md:py-1.5 rounded-lg font-black text-[10px] md:text-xs border-2 transition-all active:scale-95 leading-tight ${
+          <button key={k.key} onClick={() => setKanaKind(k.key)} aria-pressed={kanaKind === k.key} title={k.label}
+            className={`kkm-btn py-1 md:py-1.5 rounded-md font-semibold text-[10px] md:text-xs border leading-tight ${
               kanaKind === k.key
-                ? 'bg-gradient-to-br from-amber-400 to-orange-400 text-white border-amber-500 shadow'
-                : 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100'
+                ? 'bg-shu-50 text-shu-700 border-shu-400'
+                : 'bg-white text-sumi-500 border-sumi-200 hover:bg-washi-100'
             }`}>
-            <span className="block">{k.short}</span>
+            <span className="block md:hidden">{k.short}</span>
+            <span className="hidden md:block truncate px-0.5">{k.label}</span>
           </button>
         ))}
       </div>
 
-      {/* がんばりゲージ：この表で 💮 になった数 */}
-      <div className="shrink-0 mb-1.5 md:mb-2 kkm-progress-row" aria-hidden="false">
-        <div className="flex items-center justify-between text-[10px] md:text-xs font-black text-amber-700 mb-0.5 px-0.5">
-          <span className="flex items-center gap-1">{allDone ? '🏆' : '💮'} かんぺき</span>
-          <span aria-live="polite">{doneCount}/{totalCount}{allDone ? ' ぜんぶ！' : ''}</span>
+      {/* ③ この表の しんちょく（花丸になった もじの かず） */}
+      <div className="shrink-0 mb-2 kkm-progress-row">
+        <div className="flex items-center justify-between text-[10px] md:text-xs font-semibold text-sumi-600 mb-1">
+          <span className="flex items-center gap-1 text-shu-700"><Hanamaru size={15}/> かんぺき</span>
+          <span aria-live="polite" className="tabular-nums">{doneCount} / {totalCount}{allDone ? '　ぜんぶ！' : ''}</span>
         </div>
-        <div className="h-2.5 rounded-full bg-amber-100 border border-amber-200 overflow-hidden"
+        <div className="h-2 rounded-full bg-washi-300 overflow-hidden"
           role="progressbar" aria-valuemin="0" aria-valuemax={totalCount} aria-valuenow={doneCount}
           aria-label={`かんぺきに なった もじ ${doneCount} / ${totalCount}`}>
-          <div className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 kkm-shimmer' : 'bg-gradient-to-r from-emerald-400 to-teal-400'}`}
+          <div className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-yamabuki-400 kkm-sheen' : 'bg-shu-500'}`}
             style={{ width: `${pct}%` }}/>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto bg-amber-50/40 rounded-xl p-1.5 md:p-3 border border-amber-100">
-        <div className="grid grid-cols-5 gap-1 md:gap-2 max-w-sm mx-auto">
-          {table.map((char, i) => {
-            if (!char) return <div key={i} className="aspect-square"/>;
-            const stage = getStage(progress, char);
-            const isCurrent = currentChar === char;
-            // ステージに応じた見た目
-            let cls = 'bg-white text-slate-700 border-amber-200 hover:bg-amber-50';
-            let extra = '';
-            if (stage === 1) cls = 'bg-sky-50 text-sky-700 border-sky-300';
-            else if (stage === 2) cls = 'bg-emerald-50 text-emerald-700 border-emerald-300';
-            else if (stage === 3) { cls = 'bg-violet-50 text-violet-700 border-violet-400 ring-1 ring-violet-200'; extra = 'kkm-pop'; }
-            else if (stage === 4) { cls = 'bg-gradient-to-br from-amber-100 to-yellow-200 text-amber-700 border-amber-400 ring-2 ring-amber-300'; extra = 'kkm-shimmer kkm-pop'; }
-            if (isCurrent) { cls = 'bg-gradient-to-br from-sky-400 to-indigo-500 text-white border-sky-500 scale-110 z-10 shadow-lg'; extra = 'kkm-pulse-ring'; }
-            const info = STAGE_INFO[stage];
-            return (
-              <button key={i} onClick={() => onSelect(char)}
-                className={`kkm-glyph aspect-square rounded-lg text-lg md:text-3xl border-2 shadow-sm relative transition-all active:scale-95 ${cls} ${extra}`}>
-                {char}
-                {!isCurrent && stage > 0 && (
-                  <span className={`absolute -top-1 -right-1 text-xs leading-none ${stage === 4 ? 'kkm-sparkle' : ''}`}>{info.icon}</span>
-                )}
-              </button>
-            );
-          })}
+      {/* ④ 五十音表 */}
+      <div className="flex-1 min-h-0 overflow-y-auto bg-washi-100 rounded-md p-1.5 md:p-2.5 border border-sumi-200">
+        <div className="max-w-sm mx-auto flex flex-col gap-1 md:gap-1.5">
+          {rows.map((row, r) => (
+            <div key={r} className="flex items-center gap-1 md:gap-1.5">
+              {showRowLabels && (
+                <div aria-hidden="true"
+                  className="shrink-0 w-6 md:w-8 text-[9px] md:text-[11px] font-semibold text-sumi-400 text-center leading-none select-none">
+                  {rowLabelOf(row)}
+                </div>
+              )}
+              <div className="flex-1 grid grid-cols-5 gap-1 md:gap-1.5">
+                {row.map((char, i) => {
+                  if (!char) return <div key={i} className="aspect-square"/>;
+                  const stage = getStage(progress, char);
+                  const isCurrent = currentChar === char;
+                  // 学習だんかいごとの見た目（色は STAGE_INFO の tone とそろえる）
+                  let cls = 'bg-white text-sumi-700 border-sumi-200 hover:bg-washi-100 hover:border-shu-300';
+                  let extra = '';
+                  if (stage === 1)      cls = 'bg-ai-50 text-ai-700 border-ai-300';
+                  else if (stage === 2) cls = 'bg-midori-50 text-midori-700 border-midori-300';
+                  else if (stage === 3) cls = 'bg-fuji-50 text-fuji-700 border-fuji-300';
+                  else if (stage === 4) { cls = 'bg-shu-50 text-shu-700 border-shu-400'; extra = 'kkm-sheen'; }
+                  if (isCurrent) { cls = 'bg-shu-600 text-white border-shu-700 shadow-md'; extra = 'kkm-pulse-ring'; }
+                  return (
+                    <button key={i} onClick={() => onSelect(char)}
+                      aria-label={`${char}${stage >= 4 ? '（かんぺき）' : ''}`}
+                      aria-current={isCurrent ? 'true' : undefined}
+                      className={`kkm-glyph kkm-btn aspect-square rounded-md text-lg md:text-2xl border relative ${cls} ${extra}`}>
+                      {char}
+                      {!isCurrent && stage > 0 && (
+                        <StageMark stage={stage} className="absolute -top-1 -right-1 leading-none"/>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-        {/* ステージはんれい */}
-        <div className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1 text-[10px] font-black text-slate-500 px-1">
+
+        {/* 学習だんかいの はんれい（この色は なにを あらわすか） */}
+        <div className="mt-2.5 pt-2 border-t border-sumi-200 flex flex-wrap justify-center gap-x-2.5 gap-y-1 text-[9px] md:text-[10px] font-semibold px-1">
           {STAGE_INFO.slice(1).map(s => (
-            <span key={s.key} className="inline-flex items-center gap-0.5"><span>{s.icon}</span><span className={s.color}>{s.label}</span></span>
+            <span key={s.key} className={`inline-flex items-center gap-1 ${TONES[s.tone].icon}`}>
+              <StageMark stage={s.key}/>{s.label}
+            </span>
           ))}
         </div>
       </div>
 
-      <div className="flex gap-1.5 md:gap-2 mt-2 md:mt-3 shrink-0">
+      {/* ⑤ まとめて れんしゅうする */}
+      <div className="flex gap-1.5 mt-2 shrink-0">
         <button onClick={onSequence}
-          className="flex-1 py-1.5 md:py-2.5 rounded-xl font-black text-xs md:text-base bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow border-b-4 border-emerald-600 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 flex items-center justify-center gap-1 md:gap-1.5 kkm-pop">
-          <IconCheck size={14}/> あいうえお<span className="hidden md:inline">じゅん</span>
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-700 border border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-1.5 min-h-[40px]">
+          <IconArrow size={15}/> あいうえお<span className="hidden md:inline">じゅん</span>
         </button>
         <button onClick={onRandom}
-          className="flex-1 py-1.5 md:py-2.5 rounded-xl font-black text-xs md:text-base bg-gradient-to-br from-fuchsia-400 to-violet-500 text-white shadow border-b-4 border-violet-600 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 flex items-center justify-center gap-1 md:gap-1.5 kkm-pop">
-          <IconSparkle size={14}/> ばらばら
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-700 border border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-1.5 min-h-[40px]">
+          <IconShuffle size={15}/> ばらばら
         </button>
       </div>
     </div>
@@ -1480,8 +1835,8 @@ function stageMascotMessage(char, stage, so) {
     const left = Math.max(0, FREE_REQUIRED - (so?.freeStreak || 0));
     return `じぶんで かいてみよう！（れんぞく ${so?.freeStreak || 0}/${FREE_REQUIRED}）`;
   }
-  if (stage === 3) return 'もうすこし！ ことばを 1こ あつめて 💮 にしよう！';
-  return '💮 かんぺき！ もう いちど かいてみる？';
+  if (stage === 3) return 'あと ひといき！ ことばを 1こ あつめて 花丸に しよう';
+  return '花丸！ もう いちど かいてみる？';
 }
 
 function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, practiceCount, voiceOn, onGoToWords, fetchError, onRetryFetch }) {
@@ -1521,6 +1876,13 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
   function clearResetTimer() {
     if (resetTimerRef.current) { clearTimeout(resetTimerRef.current); resetTimerRef.current = 0; }
   }
+  // まちがえたときに マスを ゆらす（アニメーションが終わったら class を外す）
+  const [shaking, setShaking] = useState(false);
+  const shakeTimerRef = useRef(0);
+  function clearShakeTimer() {
+    if (shakeTimerRef.current) { clearTimeout(shakeTimerRef.current); shakeTimerRef.current = 0; }
+  }
+  useEffect(() => clearShakeTimer, []);
 
   // ステージから派生するモード
   const stage = stageObj?.stage ?? 0;
@@ -1563,13 +1925,13 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
         if (voiceOn) setTimeout(() => speakText('よくできました', voiceOn), 200);
       }
       if (stage === 3) {
-        setMascotMsg('もうすこし！ ことばを 1こ あつめて 💮 にしよう！');
+        setMascotMsg('あと ひといき！ ことばを 1こ あつめて 花丸に しよう');
         setMascotMood('wow');
       } else if (stage === 2) {
-        setMascotMsg('なぞりばっちり！ こんどは ガイドなしで かいてみよう！');
+        setMascotMsg('なぞり ばっちり！ こんどは おてほん なしで かいてみよう');
         setMascotMood('wow');
       } else if (stage === 4) {
-        setMascotMsg('💮 かんぺき！');
+        setMascotMsg('花丸！ かんぺきです');
         setMascotMood('wow');
       } else if (stage === 1) {
         // 書き順アニメをみたあとは、つぎになぞるよう声をかける
@@ -1750,7 +2112,8 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     // 始点マーカー・採点ロジックは変わらない。
     // ただし字形の位置・大きさは fitGlyphToTemplate で KanjiVG に合わせる。
     ctx.save();
-    ctx.fillStyle = '#e2e8f0'; // slate-200
+    // 紙にうすく刷ったお手本の色（--kkm-guide）
+    ctx.fillStyle = themeColor('--kkm-guide', '#e5ded0');
     const fontSize = Math.round(s * 0.86);
     // 合成ボールドで線が太ると字形がくずれるので、太さは 400 に固定する
     ctx.font = `400 ${fontSize}px ${kyokashoFontStack()}`;
@@ -1834,7 +2197,12 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     const ctx = c.getContext('2d');
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.lineWidth = c.width * 0.07;
-    ctx.strokeStyle = st >= 2 ? '#1e293b' : 'rgba(14,165,233,0.75)';
+    // なぞり書きは 朱色（赤えんぴつ）、じぶんで書くときは 墨色。
+    // どちらも すきとおらない色にすること。半とうめいだと、1 画を細かい線分に
+    // わけて描くたびに 丸い線のはしが かさなって、数珠つなぎの点々に見えてしまう。
+    ctx.strokeStyle = st >= 2
+      ? themeColor('--kkm-sumi', '#2e2a25')
+      : themeColor('--kkm-shu-light', '#d97e65');
     ctx.beginPath(); ctx.moveTo(pt.cx, pt.cy); ctx.lineTo(pt.cx + 0.01, pt.cy + 0.01); ctx.stroke();
     hapticTick();
   }
@@ -1880,7 +2248,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       if (next >= ps.length) {
         playPingPong();
         setMascotMsg('できたよ！'); setMascotMood('happy');
-        // 「💮 よくできました」を出すあいだは書けないようにする（isCleared）。
+        // 「花丸・よくできました」を出すあいだは書けないようにする（isCleared）。
         // これまで true にする箇所が無く、演出がまったく出ていなかった。
         setIsCleared(true);
         onRoundComplete(ch, !hm);
@@ -1909,6 +2277,10 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     playBuzzer();
     hapticErr();
     setHasMistaken(true);
+    // まちがえたことが 目でもわかるように、マスを ひとゆすりする
+    setShaking(true);
+    clearShakeTimer();
+    shakeTimerRef.current = setTimeout(() => { shakeTimerRef.current = 0; setShaking(false); }, 420);
     // 自力モード（ステージ2以上）では、ミスした瞬間にれんぞくカウントをリセット
     if (stateRef.current.stage >= 2) {
       onMistakeStreakReset && onMistakeStreakReset(stateRef.current.char);
@@ -1921,7 +2293,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
         setMascotMsg('かきじゅんを みてみよう'); setMascotMood('sad');
         return 0;
       } else {
-        setMascotMsg(nm === 1 ? '🔴の ところから かいてね！' : 'もういちど ちょうせん！');
+        setMascotMsg(nm === 1 ? 'あかい ○ の ところから かいてね' : 'もういちど ちょうせん！');
         setMascotMood('sad');
         return nm;
       }
@@ -1980,43 +2352,46 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
   }, [paths, currentStroke, isCleared, stage]);
 
   return (
-    <div className="bg-white/95 backdrop-blur rounded-2xl shadow-sm border-2 border-orange-100 p-2 md:p-4 flex flex-col h-full min-h-0 kkm-practice-board">
-      <div className="flex justify-between items-center mb-1 md:mb-2 shrink-0 gap-2 kkm-board-header">
-        <span className={`text-[10px] md:text-sm font-bold px-2 md:px-3 py-0.5 md:py-1 rounded-full truncate ${
-          isTraceMode ? 'text-emerald-700 bg-emerald-100' : 'text-violet-700 bg-violet-100'
+    <div className="kkm-sheet rounded-lg p-2 md:p-3 flex flex-col h-full min-h-0 kkm-practice-board">
+      <div className="flex justify-between items-center mb-1.5 shrink-0 gap-2 kkm-board-header">
+        <span className={`text-[10px] md:text-sm font-semibold px-2 md:px-2.5 py-1 rounded-md truncate border ${
+          isTraceMode ? 'text-midori-700 bg-midori-50 border-midori-200' : 'text-fuji-700 bg-fuji-50 border-fuji-200'
         }`}>
-          {char ? (isTraceMode ? `「${char}」を なぞって かこう` : `「${char}」を じぶんで かこう`) : 'もじを えらんでね 👆'}
+          {char ? (isTraceMode ? `「${char}」を なぞって かこう` : `「${char}」を じぶんで かこう`) : 'もじを えらんでください'}
         </span>
         {char && (
-          <span className="text-[10px] md:text-xs font-bold text-amber-600 bg-amber-50 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full shrink-0">
-            🏆 {practiceCount[char] || 0} かい
+          <span className="text-[10px] md:text-xs font-semibold text-sumi-500 bg-washi-100 border border-sumi-200 px-2 py-1 rounded-md shrink-0 tabular-nums">
+            {practiceCount[char] || 0} かい
           </span>
         )}
       </div>
 
-      {/* ステージ・ステッパー */}
+      {/* 学習ステップ（いま どのだんかいか） */}
       {char && (
         <StageStepper stage={stage} stageObj={stageObj}/>
       )}
 
       {char && (
-        <div className="mb-1 md:mb-2 shrink-0 kkm-practice-mascot">
+        <div className="mb-1.5 shrink-0 kkm-practice-mascot">
           <Mascot message={mascotMsg} mood={mascotMood} size="small"/>
         </div>
       )}
 
+      {/* かきとりのマス（原稿用紙のマス目のイメージ） */}
       <div className="flex-1 flex items-center justify-center min-h-0 min-w-0 relative w-full kkm-square-fit-container">
-        <div className="relative bg-white rounded-2xl border-4 border-orange-200 shadow-inner overflow-hidden kkm-square-fit">
-          <div className="absolute top-1/2 left-0 right-0 border-t-2 border-dashed border-amber-200 pointer-events-none z-[5]"/>
-          <div className="absolute left-1/2 top-0 bottom-0 border-l-2 border-dashed border-amber-200 pointer-events-none z-[5]"/>
+        <div className={`relative bg-white rounded-md border-2 overflow-hidden kkm-square-fit ${
+              shaking ? 'border-shu-500 kkm-shake' : 'border-shu-300'
+            }`}>
+          <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-shu-200 pointer-events-none z-[5]"/>
+          <div className="absolute left-1/2 top-0 bottom-0 border-l border-dashed border-shu-200 pointer-events-none z-[5]"/>
           <canvas ref={guideRef} className="absolute inset-0 w-full h-full z-[1]"/>
           <canvas ref={inkRef}   className="absolute inset-0 w-full h-full z-[10]"/>
-          {/* 始点ヒント（赤い点滅マーカー） */}
+          {/* 始点ヒント（朱色の点滅マーカー） */}
           {startHint && (
             <div className="absolute z-[15] pointer-events-none"
                  style={{ left: `${startHint.x}%`, top: `${startHint.y}%`, transform: 'translate(-50%, -50%)' }}>
-              <span className="absolute inset-0 inline-flex h-5 w-5 rounded-full bg-rose-400 opacity-75 animate-ping"/>
-              <span className="relative inline-flex rounded-full h-5 w-5 bg-rose-500 border-2 border-white shadow"/>
+              <span className="absolute inset-0 inline-flex h-5 w-5 rounded-full bg-shu-400 opacity-70 animate-ping"/>
+              <span className="relative inline-flex rounded-full h-5 w-5 bg-shu-600 border-2 border-white shadow"/>
             </div>
           )}
           <canvas ref={writeRef}
@@ -2026,21 +2401,24 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
             aria-label={char ? `${char} のかきとり`: 'もじを えらんでください'}
           />
           {!char && (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-300 text-7xl pointer-events-none" aria-label="もじを えらんでください">？</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-sumi-300 gap-2 pointer-events-none" aria-label="もじを えらんでください">
+              <IconGrid size={44}/>
+              <span className="text-xs font-semibold">もじを えらんでください</span>
+            </div>
           )}
           {char && paths === null && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-amber-600 z-[30] pointer-events-none gap-2" role="status" aria-live="polite">
-              <div className="text-4xl kkm-float" aria-hidden="true">🐤</div>
-              <div className="text-sm font-black">よみこみちゅう…</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-shu-600 z-[30] pointer-events-none gap-2" role="status" aria-live="polite">
+              <div className="kkm-float"><MascotFace size={40} mood="happy"/></div>
+              <div className="text-xs font-semibold text-sumi-500">よみこみちゅう…</div>
             </div>
           )}
           {char && fetchError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 z-[30] gap-2 p-4 text-center" role="alert">
-              <div className="text-4xl" aria-hidden="true">📡</div>
-              <div className="text-sm font-black text-rose-700">よみこめなかったよ</div>
-              <div className="text-xs text-slate-600 font-bold">インターネットが つながって いるか たしかめてね</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/92 z-[30] gap-2 p-4 text-center" role="alert">
+              <span className="text-sumi-400"><IconWifiOff size={34}/></span>
+              <div className="text-sm font-semibold text-shu-700">よみこめなかったよ</div>
+              <div className="text-xs text-sumi-500 font-medium">インターネットが つながって いるか たしかめてね</div>
               <button onClick={onRetryFetch}
-                className="mt-1 px-4 py-2 rounded-xl bg-amber-400 text-white font-black text-sm shadow border-b-4 border-amber-600 active:translate-y-0.5 active:border-b-2 min-h-[44px]">
+                className="kkm-btn kkm-ripple mt-1 px-4 py-2 rounded-md bg-shu-600 text-white font-semibold text-sm border border-shu-700 min-h-[44px]">
                 もういちど ためす
               </button>
             </div>
@@ -2053,29 +2431,30 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
         <SubmitButton onSubmit={submitFreeWrite} disabled={!!scoreInfo}/>
       )}
 
-      {/* ステージ3 → ことばで💮 への大きなCTA */}
+      {/* ステージ3 → ことばで 花丸 への みちしるべ */}
       {char && stage === 3 && (
         <button onClick={onGoToWords}
-          className="kkm-cta-btn mt-1 md:mt-2 py-1.5 md:py-2 px-3 rounded-xl bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-300 text-amber-900 font-black text-xs md:text-base shadow border-b-4 border-amber-500 active:translate-y-0.5 active:border-b-2 transition-all flex items-center justify-center gap-2 shrink-0">
-          🎀 ことばを 1こ あつめて 💮 にしよう！
+          className="kkm-cta-btn kkm-btn kkm-ripple mt-1.5 py-2 px-3 rounded-md bg-shu-50 text-shu-800 font-semibold text-xs md:text-sm border border-shu-300 flex items-center justify-center gap-2 shrink-0">
+          <Hanamaru size={17}/> ことばを 1こ あつめて 花丸に しよう
+          <IconArrow size={15}/>
         </button>
       )}
 
-      <div className="flex gap-1.5 md:gap-2 mt-2 md:mt-3 shrink-0 kkm-practice-buttons">
+      <div className="flex gap-1.5 mt-2 shrink-0 kkm-practice-buttons">
         <button onClick={restart} disabled={!char}
           aria-label="ここまでの れんしゅうを やりなおす"
-          className="flex-1 py-2 md:py-2.5 rounded-xl font-black text-xs md:text-base bg-orange-50 text-orange-700 shadow-sm border-b-4 border-orange-200 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 disabled:opacity-40 flex items-center justify-center gap-1 md:gap-1.5 min-h-[44px]">
-          <IconRotate size={16}/> やりなおし
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-600 border border-sumi-300 hover:border-sumi-400 disabled:opacity-40 flex items-center justify-center gap-1.5 min-h-[44px]">
+          <IconRotate size={15}/> やりなおし
         </button>
         <button onClick={() => char && speakText(char, voiceOn)} disabled={!char || !voiceOn}
           aria-label={char ? `${char} を よみあげる`: 'もじを よみあげる'}
-          className="flex-1 py-2 md:py-2.5 rounded-xl font-black text-xs md:text-base bg-emerald-100 text-emerald-700 shadow-sm border-b-4 border-emerald-300 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 disabled:opacity-40 flex items-center justify-center gap-1 md:gap-1.5 min-h-[44px]">
-          <IconVolume size={16}/> よんで
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-midori-700 border border-midori-300 hover:bg-midori-50 disabled:opacity-40 flex items-center justify-center gap-1.5 min-h-[44px]">
+          <IconVolume size={15}/> よんで
         </button>
         <button onClick={() => paths && paths.length > 0 && setShowAnime(true)} disabled={!char || !paths || paths.length === 0}
           aria-label="かきじゅんを みる"
-          className="flex-1 py-2 md:py-2.5 rounded-xl font-black text-xs md:text-base bg-sky-100 text-sky-700 shadow-sm border-b-4 border-sky-300 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 disabled:opacity-40 flex items-center justify-center gap-1 md:gap-1.5 min-h-[44px]">
-          <IconPlay size={16}/> かきじゅん
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-ai-700 border border-ai-300 hover:bg-ai-50 disabled:opacity-40 flex items-center justify-center gap-1.5 min-h-[44px]">
+          <IconPlay size={15}/> かきじゅん
         </button>
       </div>
 
@@ -2095,41 +2474,61 @@ function SubmitButton({ onSubmit, disabled }) {
   const guarded = useDebouncedAction(onSubmit, 350);
   return (
     <button onClick={guarded} disabled={disabled}
-      className="kkm-cta-btn mt-1 md:mt-2 py-2 md:py-2.5 px-3 rounded-xl bg-gradient-to-r from-violet-400 via-fuchsia-400 to-violet-400 text-white font-black text-sm md:text-base shadow border-b-4 border-violet-600 active:translate-y-0.5 active:border-b-2 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 min-h-[44px]">
-      ✨ できた！ さいてんする
+      className="kkm-cta-btn kkm-btn kkm-ripple mt-1.5 py-2.5 px-3 rounded-md bg-shu-600 text-white font-semibold text-sm md:text-base border border-shu-700 flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 min-h-[44px]">
+      <IconCheck size={17}/> かけた！ さいてんする
     </button>
   );
 }
 
 /* ──────────────────────────────────────────────────────────────
    13.5. <StageStepper> / <StageUpPopup>
+
+   学習のながれを 4 だんかいに整理して、いつも同じ形で見せる。
+     一 かきじゅんを みる → 二 なぞる → 三 じぶんで かく → 四 ことばに つかう
+   いま どこに いて、あと どれだけで つぎに すすめるかが 一目でわかるように、
+   だんかいの あいだを 線でつなぎ、のこり回数も その場に出す。
    ────────────────────────────────────────────────────────────── */
 function StageStepper({ stage, stageObj }) {
   const steps = [
-    { idx: 1, icon: '📺', label: 'かきじゅん' },
-    { idx: 2, icon: '✏️', label: 'なぞる',   sub: `${Math.min(stageObj?.traced || 0, TRACE_REQUIRED)}/${TRACE_REQUIRED}` },
-    { idx: 3, icon: '✒️', label: 'じぶんで', sub: `${Math.min(stageObj?.freeStreak || 0, FREE_REQUIRED)}/${FREE_REQUIRED}` },
-    { idx: 4, icon: '💮', label: 'ことば' },
+    { idx: 1, label: 'かきじゅん' },
+    { idx: 2, label: 'なぞる',   sub: `${Math.min(stageObj?.traced || 0, TRACE_REQUIRED)}/${TRACE_REQUIRED}` },
+    { idx: 3, label: 'じぶんで', sub: `${Math.min(stageObj?.freeStreak || 0, FREE_REQUIRED)}/${FREE_REQUIRED}` },
+    { idx: 4, label: 'ことば' },
   ];
   return (
-    <div className="flex items-stretch gap-0.5 md:gap-1 mb-2 shrink-0 text-[10px] md:text-xs font-black kkm-stepper-row">
+    <ol className="flex items-stretch mb-2 shrink-0 text-[10px] md:text-xs font-semibold kkm-stepper-row"
+        aria-label="学習の ステップ">
       {steps.map((s, i) => {
+        const info = STAGE_INFO[s.idx];
         const done = stage >= s.idx;
-        const active = stage + 1 === s.idx || (stage === s.idx && s.idx < 4) || (stage === 0 && s.idx === 1);
+        const active = !done && (stage + 1 === s.idx);
+        const Icon = ICONS[info.icon] || IconMaru;
         const cls = done
-          ? 'bg-amber-200 text-amber-800 border-amber-400'
+          ? TONES[info.tone].chip
           : active
-            ? 'bg-white text-slate-700 border-amber-300 ring-2 ring-amber-200'
-            : 'bg-slate-50 text-slate-400 border-slate-200';
+            ? 'bg-white text-sumi-700 border-shu-400 ring-1 ring-shu-200'
+            : 'bg-washi-100 text-sumi-300 border-sumi-200';
         return (
-          <div key={i} className={`flex-1 rounded-lg border-2 px-1 py-1 text-center ${cls}`}>
-            <div className="text-base md:text-lg leading-none">{done ? '✅' : s.icon}</div>
-            <div className="leading-tight mt-0.5">{s.label}</div>
-            {s.sub && !done && active && <div className="text-[9px] opacity-70">{s.sub}</div>}
-          </div>
+          <li key={i} className="flex-1 flex items-center min-w-0" aria-current={active ? 'step' : undefined}>
+            <div className={`flex-1 rounded-md border px-1 py-1 text-center min-w-0 transition-colors duration-300 ${cls}`}>
+              <div className="flex items-center justify-center gap-1 leading-none">
+                <span className="kkm-glyph text-[10px] md:text-xs opacity-70">{info.num}</span>
+                {done && s.idx >= 4
+                  ? <span className="text-shu-600"><Hanamaru size={14}/></span>
+                  : done ? <IconCheck size={13}/> : <Icon size={13}/>}
+              </div>
+              <div className="leading-tight mt-0.5 truncate">{s.label}</div>
+              {s.sub && !done && active && <div className="text-[9px] tabular-nums opacity-70">{s.sub}</div>}
+            </div>
+            {/* だんかいを つなぐ線（すすんだところは 朱色になる） */}
+            {i < steps.length - 1 && (
+              <span aria-hidden="true"
+                className={`w-1.5 md:w-2 h-[2px] shrink-0 transition-colors duration-300 ${stage > s.idx ? 'bg-shu-400' : 'bg-sumi-200'}`}/>
+            )}
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
@@ -2143,23 +2542,32 @@ function StageUpPopup({ info, onClose, onGoToWords }) {
     return () => clearTimeout(t);
   }, [onClose, info.to]);
   const msgMap = {
-    2: { title: 'なぞり クリア！', sub: 'つぎは じぶんで かいてみよう！', color: 'from-emerald-200 to-emerald-100 border-emerald-400 text-emerald-700' },
-    3: { title: 'ほぼマスター！', sub: 'ことばを 1こ あつめれば 💮 かんぺき！', color: 'from-violet-200 to-violet-100 border-violet-400 text-violet-700' },
-    4: { title: '💮 かんぺき！', sub: 'ほんとうに じぶんの じに なったよ！', color: 'from-amber-200 to-amber-100 border-amber-400 text-amber-700' },
+    2: { num: '二', title: 'なぞり クリア', sub: 'つぎは じぶんで かいてみよう', tone: 'midori' },
+    3: { num: '三', title: 'ほぼ マスター', sub: 'ことばを 1こ あつめれば 花丸！', tone: 'fuji' },
+    4: { num: '四', title: 'かんぺき',     sub: 'ほんとうに じぶんの じに なったよ', tone: 'shu' },
   };
   const m = msgMap[info.to];
   if (!m) return null;
+  const t = TONES[m.tone];
   return (
-    <div className={`fixed inset-x-0 top-0 z-[180] pointer-events-none flex justify-center transition-all duration-400 pt-3 md:pt-5 ${
-      show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+    <div className={`fixed inset-x-0 top-0 z-[180] pointer-events-none flex justify-center transition-all duration-300 pt-3 md:pt-5 ${
+      show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'
     }`}>
-      <div className={`bg-gradient-to-br ${m.color} px-5 md:px-8 py-3 md:py-4 rounded-3xl shadow-2xl border-4 max-w-sm mx-3 text-center pointer-events-auto -rotate-2`}>
-        <div className="text-xl md:text-3xl font-black">{m.title}</div>
-        <div className="text-xs md:text-base font-black mt-1 opacity-90">{m.sub}</div>
+      <div className={`bg-white px-5 md:px-7 py-3 md:py-4 rounded-lg shadow-lg border border-l-4 ${t.leftRule} max-w-sm mx-3 text-center pointer-events-auto`}>
+        <div className="flex items-center justify-center gap-2">
+          {/* はんこを おした演出 */}
+          <span className={`kkm-stamp shrink-0 w-9 h-9 rounded-md border text-white flex items-center justify-center ${t.solid}`}>
+            {info.to >= 4 ? <Hanamaru size={22} color="#fff"/> : <span className="kkm-glyph text-lg leading-none">{m.num}</span>}
+          </span>
+          <div className="text-left">
+            <div className={`text-base md:text-xl font-semibold ${t.text}`}>{m.title}</div>
+            <div className="text-[11px] md:text-sm font-medium text-sumi-600 mt-0.5">{m.sub}</div>
+          </div>
+        </div>
         {info.to === 3 && onGoToWords && (
           <button onClick={onGoToWords}
-            className="mt-2 px-4 py-1.5 rounded-xl bg-white text-violet-700 font-black text-sm shadow border-b-4 border-violet-400 active:translate-y-0.5 active:border-b-2">
-            ことばずかんへ →
+            className="kkm-btn kkm-ripple mt-2.5 w-full px-4 py-2 rounded-md bg-fuji-600 text-white font-semibold text-sm border border-fuji-700 flex items-center justify-center gap-1.5">
+            ことばずかんへ <IconArrow size={15}/>
           </button>
         )}
       </div>
@@ -2187,7 +2595,7 @@ function StrokeOrderAnime({ paths, char, onClose }) {
     const lens = []; const placed = [];
     paths.forEach((d, i) => {
       const bg = document.createElementNS(svgNS,'path');
-      bg.setAttribute('d', d); bg.setAttribute('stroke', '#fef3c7'); bg.setAttribute('stroke-width','6');
+      bg.setAttribute('d', d); bg.setAttribute('stroke', themeColor('--kkm-guide', '#eae2d2')); bg.setAttribute('stroke-width','6');
       bg.setAttribute('fill','none'); bg.setAttribute('stroke-linecap','round'); bg.setAttribute('stroke-linejoin','round');
       bgG.appendChild(bg);
       // 長さと始点はキャッシュから（DOM 挿入なし）
@@ -2196,7 +2604,7 @@ function StrokeOrderAnime({ paths, char, onClose }) {
       const sp  = { x: se.s.x * 109, y: se.s.y * 109 };
       lens.push(len);
       const p = document.createElementNS(svgNS,'path');
-      p.setAttribute('d', d); p.setAttribute('stroke', '#0f172a'); p.setAttribute('stroke-width','6');
+      p.setAttribute('d', d); p.setAttribute('stroke', themeColor('--kkm-sumi', '#2e2a25')); p.setAttribute('stroke-width','6');
       p.setAttribute('fill','none'); p.setAttribute('stroke-linecap','round'); p.setAttribute('stroke-linejoin','round');
       p.id = `kkm-anime-${i}`;
       p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.style.opacity = '0';
@@ -2214,11 +2622,11 @@ function StrokeOrderAnime({ paths, char, onClose }) {
       const g = document.createElementNS(svgNS,'g'); g.id = `kkm-num-${i}`; g.style.opacity = '0';
       const c = document.createElementNS(svgNS,'circle');
       c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r','5.5');
-      c.setAttribute('fill','#ffffff'); c.setAttribute('stroke','#f97316'); c.setAttribute('stroke-width','1.2');
+      c.setAttribute('fill','#ffffff'); c.setAttribute('stroke',themeColor('--kkm-shu','#b34328')); c.setAttribute('stroke-width','1.2');
       const t = document.createElementNS(svgNS,'text');
       t.setAttribute('x', cx); t.setAttribute('y', cy+0.5);
       t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','central');
-      t.setAttribute('font-size','6'); t.setAttribute('font-weight','900'); t.setAttribute('fill','#f97316');
+      t.setAttribute('font-size','6'); t.setAttribute('font-weight','700'); t.setAttribute('fill',themeColor('--kkm-shu','#b34328'));
       t.textContent = (i+1).toString();
       g.appendChild(c); g.appendChild(t); nuG.appendChild(g);
     });
@@ -2252,27 +2660,28 @@ function StrokeOrderAnime({ paths, char, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-2 md:p-4 overflow-auto" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-sumi-900/40 backdrop-blur-sm p-2 md:p-4 overflow-auto kkm-fade-in" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={`${char} のかきじゅん`}
-        className="bg-white rounded-3xl shadow-2xl border-4 border-sky-200 p-3 md:p-6 max-w-md w-full my-auto" onClick={(e) => { e.stopPropagation(); }}>
+        className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-ai-600 p-3 md:p-5 max-w-md w-full my-auto kkm-pop-in" onClick={(e) => { e.stopPropagation(); }}>
         <div className="flex justify-between items-center mb-2 md:mb-3">
-          <span className="text-sm font-black text-sky-700 bg-sky-100 px-3 py-1 rounded-full">「{char}」のかきじゅん</span>
+          <h3 className="kkm-heading-rule text-sm md:text-base font-semibold text-sumi-800">「{char}」の かきじゅん</h3>
           <button onClick={onClose} aria-label="とじる"
-            className="w-11 h-11 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all active:scale-95 min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
+            className="kkm-btn w-11 h-11 rounded-md bg-sumi-50 hover:bg-sumi-100 border border-sumi-200 text-sumi-600 flex items-center justify-center min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
         </div>
-        <div className="aspect-square bg-white rounded-2xl border-4 border-sky-200 shadow-inner relative overflow-hidden mb-2 md:mb-3 mx-auto" style={{ maxHeight: 'min(70vh, 70dvh)', maxWidth: '100%', width: 'min(70vh, 70dvh, 100%)' }}>
-          <div className="absolute top-1/2 left-0 right-0 border-t-2 border-dashed border-sky-200"/>
-          <div className="absolute left-1/2 top-0 bottom-0 border-l-2 border-dashed border-sky-200"/>
+        <div className="aspect-square bg-white rounded-md border-2 border-shu-200 relative overflow-hidden mb-3 mx-auto" style={{ maxHeight: 'min(70vh, 70dvh)', maxWidth: '100%', width: 'min(70vh, 70dvh, 100%)' }}>
+          <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-shu-200"/>
+          <div className="absolute left-1/2 top-0 bottom-0 border-l border-dashed border-shu-200"/>
           <svg ref={svgRef} viewBox="0 0 109 109" className="w-full h-full relative z-10"/>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-3 items-center">
           <button onClick={play} disabled={playing}
-            className="px-5 py-2.5 rounded-xl font-black text-white bg-sky-400 shadow border-b-4 border-sky-600 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 disabled:opacity-50 flex items-center gap-1.5">
-            <IconPlay size={18}/> {playing ? 'さいせいちゅう' : 'みる'}
+            className="kkm-btn kkm-ripple px-5 py-2.5 rounded-md font-semibold text-white bg-ai-600 border border-ai-700 disabled:opacity-50 flex items-center gap-1.5 min-h-[44px]">
+            <IconPlay size={17}/> {playing ? 'さいせいちゅう' : 'みる'}
           </button>
           <div className="flex-1">
-            <input type="range" min="1" max="10" value={speed} onChange={(e) => setSpeed(+e.target.value)} className="w-full accent-sky-500"/>
-            <div className="flex justify-between text-[10px] text-sky-700 font-bold"><span>🐢 ゆっくり</span><span>はやい 🐇</span></div>
+            <label className="sr-only" htmlFor="kkm-anime-speed">アニメの はやさ</label>
+            <input id="kkm-anime-speed" type="range" min="1" max="10" value={speed} onChange={(e) => setSpeed(+e.target.value)} className="w-full"/>
+            <div className="flex justify-between text-[10px] text-sumi-500 font-semibold mt-0.5"><span>ゆっくり</span><span>はやい</span></div>
           </div>
         </div>
       </div>
@@ -2281,7 +2690,10 @@ function StrokeOrderAnime({ paths, char, onClose }) {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   15. <ExcellentPopup>
+   15. <ExcellentPopup> ── 1 文字ぶん かきおえた ときの演出
+
+   先生が赤ペンで 花丸を つけてくれるところを そのまま見せる。
+   線が１本ずつ 引かれていき、さいごに「よくできました」の はんこが押される。
    ────────────────────────────────────────────────────────────── */
 function ExcellentPopup() {
   const [show, setShow] = useState(false);
@@ -2290,10 +2702,18 @@ function ExcellentPopup() {
   useEffect(() => { setShow(true); const t = setTimeout(() => setShow(false), 800); return () => clearTimeout(t); }, []);
   return (
     <div className={`fixed inset-0 z-[150] pointer-events-none flex items-center justify-center transition-all duration-500 ${
-      show ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+      show ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
     }`}>
-      <div className="bg-white/95 backdrop-blur px-6 md:px-10 py-4 md:py-6 rounded-3xl shadow-2xl border-4 border-emerald-400 -rotate-3">
-        <span className="text-3xl md:text-6xl font-black text-emerald-500 tracking-widest">💮 よくできました</span>
+      <div className="flex flex-col items-center gap-2">
+        {/* 朱色の花丸を その場で描く */}
+        <span className="text-shu-600 drop-shadow-sm">
+          <Hanamaru size={168} draw duration={0.55}/>
+        </span>
+        {/* そのあとに「よくできました」の はんこを おす */}
+        <span className="kkm-stamp text-shu-700 bg-white/95 border-2 border-shu-600 rounded-md px-4 py-1.5 shadow-sm"
+              style={{ animationDelay: '0.45s' }}>
+          <span className="text-lg md:text-2xl font-semibold tracking-[0.2em] whitespace-nowrap">よくできました</span>
+        </span>
       </div>
     </div>
   );
@@ -2318,54 +2738,61 @@ function ScorePopup({ result, onClose }) {
   }, [detail, close]);
 
   const { total, breakdown = [], comment, passed } = result || {};
-  const stars = total >= 90 ? '⭐⭐⭐' : total >= 70 ? '⭐⭐' : total >= 50 ? '⭐' : '✏️';
-  const color = passed
-    ? 'from-amber-100 via-yellow-50 to-amber-100 border-amber-400 text-amber-700'
-    : 'from-sky-100 via-slate-50 to-sky-100 border-sky-400 text-sky-700';
-  const iconFor = (s) => s === 'good' ? '💯' : s === 'ok' ? '◯' : '△';
+  // 教科書の評価と同じ しるし。花丸 ＞ ◎ ＞ ○ ＞ △
+  const rank = total >= 90 ? 'hanamaru' : total >= 70 ? '◎' : total >= 50 ? '○' : '△';
+  const t = TONES[passed ? 'shu' : 'ai'];
+  // うちわけの しるし（できた／もうすこし／がんばろう）
+  const markFor = (s) => s === 'good' ? '◎' : s === 'ok' ? '○' : '△';
+  const markToneFor = (s) => s === 'good' ? 'text-shu-600' : s === 'ok' ? 'text-midori-600' : 'text-sumi-400';
 
   return (
     <div
-      className={`fixed inset-0 z-[170] flex items-center justify-center transition-all duration-400 bg-black/20 ${
-        show ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+      className={`fixed inset-0 z-[170] flex items-center justify-center transition-all duration-300 bg-sumi-900/25 p-3 ${
+        show ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
       } pointer-events-auto`}
       onClick={close}
       role="dialog" aria-modal="true" aria-label={`さいてんけっか ${total} てん`}
     >
-      <div className={`bg-gradient-to-br ${color} px-6 md:px-10 py-4 md:py-6 rounded-3xl shadow-2xl border-4 text-center ${detail ? '' : '-rotate-2'} pointer-events-auto max-w-md mx-3`}
+      <div className={`bg-white px-5 md:px-8 py-4 md:py-5 rounded-lg shadow-xl border border-sumi-300 border-t-4 ${t.topRule} text-center pointer-events-auto max-w-md w-full`}
            onClick={(e) => e.stopPropagation()}>
-        <div className="text-lg md:text-2xl font-black opacity-80">{stars} {comment}</div>
-        <div className="mt-1 flex items-baseline justify-center gap-1">
-          <span className="text-5xl md:text-7xl font-black tracking-tight">{total}</span>
-          <span className="text-xl md:text-2xl font-black opacity-80">/100てん</span>
+        {/* 赤ペンの しるし */}
+        <div className="flex items-center justify-center h-16 md:h-20">
+          {rank === 'hanamaru'
+            ? <span className={t.icon}><Hanamaru size={72} draw duration={0.6}/></span>
+            : <span className={`kkm-stamp kkm-glyph text-6xl md:text-7xl leading-none ${t.icon}`}>{rank}</span>}
+        </div>
+        <div className={`text-base md:text-lg font-semibold mt-1 ${t.text}`}>{comment}</div>
+        <div className="mt-1 flex items-baseline justify-center gap-1 text-sumi-800">
+          <span className="text-4xl md:text-5xl font-semibold tabular-nums">{total}</span>
+          <span className="text-base md:text-lg font-semibold text-sumi-500">/ 100 てん</span>
         </div>
         {!detail && (
           <div className="mt-3 flex justify-center gap-2">
             <button onClick={(e) => { e.stopPropagation(); setDetail(true); }}
-              className="px-4 py-2 rounded-full bg-white/80 border-2 border-current text-xs md:text-sm font-black active:scale-95 transition-all min-h-[44px]">
-              🔍 くわしく
+              className="kkm-btn kkm-ripple px-4 py-2 rounded-md bg-white border border-sumi-300 text-sumi-700 text-xs md:text-sm font-semibold min-h-[44px] flex items-center gap-1.5">
+              <IconSearch size={15}/> くわしく みる
             </button>
             <button onClick={(e) => { e.stopPropagation(); close(); }}
-              className="px-4 py-2 rounded-full bg-white/80 border-2 border-current text-xs md:text-sm font-black active:scale-95 transition-all min-h-[44px]">
+              className={`kkm-btn kkm-ripple px-5 py-2 rounded-md border text-white text-xs md:text-sm font-semibold min-h-[44px] ${t.solid}`}>
               とじる
             </button>
           </div>
         )}
         {detail && (
-          <div className="mt-3 bg-white/85 rounded-2xl p-3 text-left text-slate-700">
-            <div className="text-[10px] md:text-xs font-black opacity-70 mb-2 text-center">うちわけ</div>
-            <ul className="space-y-1.5">
+          <div className="mt-3 bg-washi-100 border border-sumi-200 rounded-md p-3 text-left text-sumi-700">
+            <div className="kkm-heading-rule text-[11px] md:text-xs font-semibold mb-2">さいてんの うちわけ</div>
+            <ul className="divide-y divide-sumi-200">
               {breakdown.map(b => (
-                <li key={b.key} className="flex items-center gap-2 text-xs md:text-sm">
-                  <span className="text-base md:text-lg w-6 text-center">{iconFor(b.status)}</span>
-                  <span className="font-black w-24 md:w-32 shrink-0">{b.label}</span>
-                  <span className="font-black tabular-nums w-10 md:w-12 shrink-0 text-right">{b.score}/{b.max}</span>
-                  <span className="text-[10px] md:text-xs opacity-80 flex-1">{b.advice}</span>
+                <li key={b.key} className="flex items-center gap-2 text-xs md:text-sm py-1.5">
+                  <span className={`kkm-glyph text-lg md:text-xl w-6 text-center leading-none ${markToneFor(b.status)}`}>{markFor(b.status)}</span>
+                  <span className="font-semibold w-24 md:w-32 shrink-0">{b.label}</span>
+                  <span className="font-semibold tabular-nums w-10 md:w-12 shrink-0 text-right">{b.score}/{b.max}</span>
+                  <span className="text-[10px] md:text-xs text-sumi-500 flex-1">{b.advice}</span>
                 </li>
               ))}
             </ul>
             <button onClick={(e) => { e.stopPropagation(); close(); }}
-              className="mt-3 w-full px-4 py-1.5 rounded-full bg-slate-100 border-2 border-slate-300 text-xs md:text-sm font-black text-slate-600 active:scale-95 transition-all">
+              className="kkm-btn mt-3 w-full px-4 py-2 rounded-md bg-white border border-sumi-300 text-xs md:text-sm font-semibold text-sumi-600 min-h-[40px]">
               とじる
             </button>
           </div>
@@ -2376,7 +2803,7 @@ function ScorePopup({ result, onClose }) {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   15.5. <WordMasterPopup> ── ことばで文字が💮になった瞬間の演出
+   15.5. <WordMasterPopup> ── ことばで文字が花丸になった瞬間の演出
    ────────────────────────────────────────────────────────────── */
 function WordMasterPopup({ info, onClose }) {
   const [show, setShow] = useState(false);
@@ -2393,22 +2820,27 @@ function WordMasterPopup({ info, onClose }) {
       className={`fixed inset-0 z-[350] flex items-center justify-center transition-all duration-500 ${
       show ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
     }`} onClick={onClose}>
-      <div className="bg-gradient-to-br from-amber-100 via-yellow-50 to-amber-100 px-6 md:px-10 py-5 md:py-7 rounded-3xl shadow-2xl border-4 border-amber-400 max-w-md mx-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white px-6 md:px-9 py-5 md:py-6 rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-shu-600 max-w-md mx-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
-          <div className="text-xs md:text-sm font-black text-amber-700 opacity-90 mb-1">🎉 ことばで めざめたよ！</div>
-          <div className="flex justify-center gap-2 my-2 md:my-3">
+          <div className="text-[11px] md:text-sm font-semibold text-shu-700 mb-2">ことばに つかって 花丸に なりました</div>
+          {/* ことばが ながいと 花丸が いくつも つくので、おりかえして ならべる */}
+          <div className="flex flex-wrap justify-center gap-5 my-4">
             {info.chars.map((c, i) => (
-              <div key={i} className="relative">
-                <span className="kkm-glyph inline-block bg-white rounded-2xl border-4 border-amber-400 w-14 h-14 md:w-20 md:h-20 flex items-center justify-center text-3xl md:text-5xl text-amber-700 shadow-lg animate-pulse">{c}</span>
-                <span className="absolute -top-2 -right-2 text-2xl md:text-3xl">💮</span>
+              <div key={i} className="relative kkm-pop-in w-12 h-12" style={{ animationDelay: `${i * 0.12}s` }}>
+                {/* もじの まわりを かこむように 花丸を 大きめに描く。
+                    花丸のまんなかの丸（直径 ≒ 大きさの 3 割）に もじが おさまる大きさにする。 */}
+                <span className="kkm-glyph absolute inset-0 flex items-center justify-center text-2xl text-shu-700">{c}</span>
+                <span className="absolute -inset-6 flex items-center justify-center text-shu-600 pointer-events-none">
+                  <Hanamaru size={96} draw duration={0.7}/>
+                </span>
               </div>
             ))}
           </div>
-          <div className="text-base md:text-xl font-black text-amber-700 mt-1">
-            「{info.text}」で <span className="text-rose-500">かんぺき</span>！
+          <div className="text-sm md:text-lg font-semibold text-sumi-700 mt-2">
+            「{info.text}」で <span className="text-shu-700">かんぺき</span>！
           </div>
           <button onClick={onClose} autoFocus
-            className="mt-3 px-5 py-2 rounded-full bg-white text-amber-700 font-black text-sm shadow border-b-4 border-amber-300 active:translate-y-0.5 active:border-b-2 min-h-[44px]">
+            className="kkm-btn kkm-ripple mt-4 px-6 py-2.5 rounded-md bg-shu-600 text-white font-semibold text-sm border border-shu-700 min-h-[44px]">
             やったー！
           </button>
         </div>
@@ -2432,11 +2864,13 @@ function BadgeToast({ badge, onClose }) {
     <div role="status" aria-live="polite"
       className="kkm-badge-toast fixed top-20 left-1/2 -translate-x-1/2 z-[400]"
       onClick={onClose}>
-      <div className="bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-300 border-4 border-amber-500 rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-3 cursor-pointer">
-        <div className="text-4xl" aria-hidden="true">{badge.icon}</div>
+      <div className="bg-white border border-yamabuki-400 border-l-4 border-l-yamabuki-600 rounded-lg shadow-xl px-4 py-3 flex items-center gap-3 cursor-pointer">
+        <div className="shrink-0 w-11 h-11 rounded-md bg-yamabuki-50 border border-yamabuki-300 text-yamabuki-700 flex items-center justify-center kkm-stamp">
+          <Pict name={badge.icon} size={26}/>
+        </div>
         <div>
-          <div className="text-[10px] font-black text-amber-800 opacity-90">🎉 シールゲット！</div>
-          <div className="text-base md:text-lg font-black text-amber-900">{badge.title}</div>
+          <div className="text-[10px] font-semibold text-yamabuki-700">はんこを もらいました</div>
+          <div className="text-sm md:text-base font-semibold text-sumi-800">{badge.title}</div>
         </div>
       </div>
     </div>
@@ -2454,67 +2888,65 @@ function AchievementsModal({ earned, mastered, words, streak, onClose }) {
   const dialogRef = useModal(onClose);
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-3" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="ごほうびシールずかん"
-        className="bg-white rounded-3xl shadow-2xl border-4 border-yellow-300 max-w-2xl w-full max-h-[92vh] overflow-y-auto p-4 md:p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-sumi-900/50 backdrop-blur-sm p-3 kkm-fade-in" onClick={onClose}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="ごほうびの はんこずかん"
+        className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-yamabuki-600 max-w-2xl w-full max-h-[92vh] overflow-y-auto p-4 md:p-5 kkm-pop-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl md:text-2xl font-black text-amber-700 flex items-center gap-2">
-            <IconTrophy size={26}/> ごほうびシールずかん
+          <h2 className="kkm-heading-rule text-base md:text-lg font-semibold text-sumi-800 flex items-center gap-2">
+            <IconTrophy size={20}/> ごほうびの はんこずかん
           </h2>
           <button onClick={onClose} aria-label="とじる"
-            className="w-11 h-11 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all active:scale-95 min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
+            className="kkm-btn w-11 h-11 rounded-md bg-sumi-50 hover:bg-sumi-100 border border-sumi-200 text-sumi-600 flex items-center justify-center min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
         </div>
 
-        {/* レベル＆統計 */}
-        <div className={`rounded-2xl border-2 p-3 mb-3 ${lv.color}`}>
+        {/* いまの しょうごう */}
+        <div className={`rounded-md border p-3 mb-3 ${lv.color}`}>
           <div className="flex items-center gap-3">
-            <div className="text-4xl md:text-5xl">{lv.icon}</div>
-            <div className="flex-1">
-              <div className="text-[10px] font-black opacity-70">いまの しょうごう</div>
-              <div className="text-lg md:text-xl font-black">{lv.title}</div>
+            <div className="shrink-0"><Pict name={lv.icon} size={34}/></div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-semibold opacity-70">いまの しょうごう</div>
+              <div className="text-base md:text-lg font-semibold truncate">{lv.title}</div>
             </div>
-            <div className="text-right text-xs font-black opacity-80">
-              <div>🏆 {mastered.length}じ</div>
-              {nextLv && <div className="opacity-70">つぎ：あと{nextLv.min - mastered.length}じ</div>}
+            <div className="text-right text-xs font-semibold shrink-0">
+              <div className="tabular-nums">{mastered.length} じ</div>
+              {nextLv && <div className="opacity-70 tabular-nums">つぎ：あと {nextLv.min - mastered.length} じ</div>}
             </div>
           </div>
         </div>
 
+        {/* いまの きろく */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-2 text-center">
-            <div className="text-[10px] font-black text-amber-600">ひらがな</div>
-            <div className="text-xl font-black text-amber-700">{totalHira}/46</div>
-          </div>
-          <div className="bg-sky-50 border-2 border-sky-200 rounded-xl p-2 text-center">
-            <div className="text-[10px] font-black text-sky-600">カタカナ</div>
-            <div className="text-xl font-black text-sky-700">{totalKata}/46</div>
-          </div>
-          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-2 text-center">
-            <div className="text-[10px] font-black text-emerald-600">ことば</div>
-            <div className="text-xl font-black text-emerald-700">{words.length}こ</div>
-          </div>
-          <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-2 text-center">
-            <div className="text-[10px] font-black text-orange-600">れんぞく</div>
-            <div className="text-xl font-black text-orange-700">🔥 {streak}にち</div>
-          </div>
+          {[
+            { label: 'ひらがな', value: `${totalHira}/46`, tone: 'shu'      },
+            { label: 'カタカナ', value: `${totalKata}/46`, tone: 'ai'       },
+            { label: 'ことば',   value: `${words.length}こ`, tone: 'midori' },
+            { label: 'れんぞく', value: `${streak}にち`,   tone: 'yamabuki' },
+          ].map(s => (
+            <div key={s.label} className={`border rounded-md p-2 text-center ${TONES[s.tone].stat}`}>
+              <div className={`text-[10px] font-semibold ${TONES[s.tone].statLabel}`}>{s.label}</div>
+              <div className={`text-lg font-semibold tabular-nums ${TONES[s.tone].statValue}`}>{s.value}</div>
+            </div>
+          ))}
         </div>
 
-        {/* バッジグリッド */}
-        <div className="text-xs font-black text-slate-500 mb-2">
-          ゲットしたシール {earned.length} / {BADGES.length}
+        {/* はんこ グリッド */}
+        <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-2">
+          もらった はんこ <span className="tabular-nums">{earned.length} / {BADGES.length}</span>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
           {BADGES.map(b => {
             const has = earned.includes(b.id);
             return (
               <div key={b.id}
-                className={`rounded-xl border-2 p-2.5 flex flex-col items-center text-center transition-all ${
-                  has ? 'bg-gradient-to-br from-yellow-100 to-amber-100 border-amber-400 shadow-sm'
-                      : 'bg-slate-50 border-slate-200 opacity-60'
+                className={`rounded-md border p-2.5 flex flex-col items-center text-center ${
+                  has ? 'bg-yamabuki-50 border-yamabuki-300 kkm-lift'
+                      : 'bg-washi-100 border-sumi-200'
                 }`}>
-                <div className={`text-3xl md:text-4xl ${has ? '' : 'grayscale'}`}>{has ? b.icon : '🔒'}</div>
-                <div className={`text-[11px] font-black mt-1 ${has ? 'text-amber-800' : 'text-slate-500'}`}>{b.title}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{b.desc}</div>
+                <div className={has ? 'text-yamabuki-700' : 'text-sumi-300'}>
+                  {has ? <Pict name={b.icon} size={30}/> : <IconLock size={26}/>}
+                </div>
+                <div className={`text-[11px] font-semibold mt-1.5 ${has ? 'text-sumi-800' : 'text-sumi-400'}`}>{b.title}</div>
+                <div className="text-[9px] text-sumi-500 mt-0.5 leading-snug">{b.desc}</div>
               </div>
             );
           })}
@@ -2531,60 +2963,57 @@ function AchievementsModal({ earned, mastered, words, streak, onClose }) {
    17b. <WordTown> ── ことばタウン（言葉が増えるとまちが育つ）
    ────────────────────────────────────────────────────────────── */
 function WordTown({ wordCount }) {
+  // ことばが ふえるほど、まちに たてものが 1 つずつ ふえていく
   const STAGES = [
-    { at:1,  emoji:'🌱', name:'くさはら'  },
-    { at:5,  emoji:'🏠', name:'おうち'    },
-    { at:10, emoji:'🌳', name:'こうえん'  },
-    { at:20, emoji:'🏪', name:'おみせ'    },
-    { at:35, emoji:'🏫', name:'がっこう'  },
-    { at:50, emoji:'🏰', name:'おしろ'    },
+    { at:1,  pict:'leaf',   name:'くさはら' },
+    { at:5,  pict:'house',  name:'おうち'   },
+    { at:10, pict:'tree',   name:'こうえん' },
+    { at:20, pict:'shop',   name:'おみせ'   },
+    { at:35, pict:'school', name:'がっこう' },
+    { at:50, pict:'castle', name:'おしろ'   },
   ];
   const next = STAGES.find(s => wordCount < s.at);
   if (wordCount === 0) return null;
   const progress = next ? Math.round((wordCount / next.at) * 100) : 100;
 
   return (
-    <div className="bg-gradient-to-b from-sky-100 to-emerald-50 border-2 border-sky-200 rounded-2xl p-3 mb-3 shrink-0">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="text-lg kkm-float">🏙️</span>
-          <span className="font-black text-sky-800 text-sm">ことばタウン</span>
-        </div>
-        <span className="text-[10px] font-black text-sky-600 bg-white/60 rounded-full px-2 py-0.5">
-          {wordCount}こ のことばが まちを そだてた！
+    <div className="bg-washi-100 border border-sumi-200 rounded-md p-2.5 mb-3 shrink-0">
+      <div className="flex items-center justify-between mb-2 gap-2">
+        <span className="kkm-heading-rule text-xs md:text-sm font-semibold text-sumi-700">ことばの まち</span>
+        <span className="text-[10px] font-semibold text-sumi-500 tabular-nums shrink-0">
+          {wordCount}この ことばで そだちました
         </span>
       </div>
 
-      <div className="relative rounded-xl overflow-hidden" style={{height:'72px', background:'linear-gradient(to bottom,#bfdbfe 0%,#93c5fd 55%,#4ade80 78%,#16a34a 100%)'}}>
-        <span className="absolute text-sm opacity-80" style={{top:'4px',left:'8px'}}>☁️</span>
-        <span className="absolute text-xs opacity-70" style={{top:'9px',left:'64px'}}>☁️</span>
-        <span className="absolute text-sm opacity-60" style={{top:'3px',right:'18px'}}>☁️</span>
-
-        <div className="absolute bottom-6 left-3 flex gap-2 items-end">
-          {STAGES.map((s, i) => (
-            <div key={i} title={s.name}
-              className={`flex flex-col items-center transition-all duration-700 ${wordCount >= s.at ? 'opacity-100 scale-100' : 'opacity-20 scale-75'}`}>
-              <span className="text-2xl leading-none">{s.emoji}</span>
+      {/* まちなみ（地面の線の上に、できた たてものが ならぶ） */}
+      <div className="flex items-end justify-between gap-1 border-b-2 border-sumi-300 pb-1.5 px-1">
+        {STAGES.map((s, i) => {
+          const built = wordCount >= s.at;
+          return (
+            <div key={i} title={`${s.name}（ことば ${s.at}こ）`}
+              className={`flex flex-col items-center gap-0.5 transition-all duration-500 ${
+                built ? 'text-shu-600 opacity-100' : 'text-sumi-300 opacity-50'
+              }`}>
+              <span className={built ? 'kkm-pop-in' : ''}>
+                {built ? <Pict name={s.pict} size={26}/> : <IconLock size={18}/>}
+              </span>
+              <span className="text-[8px] md:text-[9px] font-semibold leading-none">{s.name}</span>
             </div>
-          ))}
-          {next && (
-            <div className="flex flex-col items-center opacity-20">
-              <span className="text-xl">🔒</span>
-            </div>
-          )}
-        </div>
-
-        <div className="absolute bottom-1.5 left-3 right-3 h-1.5 bg-white/30 rounded-full">
-          <div className="h-full bg-white/80 rounded-full transition-all duration-700" style={{width:`${progress}%`}}/>
-        </div>
+          );
+        })}
       </div>
 
-      <p className="text-[11px] font-black text-center mt-1.5">
-        {next
-          ? <span className="text-sky-700">あと <span className="text-sky-900 text-sm">{next.at - wordCount}</span>こ で {next.emoji}<span className="text-sky-800">{next.name}</span> が できるよ！</span>
-          : <span className="kkm-text-rainbow">🏆 さいこう！ でんせつの まちが かんせいしたよ！</span>
-        }
-      </p>
+      {/* つぎの たてものまでの めやす */}
+      <div className="mt-2">
+        <div className="h-1.5 rounded-full bg-washi-300 overflow-hidden">
+          <div className="h-full rounded-full bg-midori-500 transition-all duration-700" style={{ width: `${progress}%` }}/>
+        </div>
+        <p className="text-[10px] md:text-[11px] font-semibold text-center mt-1.5 text-sumi-600">
+          {next
+            ? <>あと <span className="text-shu-700 tabular-nums">{next.at - wordCount}</span>こ で「{next.name}」が できます</>
+            : <span className="text-shu-700">まちが かんせいしました！</span>}
+        </p>
+      </div>
     </div>
   );
 }
@@ -2642,7 +3071,7 @@ function ShiritoriGame({ words, voiceOn }) {
 
     const start = startOptions[Math.floor(Math.random() * startOptions.length)];
     const lastChar = getLastChar(start.w);
-    const initialChain = [{ word: start.w, emoji: start.e, isPlayer: false }];
+    const initialChain = [{ word: start.w, pict: start.p, isPlayer: false }];
 
     setChain(initialChain);
     setUsedWords(new Set([start.w]));
@@ -2657,7 +3086,7 @@ function ShiritoriGame({ words, voiceOn }) {
 
     const newUsed = new Set([...usedWords, wordObj.text]);
     const lastChar = getLastChar(wordObj.text);
-    const newChain = [...chain, { word: wordObj.text, emoji: wordObj.emoji, isPlayer: true }];
+    const newChain = [...chain, { word: wordObj.text, pict: pictOf(wordObj), isPlayer: true }];
 
     setChain(newChain);
     setUsedWords(newUsed);
@@ -2687,7 +3116,7 @@ function ShiritoriGame({ words, voiceOn }) {
       const pick = available[Math.floor(Math.random() * available.length)];
       const newUsed2 = new Set([...newUsed, pick.w]);
       const compLastChar = getLastChar(pick.w);
-      const newChain2 = [...newChain, { word: pick.w, emoji: pick.e, isPlayer: false }];
+      const newChain2 = [...newChain, { word: pick.w, pict: pick.p, isPlayer: false }];
 
       setChain(newChain2);
       setUsedWords(newUsed2);
@@ -2720,81 +3149,93 @@ function ShiritoriGame({ words, voiceOn }) {
     ? hiraganaWords.filter(w => w.text[0] === currentChar && !usedWords.has(w.text))
     : [];
 
-  return (
-    <div className="flex-1 p-3 md:p-4 min-h-0 overflow-hidden flex flex-col gap-3">
-      <div className="bg-white/95 backdrop-blur rounded-2xl shadow-sm border-2 border-sky-200 p-3 md:p-5 flex flex-col h-full overflow-hidden gap-3">
+  // かった／まけた ときに つないだ ことばを ふりかえる
+  const ChainSummary = () => (
+    <div className="flex flex-wrap gap-1 justify-center">
+      {chain.map((e, i) => (
+        <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
+          e.isPlayer ? 'bg-ai-50 text-ai-700 border-ai-200' : 'bg-washi-100 text-sumi-600 border-sumi-200'
+        }`}>
+          <Pict name={e.pict} size={13}/>{e.word}
+        </span>
+      ))}
+    </div>
+  );
 
-        <div className="flex items-center justify-between shrink-0">
-          <h2 className="flex items-center gap-2 text-lg md:text-xl font-black">
-            <span className="kkm-float text-2xl">🎮</span>
-            <span className="kkm-text-rainbow">しりとり ゲーム</span>
-          </h2>
-          {bestChain > 0 && (
-            <div className="text-xs font-black text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
-              🏆 さいこう <span className="text-amber-900 text-sm">{bestChain}</span>こ
-            </div>
-          )}
-        </div>
+  return (
+    <div className="flex-1 p-2 md:p-4 min-h-0 overflow-hidden flex flex-col gap-3">
+      <div className="kkm-sheet rounded-lg p-3 md:p-4 flex flex-col h-full overflow-hidden gap-3">
+
+        <SectionTitle right={bestChain > 0 && (
+          <span className="text-xs font-semibold text-yamabuki-700 bg-yamabuki-50 border border-yamabuki-200 rounded-md px-2.5 py-1 shrink-0 tabular-nums">
+            さいこう {bestChain}こ
+          </span>
+        )}>しりとり</SectionTitle>
 
         {gameState === 'idle' && hiraganaWords.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <div className="text-5xl">😢</div>
-            <p className="font-black text-slate-700 text-base">ひらがなの ことばが まだ ないよ！</p>
-            <p className="text-sm text-slate-500">「ことばずかん」タブで ことばを あつめてから<br/>あそんでね！</p>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 font-black">
-              💡 ことばが おおいほど しりとりで つよくなるよ！
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-4">
+            <MascotFace size={56} mood="sad"/>
+            <p className="font-semibold text-sumi-700 text-sm md:text-base">ひらがなの ことばが まだ ありません</p>
+            <p className="text-xs text-sumi-500 leading-relaxed">「ことばずかん」で ことばを あつめてから<br/>あそんでください</p>
+            <div className="flex items-center gap-2 bg-washi-100 border border-sumi-200 rounded-md p-2.5 text-[11px] text-sumi-600 font-semibold">
+              <IconBulb size={15}/> ことばが おおいほど しりとりに つよくなります
             </div>
           </div>
         )}
 
         {gameState === 'idle' && hiraganaWords.length > 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <div className="text-6xl kkm-float">🎮</div>
-            <p className="font-black text-slate-700 text-lg">コンピュータと しりとり しよう！</p>
-            <div className="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 text-sm text-sky-800 text-left max-w-xs">
-              <p className="font-black mb-2 text-center">📖 あそびかた</p>
-              <ul className="space-y-1.5 list-none">
-                <li>① コンピュータが さいしょの ことばを いう</li>
-                <li>② その さいごの もじから はじまる<br/><strong className="text-sky-900">あつめた ことば</strong>を えらぼう！</li>
-                <li>③ 「ん」で おわったら まけ</li>
-                <li>④ コンピュータが こたえられなかったら かち！</li>
-              </ul>
-            </div>
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-3 text-sm font-black text-amber-800 max-w-xs w-full">
-              ✨ あなたの てふだ: <span className="text-amber-900 text-base">{hiraganaWords.length}</span>こ のことば
-              <div className="text-xs font-normal text-amber-600 mt-0.5">ことばが おおいほど つよくなれるよ！</div>
+          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center gap-4 text-center px-2 py-2">
+            <MascotFace size={56} mood="cheer"/>
+            <p className="font-semibold text-sumi-800 text-base">コンピュータと しりとりを しましょう</p>
+            {/* あそびかた：番号つきで じゅんに 読める形にする */}
+            <ol className="bg-washi-100 border border-sumi-200 rounded-md p-3 text-sm text-sumi-700 text-left max-w-xs w-full space-y-2">
+              <li className="kkm-heading-rule text-xs font-semibold text-sumi-800 !border-l-shu-600 mb-1">あそびかた</li>
+              {[
+                'コンピュータが さいしょの ことばを いいます',
+                'その さいごの もじから はじまる「あつめた ことば」を えらびます',
+                '「ん」で おわったら まけです',
+                'コンピュータが こたえられなくなったら かちです',
+              ].map((t, i) => (
+                <li key={i} className="flex gap-2 items-start text-[13px] leading-snug">
+                  <span aria-hidden="true" className="shrink-0 w-5 h-5 rounded-full bg-shu-600 text-white text-[11px] font-semibold flex items-center justify-center">{i + 1}</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="bg-white border border-sumi-200 rounded-md p-3 text-sm font-semibold text-sumi-700 max-w-xs w-full">
+              あなたの てふだ：<span className="text-shu-700 text-base tabular-nums">{hiraganaWords.length}</span>この ことば
             </div>
             <button onClick={startGame}
-              className="px-10 py-3.5 rounded-2xl font-black text-xl bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg border-b-4 border-blue-700 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2">
-              🎮 スタート！
+              className="kkm-btn kkm-ripple px-10 py-3 rounded-md font-semibold text-lg bg-shu-600 text-white border border-shu-700 flex items-center gap-2">
+              <IconPlay size={18}/> はじめる
             </button>
           </div>
         )}
 
         {gameState === 'playing' && (
           <>
-            <div ref={chainRef} className="flex-1 overflow-y-auto space-y-2 min-h-0 bg-slate-50/70 rounded-xl p-2 border border-slate-200">
+            <div ref={chainRef} className="flex-1 overflow-y-auto space-y-2 min-h-0 bg-washi-100 rounded-md p-2 border border-sumi-200">
               {chain.map((entry, i) => (
-                <div key={i} className={`flex items-end gap-2 ${entry.isPlayer ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <span className="text-xs text-slate-500 font-black shrink-0 mb-0.5">{entry.isPlayer ? 'あなた' : 'CPU'}</span>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl text-sm font-black shadow-sm max-w-[65%] ${
+                <div key={i} className={`flex items-end gap-2 kkm-rise-in ${entry.isPlayer ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <span className="text-[10px] text-sumi-400 font-semibold shrink-0 mb-1">{entry.isPlayer ? 'あなた' : 'コンピュータ'}</span>
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold max-w-[68%] border ${
                     entry.isPlayer
-                      ? 'bg-gradient-to-br from-sky-400 to-blue-500 text-white rounded-br-sm'
-                      : 'bg-white border-2 border-slate-200 text-slate-700 rounded-bl-sm'
+                      ? 'bg-shu-600 text-white border-shu-700 rounded-br-sm'
+                      : 'bg-white border-sumi-200 text-sumi-700 rounded-bl-sm'
                   }`}>
-                    <span className="text-xl shrink-0">{entry.emoji}</span>
-                    <span className="text-base">{entry.word}</span>
+                    <Pict name={entry.pict} size={20} className="shrink-0"/>
+                    <span className="kkm-glyph text-base">{entry.word}</span>
                     {i < chain.length - 1 && (
-                      <span className="text-xs opacity-60 ml-1">→{getLastChar(entry.word)}</span>
+                      <span className="kkm-glyph text-[11px] opacity-70 ml-0.5">→{getLastChar(entry.word)}</span>
                     )}
                   </div>
                 </div>
               ))}
               {thinking && (
                 <div className="flex items-end gap-2">
-                  <span className="text-xs text-slate-500 font-black">CPU</span>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white border-2 border-slate-200 text-slate-400 text-sm font-black rounded-bl-sm">
-                    🤔 かんがえてる...
+                  <span className="text-[10px] text-sumi-400 font-semibold mb-1">コンピュータ</span>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-sumi-200 text-sumi-400 text-sm font-semibold rounded-bl-sm">
+                    <span className="kkm-breathe"><IconClock size={16}/></span> かんがえています…
                   </div>
                 </div>
               )}
@@ -2803,31 +3244,31 @@ function ShiritoriGame({ words, voiceOn }) {
             {!thinking && currentChar && (
               <div className="shrink-0 space-y-2">
                 <div className="text-center">
-                  <span className="inline-block bg-sky-100 border-2 border-sky-300 rounded-xl px-4 py-1.5">
-                    <span className="kkm-glyph text-2xl text-sky-700">「{currentChar}」</span>
-                    <span className="text-sm text-sky-600 ml-1">から はじまる ことばは？</span>
+                  <span className="inline-flex items-center gap-1.5 bg-shu-50 border border-shu-300 rounded-md px-3 py-1.5">
+                    <span className="kkm-glyph text-2xl text-shu-700 leading-none">「{currentChar}」</span>
+                    <span className="text-xs md:text-sm text-sumi-600 font-semibold">から はじまる ことばは？</span>
                   </span>
                 </div>
                 {playableWords.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 justify-center">
+                  <div className="flex flex-wrap gap-2 justify-center max-h-[26vh] overflow-y-auto p-0.5">
                     {playableWords.map(w => (
                       <button key={w.id} onClick={() => playerPlay(w)}
                         aria-label={`${w.text} を こたえる`}
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-300 text-sky-800 shadow-sm hover:shadow-md hover:border-sky-400 transition-all active:scale-95 min-h-[44px]">
-                        <span className="text-xl" aria-hidden="true">{w.emoji}</span>
-                        <span className="text-base">{w.text}</span>
+                        className="kkm-btn kkm-ripple flex items-center gap-1.5 px-3.5 py-2 rounded-md font-semibold bg-white border border-sumi-300 text-sumi-800 hover:border-shu-400 hover:text-shu-700 min-h-[44px]">
+                        <Pict name={pictOf(w)} size={20}/>
+                        <span className="kkm-glyph text-base">{w.text}</span>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-rose-50 border-2 border-rose-200 rounded-xl p-3 text-center">
-                    <p className="font-black text-rose-700 mb-1">😭「{currentChar}」から はじまる ことばが ないよ！</p>
-                    <p className="text-xs text-rose-500 mb-2">「ことばずかん」で「{currentChar}」から はじまる ことばを あつめよう！</p>
+                  <div className="bg-shu-50 border border-shu-200 rounded-md p-3 text-center">
+                    <p className="font-semibold text-shu-700 mb-1 text-sm">「{currentChar}」から はじまる ことばが ありません</p>
+                    <p className="text-[11px] text-sumi-600 mb-2">「ことばずかん」で「{currentChar}」から はじまる ことばを あつめましょう</p>
                     <button onClick={forfeit}
-                      className="px-4 py-1.5 rounded-lg bg-rose-200 text-rose-700 font-black text-sm active:scale-95">まけを みとめる</button>
+                      className="kkm-btn px-4 py-2 rounded-md bg-white border border-sumi-300 text-sumi-600 font-semibold text-sm min-h-[40px]">まけを みとめる</button>
                   </div>
                 )}
-                <div className="text-center text-xs text-slate-500 font-black">
+                <div className="text-center text-[11px] text-sumi-500 font-semibold tabular-nums">
                   てふだ {hiraganaWords.length}こ ／ つなげた {chain.length}こ
                 </div>
               </div>
@@ -2836,48 +3277,37 @@ function ShiritoriGame({ words, voiceOn }) {
         )}
 
         {gameState === 'won' && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <div className="text-7xl kkm-sparkle">🏆</div>
-            <p className="font-black text-2xl text-amber-700">やったね！かった！</p>
-            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 w-full max-w-xs">
-              <p className="text-sm text-amber-700 font-black mb-2">つなげた ながさ: <span className="text-3xl text-amber-900">{chain.length}</span>こ</p>
-              <div className="flex flex-wrap gap-1 justify-center">
-                {chain.map((e, i) => (
-                  <span key={i} className={`px-2 py-0.5 rounded-full text-xs font-black ${e.isPlayer ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {e.emoji}{e.word}
-                  </span>
-                ))}
-              </div>
+          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center gap-3 text-center px-2">
+            <span className="text-shu-600"><Hanamaru size={92} draw duration={0.7}/></span>
+            <p className="font-semibold text-xl text-shu-700">かちました！</p>
+            <div className="bg-washi-100 border border-sumi-200 rounded-md p-3 w-full max-w-xs">
+              <p className="text-xs text-sumi-600 font-semibold mb-2">つなげた ながさ <span className="text-2xl text-shu-700 tabular-nums">{chain.length}</span>こ</p>
+              <ChainSummary/>
             </div>
             <button onClick={startGame}
-              className="px-8 py-3 rounded-xl font-black text-lg bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow border-b-4 border-blue-700 transition-all active:scale-95">
+              className="kkm-btn kkm-ripple px-8 py-2.5 rounded-md font-semibold bg-shu-600 text-white border border-shu-700">
               もう いちど あそぶ
             </button>
           </div>
         )}
 
         {gameState === 'lost' && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <div className="text-7xl">😢</div>
-            <p className="font-black text-2xl text-slate-700">まけちゃった...</p>
-            <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 w-full max-w-xs">
-              <p className="text-sm text-slate-600 font-black mb-2">つなげた ながさ: <span className="text-3xl text-sky-600">{chain.length}</span>こ</p>
-              <div className="flex flex-wrap gap-1 justify-center">
-                {chain.map((e, i) => (
-                  <span key={i} className={`px-2 py-0.5 rounded-full text-xs font-black ${e.isPlayer ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {e.emoji}{e.word}
-                  </span>
-                ))}
-              </div>
+          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center gap-3 text-center px-2">
+            <MascotFace size={56} mood="sad"/>
+            <p className="font-semibold text-lg text-sumi-700">まけちゃった…</p>
+            <div className="bg-washi-100 border border-sumi-200 rounded-md p-3 w-full max-w-xs">
+              <p className="text-xs text-sumi-600 font-semibold mb-2">つなげた ながさ <span className="text-2xl text-ai-700 tabular-nums">{chain.length}</span>こ</p>
+              <ChainSummary/>
             </div>
             {hiraganaWords.length < 15 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-black text-amber-700 max-w-xs">
-                💡 ことばを もっと あつめると つよくなれるよ！<br/>
-                <span className="font-normal text-amber-600">いま {hiraganaWords.length}こ → もくひょう 15こ！</span>
+              <div className="flex items-start gap-2 bg-white border border-sumi-200 rounded-md p-2.5 text-[11px] font-semibold text-sumi-600 max-w-xs text-left">
+                <span className="text-yamabuki-600 shrink-0 mt-0.5"><IconBulb size={15}/></span>
+                <span>ことばを もっと あつめると つよくなれます。<br/>
+                  <span className="text-sumi-500 font-medium tabular-nums">いま {hiraganaWords.length}こ → もくひょう 15こ</span></span>
               </div>
             )}
             <button onClick={startGame}
-              className="px-8 py-3 rounded-xl font-black text-lg bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow border-b-4 border-blue-700 transition-all active:scale-95">
+              className="kkm-btn kkm-ripple px-8 py-2.5 rounded-md font-semibold bg-shu-600 text-white border border-shu-700">
               もう いちど あそぶ
             </button>
           </div>
@@ -2895,50 +3325,49 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
   const collected = words.filter(w => w.kanaMode === kanaMode);
   const hints = kanaMode === 'katakana' ? WORD_HINTS_KATA : WORD_HINTS_HIRA;
   const availableHints = hints.filter(h => h.w.split('').every(c => usableInWords.includes(c)) && !words.some(w => w.text === h.w));
-  // ステージ3（あと一歩で💮）の文字一覧 — モチベーション用
+  // ステージ3（あと一歩で花丸）の文字一覧 — モチベーション用
   const almostChars = (kanaMode === 'katakana' ? KATA_ALL_LIST : HIRA_ALL_LIST).filter(c => getStage(progress, c) === 3);
 
   return (
-    <div className="bg-white/95 backdrop-blur rounded-2xl shadow-sm border-2 border-amber-100 p-3 md:p-5 flex flex-col h-full overflow-hidden">
-      <div className="flex justify-between items-center mb-3 shrink-0 gap-2">
-        <h2 className="flex items-center gap-2 text-lg md:text-xl font-black truncate">
-          <span className="kkm-float text-2xl">📖</span>
-          <span className="kkm-text-rainbow">あつめた ことば</span>
-          <span className="ml-1 text-xs bg-gradient-to-br from-amber-200 to-amber-300 text-amber-800 px-2 py-0.5 rounded-full shadow-sm">{collected.length}</span>
-        </h2>
-        <div className="flex bg-amber-50 rounded-full p-1 border border-amber-100 shrink-0">
-          <button onClick={() => setKanaMode('hiragana')}
-            className={`px-3 py-1 rounded-full text-xs md:text-sm font-black transition-all active:scale-95 ${
-              kanaMode === 'hiragana' ? 'bg-amber-400 text-white shadow' : 'text-amber-700'
-            }`}>ひらがな</button>
-          <button onClick={() => setKanaMode('katakana')}
-            className={`px-3 py-1 rounded-full text-xs md:text-sm font-black transition-all active:scale-95 ${
-              kanaMode === 'katakana' ? 'bg-amber-400 text-white shadow' : 'text-amber-700'
-            }`}>カタカナ</button>
-        </div>
-      </div>
+    <div className="kkm-sheet rounded-lg p-3 md:p-4 flex flex-col h-full overflow-hidden">
+      <SectionTitle className="mb-3"
+        right={
+          <div className="flex rounded-md border border-sumi-200 overflow-hidden shrink-0">
+            <button onClick={() => setKanaMode('hiragana')} aria-pressed={kanaMode === 'hiragana'}
+              className={`kkm-btn px-3 py-1.5 text-xs md:text-sm font-semibold ${
+                kanaMode === 'hiragana' ? 'bg-shu-600 text-white' : 'bg-white text-sumi-500'
+              }`}>ひらがな</button>
+            <button onClick={() => setKanaMode('katakana')} aria-pressed={kanaMode === 'katakana'}
+              className={`kkm-btn px-3 py-1.5 text-xs md:text-sm font-semibold border-l border-sumi-200 ${
+                kanaMode === 'katakana' ? 'bg-ai-600 text-white' : 'bg-white text-sumi-500'
+              }`}>カタカナ</button>
+          </div>
+        }>
+        あつめた ことば
+        <span className="ml-2 text-xs font-semibold text-sumi-500 tabular-nums">{collected.length}こ</span>
+      </SectionTitle>
 
       <WordTown wordCount={words.length}/>
 
-      <div className="flex-1 overflow-y-auto bg-amber-50/40 rounded-xl p-3 border border-amber-100 mb-3">
+      <div className="flex-1 overflow-y-auto bg-washi-100 rounded-md p-3 border border-sumi-200 mb-3">
         {collected.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 py-10">
-            <Mascot message="まだ なにも ないよ！" mood="cheer"/>
-            <p className="text-xs mt-3">したの「＋ ふやす」ボタンから あたらしい ことばを ついかしよう！</p>
+          <div className="h-full flex flex-col items-center justify-center text-sumi-500 gap-3 py-10 text-center">
+            <Mascot message="まだ ことばが ありません" mood="cheer"/>
+            <p className="text-xs">したの「あたらしい ことばを ふやす」から ついかしましょう</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-2.5">
             {collected.slice().reverse().map(w => (
-              <div key={w.id} className="bg-gradient-to-br from-white to-amber-50 rounded-xl shadow-sm hover:shadow-lg border-2 border-amber-200 p-3 flex flex-col items-center gap-1 relative group kkm-pop kkm-pop-in">
-                <span className="text-4xl group-hover:scale-110 transition-transform" aria-hidden="true">{w.emoji || '✨'}</span>
+              <div key={w.id} className="bg-white rounded-md border border-sumi-200 p-3 flex flex-col items-center gap-1.5 relative group kkm-lift kkm-pop-in">
+                <span className="text-shu-600 group-hover:text-shu-700 transition-colors"><Pict name={pictOf(w)} size={34}/></span>
                 <button onClick={() => speakText(w.text, voiceOn)} disabled={!voiceOn}
                   aria-label={voiceOn ? `${w.text} を よみあげる` : `${w.text}`}
-                  className="kkm-glyph text-lg text-slate-700 hover:text-amber-600 transition-all active:scale-95 disabled:cursor-default">
+                  className="kkm-glyph kkm-btn text-lg text-sumi-800 hover:text-shu-700 disabled:cursor-default">
                   {w.text}
                 </button>
                 <button onClick={() => onDelete(w.id)}
                   aria-label={`${w.text} を けす`}
-                  className="absolute top-1 right-1 w-8 h-8 min-w-[32px] min-h-[32px] rounded-full bg-rose-50 text-rose-500 opacity-60 md:opacity-0 md:group-hover:opacity-100 hover:bg-rose-100 flex items-center justify-center transition-all active:scale-95">
+                  className="kkm-btn absolute top-1 right-1 w-8 h-8 min-w-[32px] min-h-[32px] rounded-md text-sumi-400 opacity-60 md:opacity-0 md:group-hover:opacity-100 hover:bg-shu-50 hover:text-shu-600 flex items-center justify-center">
                   <IconTrash size={14}/>
                 </button>
               </div>
@@ -2947,15 +3376,15 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
         )}
       </div>
 
-      {/* あとひと押しで 💮 になる文字（モチベ強化） */}
+      {/* あと ひといきで 花丸になる もじ */}
       {almostChars.length > 0 && (
-        <div className="bg-gradient-to-r from-violet-50 via-fuchsia-50 to-violet-50 border-2 border-violet-300 rounded-xl p-2.5 mb-3 shrink-0">
-          <div className="flex items-center gap-1.5 text-xs font-black text-violet-700 mb-1.5">
-            ✨ この じを つかうと 💮 に なるよ！
+        <div className="bg-fuji-50 border border-fuji-200 rounded-md p-2.5 mb-3 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-fuji-700 mb-1.5">
+            <IconPen size={14}/> この じを ことばに つかうと 花丸に なります
           </div>
           <div className="flex flex-wrap gap-1.5">
             {almostChars.map(c => (
-              <span key={c} className="kkm-glyph inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white border-2 border-violet-400 text-violet-700 text-xl shadow-sm">
+              <span key={c} className="kkm-glyph inline-flex items-center justify-center w-9 h-9 rounded-md bg-white border border-fuji-400 text-fuji-700 text-xl">
                 {c}
               </span>
             ))}
@@ -2964,22 +3393,23 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
       )}
 
       {availableHints.length > 0 && (
-        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-2.5 mb-3 shrink-0">
-          <div className="flex items-center gap-1.5 text-xs font-black text-yellow-700 mb-1.5">
+        <div className="bg-washi-100 border border-sumi-200 rounded-md p-2.5 mb-3 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-sumi-600 mb-1.5">
             <IconBulb size={14}/> いまの じで つくれる ことば
           </div>
           <div className="flex flex-wrap gap-1.5">
             {availableHints.slice(0, 8).map(h => {
-              // この単語が💮を作る数を表示
+              // この ことばで 花丸になる もじの かず
               const willMaster = h.w.split('').filter(c => getStage(progress, c) === 3).length;
               return (
-                <button key={h.w} onClick={() => { onAdd({ text: h.w, emoji: h.e, kanaMode }); speakText(h.w, voiceOn); }}
-                  className={`relative border rounded-full px-2.5 py-1 text-xs font-black transition-all active:scale-95 shadow-sm ${
-                    willMaster > 0 ? 'bg-amber-100 border-amber-400 text-amber-800 ring-2 ring-amber-200' : 'bg-white border-yellow-300 text-yellow-700 hover:bg-yellow-100'
+                <button key={h.w} onClick={() => { onAdd({ text: h.w, pict: h.p, kanaMode }); speakText(h.w, voiceOn); }}
+                  className={`kkm-btn kkm-ripple relative border rounded-md pl-2 pr-2.5 py-1.5 text-xs font-semibold flex items-center gap-1.5 ${
+                    willMaster > 0 ? 'bg-shu-50 border-shu-400 text-shu-800' : 'bg-white border-sumi-300 text-sumi-700 hover:border-shu-300'
                   }`}>
-                  {h.e} {h.w}
+                  <Pict name={h.p} size={16}/>
+                  <span className="kkm-glyph text-sm">{h.w}</span>
                   {willMaster > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">+{willMaster}💮</span>
+                    <span className="absolute -top-1.5 -right-1.5 bg-shu-600 text-white text-[9px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 tabular-nums">+{willMaster}</span>
                   )}
                 </button>
               );
@@ -2989,8 +3419,8 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
       )}
 
       <button onClick={() => setAddOpen(true)}
-        className="py-3 rounded-xl font-black text-base md:text-lg bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 text-white shadow-md border-b-4 border-amber-600 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 flex items-center justify-center gap-2 shrink-0 kkm-pop">
-        <IconPlus size={20}/> あたらしい ことばを ふやす <span className="text-xl">✨</span>
+        className="kkm-btn kkm-ripple py-3 rounded-md font-semibold text-base bg-shu-600 text-white border border-shu-700 flex items-center justify-center gap-2 shrink-0 min-h-[48px]">
+        <IconPlus size={19}/> あたらしい ことばを ふやす
       </button>
 
       {addOpen && (
@@ -3007,85 +3437,95 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
    ────────────────────────────────────────────────────────────── */
 function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, onSave }) {
   const [text, setText] = useState('');
-  const [emoji, setEmoji] = useState(EMOJI_CHOICES[0]);
+  const [pict, setPict] = useState(PICT_CHOICES[0]);
   const [kindTab, setKindTab] = useState('seion');
   const table = getKanaTable(kanaMode, kindTab);
   const canSave = text.length >= 1;
   const dialogRef = useModal(onCancel);
-  // この単語で💮になる数（プレビュー）
+  // この ことばで 花丸になる もじ（できあがりの したみ）
   const willMaster = useMemo(() => Array.from(new Set(text.split(''))).filter(c => getStage(progress, c) === 3), [text, progress]);
   function addChar(c) { if (text.length < 8) { setText(t => t + c); speakText(c, voiceOn); } }
   function backspace() { setText(t => t.slice(0, -1)); }
-  const handleSave = useDebouncedAction(() => { if (canSave) onSave({ text, emoji, kanaMode }); }, 400);
+  const handleSave = useDebouncedAction(() => { if (canSave) onSave({ text, pict, kanaMode }); }, 400);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-3" onClick={onCancel}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-sumi-900/40 backdrop-blur-sm p-3 kkm-fade-in" onClick={onCancel}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="あたらしい ことばを ふやす"
-        className="bg-white rounded-3xl shadow-2xl border-4 border-amber-300 max-w-lg w-full max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center px-4 md:px-6 pt-4 md:pt-6 pb-3 shrink-0">
-          <h3 className="font-black text-lg text-amber-700 flex items-center gap-2"><IconPlus size={20}/> ことばを つくろう</h3>
+        className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-shu-600 max-w-lg w-full max-h-[92vh] flex flex-col kkm-pop-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center px-4 md:px-5 pt-4 pb-3 shrink-0">
+          <h3 className="kkm-heading-rule font-semibold text-base text-sumi-800">ことばを つくる</h3>
           <button onClick={onCancel} aria-label="とじる"
-            className="w-11 h-11 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all active:scale-95 min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
+            className="kkm-btn w-11 h-11 rounded-md bg-sumi-50 hover:bg-sumi-100 border border-sumi-200 text-sumi-600 flex items-center justify-center min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
         </div>
 
-        <div className="px-4 md:px-6 overflow-y-auto flex-1 min-h-0">
-        <div className="bg-amber-50 rounded-2xl border-2 border-amber-200 p-3 md:p-4 mb-3 flex items-center gap-3 min-h-[80px]">
-          <span className="text-4xl md:text-5xl">{emoji}</span>
-          <span className="kkm-glyph flex-1 text-2xl md:text-3xl text-slate-700 break-all">
-            {text || <span className="text-slate-300">なにを かこうかな？</span>}
+        <div className="px-4 md:px-5 overflow-y-auto flex-1 min-h-0">
+        {/* ① できあがりの したみ */}
+        <div className="bg-washi-100 rounded-md border border-sumi-200 p-3 mb-3 flex items-center gap-3 min-h-[76px]">
+          <span className="text-shu-600 shrink-0"><Pict name={pict} size={38}/></span>
+          <span className="kkm-glyph flex-1 text-2xl md:text-3xl text-sumi-800 break-all min-w-0">
+            {text || <span className="text-sumi-300 text-lg">なにを かこうかな？</span>}
           </span>
           {text.length > 0 && (
             <>
               <button onClick={() => speakText(text, voiceOn)} disabled={!voiceOn}
                 aria-label="いまの ことばを よみあげる"
-                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-sky-100 text-sky-700 flex items-center justify-center transition-all active:scale-95 disabled:opacity-40">
-                <IconVolume size={20}/>
+                className="kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-white border border-ai-300 text-ai-700 flex items-center justify-center disabled:opacity-40">
+                <IconVolume size={19}/>
               </button>
               <button onClick={backspace}
                 aria-label="さいごの じを けす"
-                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-rose-100 text-rose-600 flex items-center justify-center transition-all active:scale-95">
-                <IconX size={20}/>
+                className="kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-white border border-shu-300 text-shu-600 flex items-center justify-center">
+                <IconX size={19}/>
               </button>
             </>
           )}
         </div>
 
+        {/* ② さしえを えらぶ */}
         <div className="mb-3">
-          <div className="text-xs font-black text-slate-500 mb-1.5">えもじ を えらぼう</div>
-          <div className="flex flex-wrap gap-1.5">
-            {EMOJI_CHOICES.map(e => (
-              <button key={e} onClick={() => setEmoji(e)}
-                className={`w-9 h-9 md:w-10 md:h-10 text-xl md:text-2xl rounded-lg border-2 transition-all active:scale-95 ${
-                  emoji === e ? 'bg-amber-100 border-amber-400 scale-110' : 'bg-white border-slate-200'
-                }`}>{e}</button>
+          <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">さしえを えらぶ</div>
+          <div className="grid grid-cols-8 sm:grid-cols-10 gap-1 max-h-[128px] overflow-y-auto p-0.5">
+            {PICT_CHOICES.map(name => (
+              <button key={name} onClick={() => setPict(name)} aria-pressed={pict === name} aria-label={name}
+                className={`kkm-btn aspect-square rounded-md border flex items-center justify-center ${
+                  pict === name ? 'bg-shu-50 border-shu-500 text-shu-700' : 'bg-white border-sumi-200 text-sumi-500 hover:border-shu-300'
+                }`}><Pict name={name} size={20}/></button>
             ))}
           </div>
         </div>
 
         {willMaster.length > 0 && (
-          <div className="mb-2 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-100 border-2 border-amber-400 rounded-xl px-3 py-2 text-center text-xs md:text-sm font-black text-amber-800">
-            ✨ この ことばで <span className="text-rose-500 text-base">{willMaster.length}</span>こ の じが 💮 になるよ！
-            <div className="mt-1 flex justify-center gap-1.5">
+          <div className="mb-3 bg-shu-50 border border-shu-300 rounded-md px-3 py-2 text-center text-xs md:text-sm font-semibold text-shu-800 kkm-pop-in">
+            <span className="inline-flex items-center gap-1.5">
+              <Hanamaru size={16}/> この ことばで <span className="text-base tabular-nums">{willMaster.length}</span>この じが 花丸に なります
+            </span>
+            <div className="mt-1.5 flex justify-center gap-1.5">
               {willMaster.map(c => (
-                <span key={c} className="kkm-glyph inline-flex items-center justify-center w-7 h-7 rounded-md bg-white border-2 border-amber-400 text-amber-700 text-base">{c}</span>
+                <span key={c} className="kkm-glyph inline-flex items-center justify-center w-7 h-7 rounded-md bg-white border border-shu-400 text-shu-700 text-base">{c}</span>
               ))}
             </div>
           </div>
         )}
 
+        {/* ③ もじを えらぶ */}
         <div className="mb-3">
-          <div className="text-xs font-black text-slate-500 mb-1.5">じぶんで かける じだけ つかえるよ（💮 = ことばで かんぺき）</div>
+          <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">
+            もじを えらぶ<span className="font-medium text-sumi-500">（じぶんで かける じだけ つかえます）</span>
+          </div>
           <div className="grid grid-cols-4 gap-1 mb-1.5">
             {KANA_KINDS.map(k => (
-              <button key={k.key} onClick={() => setKindTab(k.key)}
-                className={`py-1 rounded-lg font-black text-[10px] md:text-xs border-2 transition-all active:scale-95 ${
+              <button key={k.key} onClick={() => setKindTab(k.key)} aria-pressed={kindTab === k.key} title={k.label}
+                className={`kkm-btn py-1.5 rounded-md font-semibold text-[10px] md:text-xs border ${
                   kindTab === k.key
-                    ? 'bg-amber-400 text-white border-amber-500 shadow'
-                    : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
-                }`}>{k.short}</button>
+                    ? 'bg-shu-50 text-shu-700 border-shu-400'
+                    : 'bg-white text-sumi-500 border-sumi-200 hover:bg-washi-100'
+                }`}>
+                <span className="block md:hidden">{k.short}</span>
+                <span className="hidden md:block truncate px-0.5">{k.mid}</span>
+              </button>
             ))}
           </div>
-          <div className="grid grid-cols-5 gap-1.5 bg-amber-50/40 p-2 rounded-xl border border-amber-100">
+          <div className="grid grid-cols-5 gap-1.5 bg-washi-100 p-2 rounded-md border border-sumi-200">
             {table.map((c, i) => {
               if (!c) return <div key={i} className="aspect-square"/>;
               const ok = usableInWords.includes(c);
@@ -3093,16 +3533,16 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
               const willPromote = stage === 3;
               return (
                 <button key={i} disabled={!ok} onClick={() => addChar(c)}
-                  className={`kkm-glyph relative aspect-square rounded-lg text-xl md:text-2xl border-2 transition-all active:scale-95 ${
+                  aria-label={`${c}${willPromote ? '（つかうと 花丸に なります）' : ''}`}
+                  className={`kkm-glyph kkm-btn relative aspect-square rounded-md text-xl md:text-2xl border ${
                     ok
                       ? (willPromote
-                          ? 'bg-violet-50 border-violet-400 text-violet-700 hover:bg-violet-100 shadow-sm ring-2 ring-violet-200'
-                          : 'bg-white border-amber-300 text-amber-700 hover:bg-amber-100 shadow-sm')
-                      : 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed opacity-60'
+                          ? 'bg-fuji-50 border-fuji-400 text-fuji-700 hover:bg-fuji-100'
+                          : 'bg-white border-sumi-300 text-sumi-700 hover:border-shu-300')
+                      : 'bg-sumi-50 border-sumi-200 text-sumi-300 cursor-not-allowed'
                   }`}>
                   {c}
-                  {willPromote && <span className="absolute -top-1 -right-1 text-[10px]">✨</span>}
-                  {stage === 4 && <span className="absolute -top-1 -right-1 text-[10px]">💮</span>}
+                  {stage > 0 && <StageMark stage={stage} className="absolute -top-1 -right-1 leading-none"/>}
                 </button>
               );
             })}
@@ -3111,11 +3551,11 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
 
         </div>
 
-        <div className="flex gap-2 px-4 md:px-6 pt-3 pb-4 md:pb-6 border-t border-amber-100 bg-white rounded-b-3xl shrink-0">
+        <div className="flex gap-2 px-4 md:px-5 pt-3 pb-4 border-t border-sumi-200 bg-white rounded-b-lg shrink-0">
           <button onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl font-black text-sm bg-slate-100 text-slate-600 shadow-sm border-b-4 border-slate-300 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 min-h-[44px]">やめる</button>
+            className="kkm-btn flex-1 py-2.5 rounded-md font-semibold text-sm bg-white text-sumi-600 border border-sumi-300 min-h-[44px]">やめる</button>
           <button disabled={!canSave} onClick={handleSave}
-            className="flex-[2] py-2.5 rounded-xl font-black text-base bg-amber-400 text-white shadow border-b-4 border-amber-600 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-h-[44px]">
+            className="kkm-btn kkm-ripple flex-[2] py-2.5 rounded-md font-semibold text-base bg-shu-600 text-white border border-shu-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-h-[44px]">
             <IconCheck size={18}/> ずかんに ついか
           </button>
         </div>
@@ -3131,19 +3571,19 @@ function ResetModal({ onCancel, onConfirm }) {
   const dialogRef = useModal(onCancel);
   const guardedConfirm = useDebouncedAction(onConfirm, 500);
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-sumi-900/40 backdrop-blur-sm p-4 kkm-fade-in" onClick={onCancel}>
       <div ref={dialogRef} role="alertdialog" aria-modal="true" aria-label="データをけしますか？"
-        className="bg-white rounded-3xl shadow-2xl border-4 border-rose-300 p-6 max-w-sm w-full flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
-        <div className="text-rose-500 text-5xl" aria-hidden="true">⚠️</div>
-        <p className="text-base md:text-lg font-black text-slate-700 text-center leading-relaxed">
+        className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-shu-600 p-5 max-w-sm w-full flex flex-col items-center gap-3 kkm-pop-in" onClick={(e) => e.stopPropagation()}>
+        <span className="text-shu-600"><IconAlert size={38}/></span>
+        <p className="text-base font-semibold text-sumi-800 text-center leading-relaxed">
           いままで れんしゅうした<br/>データを ぜんぶ けしますか？
         </p>
-        <p className="text-xs text-slate-500 font-bold">ほんとうに よろしいですか？ もとには もどせません。</p>
+        <p className="text-xs text-sumi-500 font-medium text-center">もとには もどせません。</p>
         <div className="flex gap-2 w-full mt-2">
           <button onClick={onCancel} autoFocus
-            className="flex-1 py-2.5 rounded-xl font-black bg-slate-100 text-slate-600 shadow-sm border-b-4 border-slate-300 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 min-h-[44px]">やめる</button>
+            className="kkm-btn flex-1 py-2.5 rounded-md font-semibold bg-white text-sumi-700 border border-sumi-300 min-h-[44px]">やめる</button>
           <button onClick={guardedConfirm}
-            className="flex-1 py-2.5 rounded-xl font-black bg-rose-500 text-white shadow border-b-4 border-rose-700 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 min-h-[44px]">けす</button>
+            className="kkm-btn kkm-ripple flex-1 py-2.5 rounded-md font-semibold bg-shu-600 text-white border border-shu-700 min-h-[44px]">けす</button>
         </div>
       </div>
     </div>
@@ -3191,7 +3631,7 @@ const INSTALL_STEPS = {
   ios: {
     title: 'iPhone・iPad（Safari）で アプリにする',
     steps: [
-      'したの「共有（⬆️）」ボタンを タップ',
+      'がめんの したにある「共有」ボタン（四角から 上むきの やじるし）を タップ',
       'メニューを したに スクロールして「ホーム画面に追加」を えらぶ',
       'みぎうえの「追加」を おすと アイコンが できます',
     ],
@@ -3202,30 +3642,30 @@ function InstallGuideModal({ platform, onClose }) {
   const dialogRef = useModal(onClose);
   const guide = INSTALL_STEPS[platform] || INSTALL_STEPS.desktop;
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-sumi-900/40 backdrop-blur-sm p-4 kkm-fade-in" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="アプリとして ついかする ほうほう"
-        className="bg-white rounded-3xl shadow-2xl border-4 border-emerald-300 p-5 md:p-6 max-w-md w-full max-h-[85vh] overflow-y-auto flex flex-col gap-3"
+        className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-midori-600 p-5 max-w-md w-full max-h-[85vh] overflow-y-auto flex flex-col gap-3 kkm-pop-in"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2">
-          <span className="text-3xl" aria-hidden="true">📲</span>
-          <h2 className="text-base md:text-lg font-black text-emerald-700 flex-1">{guide.title}</h2>
+          <span className="text-midori-700"><IconDownload size={22}/></span>
+          <h2 className="text-base font-semibold text-sumi-800 flex-1">{guide.title}</h2>
         </div>
         <ol className="flex flex-col gap-2 mt-1">
           {guide.steps.map((s, i) => (
-            <li key={i} className="flex gap-2 items-start bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
+            <li key={i} className="flex gap-2.5 items-start bg-washi-100 rounded-md p-3 border border-sumi-200">
               <span aria-hidden="true"
-                className="shrink-0 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-black flex items-center justify-center">{i + 1}</span>
-              <span className="text-sm font-bold text-slate-700 leading-relaxed">{s}</span>
+                className="shrink-0 w-6 h-6 rounded-full bg-midori-600 text-white text-xs font-semibold flex items-center justify-center">{i + 1}</span>
+              <span className="text-sm font-medium text-sumi-700 leading-relaxed">{s}</span>
             </li>
           ))}
         </ol>
-        <p className="text-xs text-slate-500 font-bold leading-relaxed">
+        <p className="text-xs text-sumi-500 font-medium leading-relaxed">
           すでに インストールずみの ときは、ボタンを おしても なにも おきません。
           ランチャーや ホームがめんの アイコンから ひらいてください。
         </p>
         <button onClick={onClose} autoFocus
-          className="w-full py-2.5 rounded-xl font-black bg-emerald-500 text-white shadow border-b-4 border-emerald-700 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 min-h-[44px]">
-          わかった
+          className="kkm-btn kkm-ripple w-full py-2.5 rounded-md font-semibold bg-midori-600 text-white border border-midori-700 min-h-[44px]">
+          わかりました
         </button>
       </div>
     </div>
@@ -3366,13 +3806,13 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
       <div className="shrink-0 flex items-center gap-2">
         <button onClick={() => setTableOpen(true)}
           aria-haspopup="dialog" aria-expanded={tableOpen}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl font-black text-base bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow border-b-4 border-orange-600 transition-all active:scale-95 active:translate-y-0.5 active:border-b-2 kkm-pop min-h-[48px]">
-          <span className="text-xl" aria-hidden="true">🔤</span>
+          className="kkm-btn kkm-ripple flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md font-semibold text-base bg-shu-600 text-white border border-shu-700 min-h-[48px]">
+          <IconGrid size={18}/>
           {currentChar ? 'べつの もじを えらぶ' : 'もじを えらぶ'}
         </button>
         {currentChar && (
-          <div className="shrink-0 flex items-center justify-center bg-white rounded-2xl w-12 h-12 border-2 border-amber-300 shadow-inner">
-            <span className="kkm-glyph text-2xl text-amber-700">{currentChar}</span>
+          <div className="shrink-0 flex items-center justify-center bg-white rounded-md w-12 h-12 border border-shu-300">
+            <span className="kkm-glyph text-2xl text-shu-700">{currentChar}</span>
           </div>
         )}
       </div>
@@ -3402,14 +3842,14 @@ function KanaDrawer({ children, onClose }) {
   const ref = useModal(onClose);
   return (
     <div className="fixed inset-0 z-[300] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="もじを えらぶ">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}/>
+      <div className="absolute inset-0 bg-sumi-900/40 backdrop-blur-sm kkm-fade-in" onClick={onClose}/>
       <div ref={ref}
-        className="relative w-full max-h-[86vh] bg-amber-50 rounded-t-3xl shadow-2xl border-t-4 border-amber-300 flex flex-col kkm-pop-in"
+        className="relative w-full max-h-[86vh] bg-washi-100 rounded-t-lg shadow-2xl border-t-4 border-shu-600 flex flex-col kkm-sheet-up"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-1">
-          <div className="mx-auto w-12 h-1.5 rounded-full bg-amber-300" aria-hidden="true"/>
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-sumi-300" aria-hidden="true"/>
           <button onClick={onClose} aria-label="とじる"
-            className="absolute right-3 top-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-white/80 hover:bg-white text-amber-700 flex items-center justify-center shadow active:scale-95">
+            className="kkm-btn absolute right-3 top-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-md bg-white border border-sumi-200 text-sumi-600 flex items-center justify-center">
             <IconX size={18}/>
           </button>
         </div>
@@ -3450,7 +3890,7 @@ function App() {
   const [resetOpen, setResetOpen] = useState(false);
   const [badgesOpen, setBadgesOpen] = useState(false);
   const [toastBadge, setToastBadge] = useState(null);
-  const [wordCelebration, setWordCelebration] = useState(null); // { chars: [...] } ことばで💮になった文字
+  const [wordCelebration, setWordCelebration] = useState(null); // { chars: [...] } ことばで花丸になった文字
   const streak = useStreak();
   const install = useInstallPrompt();
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
@@ -3664,14 +4104,14 @@ function App() {
       {wordCelebration && <WordMasterPopup info={wordCelebration} onClose={() => setWordCelebration(null)}/>}
       {storageWarn && (
         <div role="alert"
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[500] bg-rose-100 border-2 border-rose-400 text-rose-800 font-black rounded-2xl px-4 py-3 shadow-2xl max-w-sm flex items-start gap-2 kkm-pop-in">
-          <span className="text-2xl" aria-hidden="true">⚠️</span>
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[500] bg-white border border-shu-400 border-l-4 border-l-shu-600 text-sumi-800 rounded-lg px-4 py-3 shadow-xl max-w-sm flex items-start gap-2.5 kkm-pop-in">
+          <span className="text-shu-600 shrink-0 mt-0.5" aria-hidden="true"><IconAlert size={20}/></span>
           <div className="flex-1">
-            <div className="text-sm">ほぞん が できませんでした</div>
-            <div className="text-xs font-bold opacity-80 mt-0.5">ブラウザの ようりょうが いっぱいです。ことばを すこし けして みてください。</div>
+            <div className="text-sm font-semibold">ほぞん が できませんでした</div>
+            <div className="text-xs font-medium text-sumi-600 mt-0.5">ブラウザの ようりょうが いっぱいです。ことばを すこし けして みてください。</div>
           </div>
           <button onClick={() => setStorageWarn(false)} aria-label="とじる"
-            className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-full bg-white/70 hover:bg-white text-rose-600 flex items-center justify-center active:scale-95">
+            className="kkm-btn w-8 h-8 min-w-[32px] min-h-[32px] rounded-md bg-sumi-50 hover:bg-sumi-100 text-sumi-500 flex items-center justify-center">
             <IconX size={16}/>
           </button>
         </div>

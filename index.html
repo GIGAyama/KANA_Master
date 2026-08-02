@@ -9,7 +9,7 @@
 
   <!-- ===== PWA（ホーム画面に「アプリ」として追加できるように） ===== -->
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#f59e0b" />
+  <meta name="theme-color" content="#b34328" />
   <meta name="color-scheme" content="light" />
   <!-- iOS（Safari）向け：フルスクリーン化とアイコン -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -80,6 +80,38 @@
   <!-- Tailwind CSS（CDN） -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- ===== 配色（テーマ）の唯一の定義場所 =====
+       「国語の教科書」をイメージした、おちついた和の配色。
+       主役は 朱色（しゅいろ）＝ 先生の赤ペン・朱肉の色。
+
+         shu      朱色    … テーマカラー。見出し・アクティブ・正解の演出
+         sumi     墨      … 文字色とニュートラル（すこし温かみのある灰）
+         washi    和紙    … 背景・カードの下地（生成りの紙）
+         ai       藍      … カタカナ・情報（朱の対になる寒色）
+         midori   若竹    … 「できた」をあらわす色（なぞりクリア）
+         yamabuki 山吹    … ごほうび・かんぺき（金いろ）
+         fuji     藤      … 「じぶんでかく」段階
+
+       Tailwind のクラス（bg-shu-600 など）はここで定義した名前が使える。
+       色をかえたいときは この 1 か所だけを直すこと。 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            shu:      { 50:'#fdf5f2', 100:'#fae7e1', 200:'#f4cec2', 300:'#e9a996', 400:'#d97e65', 500:'#c85a3c', 600:'#b34328', 700:'#93331e', 800:'#732a1a', 900:'#552017' },
+            sumi:     { 50:'#f8f6f2', 100:'#efece5', 200:'#ded8cd', 300:'#c3bcae', 400:'#9b9386', 500:'#7a7267', 600:'#5c554c', 700:'#443f38', 800:'#2e2a25', 900:'#1c1916' },
+            washi:    { 50:'#fdfbf7', 100:'#faf7f0', 200:'#f4efe4', 300:'#eae2d2', 400:'#dbd0ba' },
+            ai:       { 50:'#f0f4f9', 100:'#dce5f0', 200:'#bacbde', 300:'#8fa9c6', 400:'#6081a6', 500:'#40608a', 600:'#304a6c', 700:'#263a54', 800:'#1d2d41', 900:'#16222f' },
+            midori:   { 50:'#f1f6f1', 100:'#dfeade', 200:'#bfd5c0', 300:'#96b898', 400:'#6d9872', 500:'#4f7d56', 600:'#3d6544', 700:'#315035', 800:'#26402a', 900:'#1c2f20' },
+            yamabuki: { 50:'#fdf8ec', 100:'#f9eed3', 200:'#f2dca6', 300:'#e8c470', 400:'#d9a840', 500:'#c08c26', 600:'#9c6e1d', 700:'#7a5618', 800:'#5c4114', 900:'#443010' },
+            fuji:     { 50:'#f5f3f9', 100:'#eae5f1', 200:'#d5cbe3', 300:'#b6a8cd', 400:'#9280b2', 500:'#755f97', 600:'#5c4a79', 700:'#493c60', 800:'#382f4a', 900:'#282136' },
+          },
+        },
+      },
+    };
+  </script>
+
   <!-- ===== 教科書体フォント =====
        表示する文字は「UD デジタル 教科書体」に統一する。
        このフォントは Windows 10 以降に標準搭載されている Morisawa 社の製品で、
@@ -126,13 +158,25 @@
         'Klee One',
         'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
     }
+    /* 配色の CSS 変数（Tailwind の外＝キャンバス描画や擬似要素で使う分）。
+       値は tailwind.config の shu / sumi / washi と そろえておくこと。 */
+    :root {
+      --kkm-shu:        #b34328;   /* 朱色（テーマカラー） */
+      --kkm-shu-light:  #d97e65;
+      --kkm-shu-pale:   #f4cec2;
+      --kkm-sumi:       #2e2a25;   /* 墨（本文・じぶんで書く線） */
+      --kkm-sumi-soft:  #7a7267;
+      --kkm-paper:      #faf7f0;   /* 生成りの紙 */
+      --kkm-rule:       #ded8cd;   /* 罫線 */
+      --kkm-guide:      #e5ded0;   /* うすく刷ったお手本の文字 */
+    }
     html, body, #root {
       height: 100%;
       margin: 0;
-      background-color: rgb(255 251 235 / 0.4); /* amber-50/40 のフォールバック */
+      background-color: var(--kkm-paper);
       font-family: var(--kkm-font-kyokasho);
       font-weight: 600;
-      color: #334155;
+      color: var(--kkm-sumi);
       -webkit-touch-callout: none;
       -webkit-tap-highlight-color: transparent;
     }
@@ -157,9 +201,9 @@
     /* キーボード操作時の見やすいフォーカスリング（マウスでは控えめに） */
     :focus { outline: none; }
     :focus-visible {
-      outline: 3px solid #f59e0b;
+      outline: 3px solid var(--kkm-shu);
       outline-offset: 2px;
-      border-radius: 8px;
+      border-radius: 6px;
     }
     /* OS のモーション抑制設定を尊重 */
     @media (prefers-reduced-motion: reduce) {
@@ -172,116 +216,181 @@
     }
     /* スクロールバーをスマートに */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-thumb { background: #fcd34d80; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #c3bcae; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9b9386; }
     /* range スライダー */
-    input[type=range] { height: 8px; }
+    input[type=range] { height: 8px; accent-color: var(--kkm-shu); }
 
-    /* ===== 楽しい学習用アニメーション ===== */
-    @keyframes kkm-wiggle {
-      0%, 100% { transform: rotate(-3deg); }
-      50% { transform: rotate(3deg); }
-    }
-    @keyframes kkm-float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
-    @keyframes kkm-float-slow {
-      0%, 100% { transform: translateY(0) rotate(0deg); }
-      33% { transform: translateY(-8px) rotate(-3deg); }
-      66% { transform: translateY(4px) rotate(3deg); }
-    }
-    @keyframes kkm-sparkle {
-      0%, 100% { opacity: 0.3; transform: scale(0.9) rotate(0deg); }
-      50% { opacity: 1; transform: scale(1.1) rotate(180deg); }
-    }
+    /* =====================================================================
+       アニメーション
+
+       ねらい：おちついた見た目のまま、「おした」「せいかいした」の手ごたえは
+       はっきり返す。演出は 朱色の赤ペン（花丸・はんこ・下線）をモチーフに、
+       線が引かれていく動きで表現する。
+       ※ 動きを減らす設定（prefers-reduced-motion）は上でまとめて止めている。
+       ===================================================================== */
+
+    /* --- あらわれる --- */
     @keyframes kkm-pop-in {
-      0% { transform: scale(0.5); opacity: 0; }
-      60% { transform: scale(1.1); opacity: 1; }
+      0%   { transform: scale(0.88); opacity: 0; }
+      60%  { transform: scale(1.02); opacity: 1; }
       100% { transform: scale(1); opacity: 1; }
     }
-    @keyframes kkm-rainbow-shift {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+    @keyframes kkm-rise-in {
+      0%   { transform: translateY(10px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
     }
-    @keyframes kkm-shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
+    @keyframes kkm-fade-in {
+      0% { opacity: 0; } 100% { opacity: 1; }
+    }
+    @keyframes kkm-sheet-up {
+      0%   { transform: translateY(100%); }
+      100% { transform: translateY(0); }
+    }
+    .kkm-pop-in  { animation: kkm-pop-in .32s cubic-bezier(.22,1.2,.36,1) both; }
+    .kkm-rise-in { animation: kkm-rise-in .34s cubic-bezier(.22,1,.36,1) both; }
+    .kkm-fade-in { animation: kkm-fade-in .25s ease-out both; }
+    .kkm-sheet-up{ animation: kkm-sheet-up .3s cubic-bezier(.22,1,.36,1) both; }
+
+    /* --- はんこ（印）を おす --- 段位・ステージアップの演出 --- */
+    @keyframes kkm-stamp {
+      0%   { transform: scale(2.1) rotate(-14deg); opacity: 0; }
+      45%  { transform: scale(0.92) rotate(-4deg); opacity: 1; }
+      65%  { transform: scale(1.05) rotate(-6deg); }
+      100% { transform: scale(1) rotate(-5deg); opacity: 1; }
+    }
+    .kkm-stamp { animation: kkm-stamp .5s cubic-bezier(.3,1.4,.5,1) both; }
+
+    /* --- 赤ペンで線を引く --- 見出しの下線・花丸・チェック --- */
+    @keyframes kkm-draw {
+      0%   { stroke-dashoffset: var(--kkm-dash, 1000); }
+      100% { stroke-dashoffset: 0; }
+    }
+    .kkm-draw {
+      stroke-dasharray: var(--kkm-dash, 1000);
+      animation: kkm-draw var(--kkm-draw-dur, .7s) cubic-bezier(.5,.1,.3,1) both;
+      animation-delay: var(--kkm-draw-delay, 0s);
+    }
+    @keyframes kkm-underline {
+      0%   { transform: scaleX(0); }
+      100% { transform: scaleX(1); }
+    }
+    .kkm-underline { transform-origin: left center; animation: kkm-underline .45s cubic-bezier(.5,.1,.3,1) both; }
+
+    /* --- ボタン：おした手ごたえ --- */
+    .kkm-btn {
+      transition: transform .12s cubic-bezier(.3,1.4,.5,1),
+                  box-shadow .12s ease-out,
+                  background-color .18s ease-out,
+                  border-color .18s ease-out,
+                  color .18s ease-out;
+      will-change: transform;
+    }
+    .kkm-btn:active:not(:disabled) { transform: translateY(2px) scale(.975); }
+    .kkm-btn:hover:not(:disabled)  { filter: brightness(1.03); }
+    /* おした瞬間に 朱色の波紋がひろがる（墨がにじむイメージ） */
+    .kkm-ripple { position: relative; overflow: hidden; }
+    .kkm-ripple::after {
+      content: '';
+      position: absolute; left: 50%; top: 50%;
+      width: 12px; height: 12px; margin: -6px 0 0 -6px;
+      border-radius: 9999px;
+      background: currentColor;
+      opacity: 0;
+      transform: scale(1);
+      pointer-events: none;
+    }
+    @keyframes kkm-ripple-out {
+      0%   { opacity: .22; transform: scale(1); }
+      100% { opacity: 0;   transform: scale(24); }
+    }
+    .kkm-ripple:active:not(:disabled)::after { animation: kkm-ripple-out .5s ease-out; }
+
+    /* --- ゆらぐ・ひかる（ひかえめに） --- */
+    @keyframes kkm-float {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-4px); }
+    }
+    @keyframes kkm-breathe {
+      0%, 100% { transform: scale(1); opacity: .9; }
+      50%      { transform: scale(1.06); opacity: 1; }
+    }
+    @keyframes kkm-sheen {
+      0%   { background-position: -180% 0; }
+      60%, 100% { background-position: 180% 0; }
     }
     @keyframes kkm-pulse-ring {
-      0% { box-shadow: 0 0 0 0 rgba(251,191,36,0.45); }
-      70% { box-shadow: 0 0 0 12px rgba(251,191,36,0); }
-      100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+      0%   { box-shadow: 0 0 0 0 rgba(179,67,40,0.35); }
+      70%  { box-shadow: 0 0 0 10px rgba(179,67,40,0); }
+      100% { box-shadow: 0 0 0 0 rgba(179,67,40,0); }
     }
+    @keyframes kkm-shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-3px); }
+      80% { transform: translateX(3px); }
+    }
+    .kkm-float      { animation: kkm-float 3.6s ease-in-out infinite; }
+    .kkm-breathe    { animation: kkm-breathe 2.4s ease-in-out infinite; }
+    .kkm-pulse-ring { animation: kkm-pulse-ring 2s ease-out infinite; }
+    .kkm-shake      { animation: kkm-shake .4s ease-in-out both; }
+
+    /* 金いろの光沢（かんぺきになった もじ・ごほうび） */
+    .kkm-sheen { position: relative; overflow: hidden; }
+    .kkm-sheen::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.7) 50%, transparent 62%);
+      background-size: 220% 100%;
+      animation: kkm-sheen 3.6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
     /* バッジ獲得トースト：明示的に 2 回バウンドして自然に止まる */
     @keyframes kkm-bounce-twice {
       0%   { transform: translate(-50%, -120%); opacity: 0; }
       18%  { transform: translate(-50%, 0); opacity: 1; }
-      32%  { transform: translate(-50%, -16px); }
+      32%  { transform: translate(-50%, -14px); }
       46%  { transform: translate(-50%, 0); }
-      58%  { transform: translate(-50%, -8px); }
+      58%  { transform: translate(-50%, -6px); }
       70%  { transform: translate(-50%, 0); }
       100% { transform: translate(-50%, 0); opacity: 1; }
     }
-    .kkm-badge-toast { animation: kkm-bounce-twice 1.4s cubic-bezier(.34,1.56,.64,1) both; will-change: transform; }
+    .kkm-badge-toast { animation: kkm-bounce-twice 1.3s cubic-bezier(.34,1.5,.64,1) both; will-change: transform; }
 
-    .kkm-wiggle { animation: kkm-wiggle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
-    .kkm-float { animation: kkm-float 3.2s ease-in-out infinite; }
-    .kkm-float-slow { animation: kkm-float-slow 6s ease-in-out infinite; }
-    .kkm-sparkle { animation: kkm-sparkle 2.4s ease-in-out infinite; }
-    .kkm-pop-in { animation: kkm-pop-in .45s cubic-bezier(.34,1.56,.64,1) both; }
-    .kkm-pulse-ring { animation: kkm-pulse-ring 1.8s ease-out infinite; }
+    /* カードを持ちあげる（ホバー・タップ） */
+    .kkm-lift { transition: transform .18s cubic-bezier(.3,1.3,.5,1), box-shadow .18s ease-out; }
+    .kkm-lift:hover  { transform: translateY(-2px); }
+    .kkm-lift:active { transform: translateY(0) scale(.99); }
 
-    /* レインボーグラデーション文字（タイトル用） */
-    .kkm-text-rainbow {
-      background-image: linear-gradient(90deg, #f59e0b, #ef4444, #ec4899, #8b5cf6, #3b82f6, #10b981, #f59e0b);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      animation: kkm-rainbow-shift 6s linear infinite;
-    }
-
-    /* キラキラのシマー効果（マスター済みカード等） */
-    .kkm-shimmer {
-      position: relative;
-      overflow: hidden;
-    }
-    .kkm-shimmer::after {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
-      background-size: 200% 100%;
-      animation: kkm-shimmer 2.8s ease-in-out infinite;
-      pointer-events: none;
-    }
-
-    /* ホバー時のポップ */
-    .kkm-pop:hover { transform: translateY(-2px) scale(1.03); }
-    .kkm-pop { transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
-
-    /* 背景：淡いパステルのアニメーショングラデーション + ドット装飾 */
+    /* =====================================================================
+       背景：国語の教科書の紙面
+       生成りの和紙に、原稿用紙のような ごくうすい マス目を敷く。
+       ===================================================================== */
     .kkm-app-bg {
-      background:
-        radial-gradient(circle at 20% 0%, rgba(254,202,202,0.35) 0%, transparent 40%),
-        radial-gradient(circle at 80% 10%, rgba(191,219,254,0.35) 0%, transparent 40%),
-        radial-gradient(circle at 70% 90%, rgba(221,214,254,0.35) 0%, transparent 45%),
-        radial-gradient(circle at 10% 80%, rgba(254,240,138,0.4) 0%, transparent 45%),
-        #fffbeb;
+      background-color: var(--kkm-paper);
+      background-image:
+        linear-gradient(rgba(179,67,40,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(179,67,40,0.045) 1px, transparent 1px),
+        radial-gradient(circle at 50% 0%, rgba(179,67,40,0.05) 0%, transparent 60%);
+      background-size: 48px 48px, 48px 48px, 100% 320px;
       background-attachment: fixed;
     }
-    .kkm-app-bg::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image:
-        radial-gradient(rgba(251,191,36,0.18) 1.2px, transparent 1.2px),
-        radial-gradient(rgba(244,114,182,0.14) 1.2px, transparent 1.2px);
-      background-size: 28px 28px, 38px 38px;
-      background-position: 0 0, 14px 14px;
-      pointer-events: none;
-      z-index: 0;
+
+    /* 朱色の見出し罫（セクションの左に立てる縦棒） */
+    .kkm-heading-rule {
+      border-left: 4px solid var(--kkm-shu);
+      padding-left: 0.5rem;
+      line-height: 1.25;
     }
-    /* 背景装飾（::before の点もよう）より前面にアプリ本体を出す。
+    /* 紙面のカード（白い用紙） */
+    .kkm-sheet {
+      background: #fff;
+      border: 1px solid var(--kkm-rule);
+      box-shadow: 0 1px 2px rgba(46,42,37,0.05);
+    }
+    /* 背景のマス目より前面にアプリ本体を出す。
        ここで position まで上書きすると、直下にいる紙吹雪キャンバスや
        モーダル・トースト（position:fixed）まで巻きぞえで relative に
        なってしまい、画面のなかに居座って レイアウトを押しつぶす。
@@ -294,14 +403,6 @@
     .kkm-app-bg > footer { position: relative; }
     /* 紙吹雪は必ず画面ぜんたいに固定（id 指定なので順序に左右されない） */
     #confettiCanvas { position: fixed; inset: 0; z-index: 400; }
-
-    /* 浮かぶ装飾絵文字（ヘッダー横などに散らす） */
-    .kkm-decor {
-      position: absolute;
-      pointer-events: none;
-      opacity: 0.55;
-      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
-    }
 
     /* =====================================================================
        端末非依存レイアウト：あらゆる解像度で「かきじゅん」ボタンまで必ず表示する
@@ -396,8 +497,8 @@
 <body>
   <!-- ローディング表示（Babel変換中の数百ms） -->
   <div id="root">
-    <div style="height:100vh;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-weight:900;font-size:1.25rem;">
-      よみこみちゅう...
+    <div style="height:100vh;display:flex;align-items:center;justify-content:center;color:#b34328;font-weight:600;font-size:1.125rem;letter-spacing:.08em;">
+      よみこみちゅう…
     </div>
   </div>
 
