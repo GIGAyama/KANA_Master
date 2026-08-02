@@ -531,11 +531,17 @@ async function fetchKanjiVG(char) {
    呼ぶこと（画数違反は採点せず、別途やり直しフローを起こす）。
 
    観点と配点（合計100点。scoreHandwriting の items と必ずそろえること）：
+     ・せんの かたち      30点（お手本の線とどれだけ重なっているか）★主役
      ・かきじゅん         15点（画の順番だけを見る）
      ・はじめと むき      15点（画ごとの始点の位置 + 向きベクトル）
-     ・マスの つかいかた  30点（マスを4等分した部屋の使い方）
-     ・せんの こうさ      20点（必要な交差ペアの有無）
      ・おおきさ・いち     20点（バウンディングボックスの大きさ・中心）
+     ・マスの つかいかた  10点（マスを4等分した部屋の使い方）
+     ・せんの こうさ      10点（必要な交差ペアの有無）
+
+   「せんの かたち」が主役。ほかの観点は 始点・外形・部屋といった あらい特徴
+   しか見ないので、これが無いと「外形のなかを ぐちゃぐちゃ」でも高得点に
+   なってしまう（じっさい 花丸が出ていた）。配点を変えるときは、かたちの
+   比重を いちばん重いままにしておくこと。
 
    戻り値：{ total, breakdown:[{key,label,score,max,status,advice}], comment, passed }
    ────────────────────────────────────────────────────────────── */
@@ -599,6 +605,32 @@ function simplifyPoints(pts) {
   return out;
 }
 
+// 点列を「長さの割合」で n 等分して取りなおす（0..1 の座標のまま）。
+// お手本（sampleSvgPath）も同じ取りかたなので、k 番目どうしを
+// そのまま比べられる＝「同じ進みぐあいの場所」で見くらべられる。
+function resamplePolyline(poly, n) {
+  if (!poly || poly.length < 2 || n < 2) return null;
+  const cum = [0];
+  for (let i = 1; i < poly.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(poly[i].x - poly[i - 1].x, poly[i].y - poly[i - 1].y));
+  }
+  const total = cum[cum.length - 1];
+  if (!(total > 0)) return null;
+  const out = [];
+  let j = 1;
+  for (let k = 0; k < n; k++) {
+    const target = (total * k) / (n - 1);
+    while (j < cum.length - 1 && cum[j] < target) j++;
+    const seg = cum[j] - cum[j - 1];
+    const t = seg > 0 ? (target - cum[j - 1]) / seg : 0;
+    out.push({
+      x: poly[j - 1].x + (poly[j].x - poly[j - 1].x) * t,
+      y: poly[j - 1].y + (poly[j].y - poly[j - 1].y) * t,
+    });
+  }
+  return out;
+}
+
 // マスを4等分した部屋番号（0:TL, 1:TR, 2:BL, 3:BR）
 function quadrantOf(p) {
   return (p.x >= 0.5 ? 1 : 0) | (p.y >= 0.5 ? 2 : 0);
@@ -647,6 +679,81 @@ function crossPairSet(polys) {
     }
   }
   return pairs;
+}
+
+/* 観点⓪：かたち（0..1）── いちばん大事な観点
+
+   画ごとに、お手本の線と じっさいに書いた線を「同じ進みぐあいの場所」で
+   くらべ、どれだけ離れているかをはかる。
+
+   ＜これが無かったころの問題＞
+   ほかの観点は、始点・終点・マスの部屋・外形しか見ていなかった。そのため
+     ・曲がるところを 直線で ずぼらに書く
+     ・外形のなかを ぐちゃぐちゃに ぬりつぶす
+     ・下から上へ 逆向きに 書く
+   でも高い点が出てしまい、じっさい「ぐちゃぐちゃ」で花丸が取れていた。
+   線そのものを くらべることで、この 3 つが いちどに ふせげる。
+
+   進みぐあいの順にくらべる（k 番目どうし）ので、逆向き・順番ちがいは
+   自動的に大きく離れ、点が下がる。
+
+   ＜位置ずれは ここでは見ない＞
+   字ぜんたいが おなじだけ ずれているぶんは、先に打ち消してから くらべる。
+   「書く場所」は『おおきさ・いち』と『はじめと むき』が すでに見ているので、
+   ここでも数えると 1 つのミスを 3 回減点することになってしまう。
+   打ち消すのは「ぜんたいの平行移動」だけなので、字のかたちが ちがう
+   （ぐちゃぐちゃ・逆向き・直線ですます）ときは どう動かしても重ならず、
+   ちゃんと 0 点に近づく。 */
+const SHAPE_N = 24;          // くらべる点の数（お手本のサンプル数とそろえる）
+const SHAPE_FREE = 0.03;     // これくらいのズレは 1年生なら ふつう（減点しない）
+const SHAPE_SPAN = 0.13;     // ここまで離れると 0 点（マスの 1/8 ほど）
+const SHAPE_SHIFT_CAP = 0.045; // 打ち消してよい「字ぜんたいの平行移動」の上限
+function evalShape(usrPolys, tplPolys) {
+  const n = Math.min(usrPolys.length, tplPolys.length);
+  if (n === 0) return 0;
+  const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+
+  // ① 画ごとに「同じ進みぐあいの場所」の点をそろえ、あわせて平行移動ぶんを出す
+  const pairs = [];
+  let dx = 0, dy = 0, m = 0;
+  for (let i = 0; i < n; i++) {
+    const t = tplPolys[i];
+    if (!t || t.length < 2) continue;
+    const tp = t.length === SHAPE_N ? t : resamplePolyline(t, SHAPE_N);
+    const up = resamplePolyline(usrPolys[i], SHAPE_N);
+    if (!tp || !up) continue;
+    pairs.push([up, tp]);
+    for (let k = 0; k < SHAPE_N; k++) { dx += up[k].x - tp[k].x; dy += up[k].y - tp[k].y; m++; }
+  }
+  if (pairs.length === 0 || m === 0) return 0;
+  dx /= m; dy /= m;
+  // 打ち消すのは「すこしのズレ」まで。字ぜんたいが大きくずれているのは
+  // かたち以前の問題なので、ここでも きちんと点が下がるようにする。
+  const shift = Math.hypot(dx, dy);
+  if (shift > SHAPE_SHIFT_CAP) { const k = SHAPE_SHIFT_CAP / shift; dx *= k; dy *= k; }
+
+  // ② 平行移動ぶんを取りのぞいて、線どうしの離れぐあいをはかる
+  const perStroke = [];
+  for (const [up, tp] of pairs) {
+    let mean = 0, worst = 0;
+    for (let k = 0; k < SHAPE_N; k++) {
+      const d = Math.hypot(up[k].x - dx - tp[k].x, up[k].y - dy - tp[k].y);
+      mean += d;
+      if (d > worst) worst = d;
+    }
+    mean /= SHAPE_N;
+    // ふだんのズレ（平均）と、いちばん外れたところ（最大）の両方を見る。
+    // 平均が良くても 1 か所だけ大きく外れていれば、そのぶん下がる。
+    const meanScore  = clamp01(1 - (mean  - SHAPE_FREE) / SHAPE_SPAN);
+    const worstScore = clamp01(1 - (worst - SHAPE_FREE * 2) / (SHAPE_SPAN * 2.2));
+    perStroke.push(0.75 * meanScore + 0.25 * worstScore);
+  }
+  // 画ごとの点は「ならし」だけでなく「いちばん悪い画」も見る。
+  // ならしだけだと、3画のうち 2画が上手なら 1画がまるで違っていても
+  // 隠れてしまう。1画でも大きくずれていれば ちゃんと点が下がるようにする。
+  const avg = perStroke.reduce((a, b) => a + b, 0) / perStroke.length;
+  const worstStroke = Math.min(...perStroke);
+  return 0.72 * avg + 0.28 * worstStroke;
 }
 
 // 観点①-a：かきじゅん（純粋な順番のみ）（0..1）
@@ -805,6 +912,7 @@ function adviceFor(key, raw) {
     case 'rooms':     return ok ? 'マスを もうちょっと ひろく つかおう' : 'すみずみまで つかえる ように しよう';
     case 'crossings': return ok ? 'せんの かさなる ところを ていねいに' : 'せんを ちゃんと かさねて かこう';
     case 'balance':   return ok ? 'まんなかに かくと きれいだよ' : 'マスの まんなかに おおきく かこう';
+    case 'shape':     return ok ? 'お手本の せんに もうすこし ちかづけよう' : 'お手本を よく みて、せんの かたちを まねしよう';
   }
   return '';
 }
@@ -817,11 +925,12 @@ function scoreHandwriting(userStrokes, templatePaths) {
   const tplPolys = templatePaths.map(d => sampleSvgPath(d, 24));
   const usrPolys = userStrokes.map(s => simplifyPoints(s.points || []));
   const items = [
+    { key: 'shape',     label: 'せんの かたち',     max: 30, raw: evalShape(usrPolys, tplPolys) },
     { key: 'order',     label: 'かきじゅん',         max: 15, raw: evalStrokeSequence(usrPolys, tplPolys) },
     { key: 'startdir',  label: 'はじめと むき',     max: 15, raw: evalStrokeStartAndDir(usrPolys, tplPolys) },
-    { key: 'rooms',     label: 'マスの つかいかた', max: 30, raw: evalRooms(usrPolys, tplPolys) },
-    { key: 'crossings', label: 'せんの こうさ',     max: 20, raw: evalCrossings(usrPolys, tplPolys) },
     { key: 'balance',   label: 'おおきさ・いち',     max: 20, raw: evalBalance(usrPolys, tplPolys) },
+    { key: 'rooms',     label: 'マスの つかいかた', max: 10, raw: evalRooms(usrPolys, tplPolys) },
+    { key: 'crossings', label: 'せんの こうさ',     max: 10, raw: evalCrossings(usrPolys, tplPolys) },
   ];
   const breakdown = items.map(it => ({
     key: it.key,
@@ -831,7 +940,13 @@ function scoreHandwriting(userStrokes, templatePaths) {
     status: it.raw >= 0.85 ? 'good' : it.raw >= 0.6 ? 'ok' : 'bad',
     advice: adviceFor(it.key, it.raw),
   }));
-  const total = breakdown.reduce((s, b) => s + b.score, 0);
+  // かたちは「合格のための必要条件」。ほかの観点（順番・外形・部屋・交差）は
+  // あらい特徴しか見ないので、線がまるで違っていても そこそこ点が入ってしまう。
+  // かたちが半分に届かないときだけ、合計におさえをかけて合格させない。
+  // （かたちが 0.5 以上あれば おさえは かからない＝ふつうに書けていれば無関係）
+  const shapeRaw = items[0].raw;
+  const gate = shapeRaw >= 0.5 ? 1 : 0.5 + shapeRaw;
+  const total = Math.round(breakdown.reduce((s, b) => s + b.score, 0) * gate);
   const comment = total >= 90 ? 'すばらしい！'
                 : total >= 70 ? 'じょうず！'
                 : total >= 50 ? 'いい かんじ！'
