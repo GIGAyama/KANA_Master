@@ -80,8 +80,18 @@
   <!-- Tailwind CSS（CDN） -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- 教科書体フォント：Windows10+ は UDデジタル教科書体（バンドル）、
-       それ以外は Google Fonts の Klee One（教科書体スタイル）にフォールバック -->
+  <!-- ===== 教科書体フォント =====
+       表示する文字は「UD デジタル 教科書体」に統一する。
+       このフォントは Windows 10 以降に標準搭載されている Morisawa 社の製品で、
+       Web フォントとして配布することは許諾されていない。そのため
+         1) 端末にインストールされていれば それを使う（N / NK / NP、和名・欧文名・
+            スペース無しの別名まで並べて 取りこぼさないようにする）
+         2) macOS の「游教科書体」
+         3) どれも無ければ Google Fonts の Klee One（教科書体スタイルの楷書）
+       の順にフォールバックする。
+       ※ フォント指定は必ずこの 1 か所（--kkm-font-kyokasho）だけに書くこと。
+         App.jsx のキャンバス描画もこの変数を読んでいるので、ここを直せば
+         画面のすべての文字が同じ書体でそろう。 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
@@ -106,15 +116,37 @@
   </script>
 
   <style>
+    /* アプリじゅうで使う書体はこの 1 つの変数にまとめる（唯一の定義場所） */
+    :root {
+      --kkm-font-kyokasho:
+        'UD デジタル 教科書体 N-R', 'UDデジタル教科書体N-R', 'UD Digi Kyokasho N-R',
+        'UD デジタル 教科書体 NK-R', 'UDデジタル教科書体NK-R', 'UD Digi Kyokasho NK-R',
+        'UD デジタル 教科書体 NP-R', 'UDデジタル教科書体NP-R', 'UD Digi Kyokasho NP-R',
+        'YuKyokasho Yoko', 'YuKyokasho', '游教科書体',
+        'Klee One',
+        'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+    }
     html, body, #root {
       height: 100%;
       margin: 0;
       background-color: rgb(255 251 235 / 0.4); /* amber-50/40 のフォールバック */
-      font-family: 'UD デジタル 教科書体 N-R', 'UD Digi Kyokasho N-R', 'UD デジタル 教科書体 NK-R', 'UD Digi Kyokasho NK-R', 'Klee One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+      font-family: var(--kkm-font-kyokasho);
       font-weight: 600;
       color: #334155;
       -webkit-touch-callout: none;
       -webkit-tap-highlight-color: transparent;
+    }
+    /* 「学習する文字そのもの」を出すところ（もじ表・ことば・お手本など）。
+       UD デジタル教科書体は太さが 1 種類しかないため、font-black などで
+       太字を指定するとブラウザが線を太らせる合成ボールドになり、
+       とめ・はね・はらいの形がくずれてしまう。ここでは合成を止めて、
+       書体そのままの字形を見せる。
+       ※ Tailwind CDN が後から注入する .font-black に勝つよう !important。 */
+    .kkm-glyph {
+      font-family: var(--kkm-font-kyokasho) !important;
+      font-weight: 400 !important;
+      font-synthesis: none;
+      -webkit-font-synthesis: none;
     }
     /* user-select は誤コピー防止のため UI 要素に限って無効化（テキスト読み上げや
        コピー機能のために <body> 全体への適用はやめる）。 */
@@ -249,8 +281,19 @@
       pointer-events: none;
       z-index: 0;
     }
-    /* 背景装飾の上にアプリ本体を */
-    .kkm-app-bg > * { position: relative; z-index: 1; }
+    /* 背景装飾（::before の点もよう）より前面にアプリ本体を出す。
+       ここで position まで上書きすると、直下にいる紙吹雪キャンバスや
+       モーダル・トースト（position:fixed）まで巻きぞえで relative に
+       なってしまい、画面のなかに居座って レイアウトを押しつぶす。
+       （Tailwind の .fixed とセレクタの強さが同じなので、CSS の
+         読みこみ順しだいでどちらが勝つか変わる＝こわれやすい。）
+       そのため position を与えるのは 実際に並べる 3 つだけにする。 */
+    .kkm-app-bg > * { z-index: 1; }
+    .kkm-app-bg > nav,
+    .kkm-app-bg > main,
+    .kkm-app-bg > footer { position: relative; }
+    /* 紙吹雪は必ず画面ぜんたいに固定（id 指定なので順序に左右されない） */
+    #confettiCanvas { position: fixed; inset: 0; z-index: 400; }
 
     /* 浮かぶ装飾絵文字（ヘッダー横などに散らす） */
     .kkm-decor {

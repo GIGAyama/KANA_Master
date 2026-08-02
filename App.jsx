@@ -224,6 +224,7 @@ const KEY_COUNT    = 'kkm_v2_count';
 const KEY_STREAK   = 'kkm_v2_streak';   // { count, lastDate }
 const KEY_BADGES   = 'kkm_v2_badges';   // 取得済みバッジID
 const KEY_VOICE    = 'kkm_v2_voice';    // 音声よみあげON/OFF
+const KEY_SIRI_BEST = 'kkm_siri_best';  // しりとりの最高記録
 
 /* ──────────────────────────────────────────────────────────────
    学習ステージ（あたらしい設計）
@@ -272,6 +273,50 @@ function loadInitialProgress() {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   1.9. フォント（教科書体）
+
+   書体の指定は index.html の CSS 変数 --kkm-font-kyokasho ただ 1 か所。
+   ここではそれを読み出すだけにして、キャンバス（お手本）と HTML（もじ表・
+   ことば）で ぜったいに ちがう書体にならないようにする。
+   ────────────────────────────────────────────────────────────── */
+// CSS 変数が読めなかったとき用の控え（index.html と同じ内容にしておく）
+const KYOKASHO_FONT_FALLBACK =
+  "'UD デジタル 教科書体 N-R','UDデジタル教科書体N-R','UD Digi Kyokasho N-R'," +
+  "'UD デジタル 教科書体 NK-R','UDデジタル教科書体NK-R','UD Digi Kyokasho NK-R'," +
+  "'UD デジタル 教科書体 NP-R','UDデジタル教科書体NP-R','UD Digi Kyokasho NP-R'," +
+  "'YuKyokasho Yoko','YuKyokasho','游教科書体','Klee One'," +
+  "'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif";
+let __kyokashoStack = '';
+function kyokashoFontStack() {
+  if (__kyokashoStack) return __kyokashoStack;
+  try {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue('--kkm-font-kyokasho').trim();
+    if (v) { __kyokashoStack = v; return v; }
+  } catch (e) { /* 変数が読めない環境では控えを使う */ }
+  __kyokashoStack = KYOKASHO_FONT_FALLBACK;
+  return __kyokashoStack;
+}
+
+// Web フォント（Klee One）が使えるようになったら cb を呼ぶ。
+// フォント未ロードのあいだは代替書体の字形・寸法で測ってしまうため、
+// 読み込み完了後にお手本を描きなおす必要がある。戻り値は後片づけ関数。
+function onKyokashoFontReady(cb) {
+  if (typeof document === 'undefined' || !document.fonts) return () => {};
+  let alive = true;
+  const fire = () => { if (alive) cb(); };
+  // まだ画面で使われていない書体も先に取りに行かせる
+  try { document.fonts.load(`400 48px ${kyokashoFontStack()}`, 'あアん').then(fire, () => {}); } catch (e) {}
+  try { document.fonts.ready.then(fire, () => {}); } catch (e) {}
+  const onDone = () => fire();
+  try { document.fonts.addEventListener('loadingdone', onDone); } catch (e) {}
+  return () => {
+    alive = false;
+    try { document.fonts.removeEventListener('loadingdone', onDone); } catch (e) {}
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────
    2. 音と演出
    ────────────────────────────────────────────────────────────── */
 let audioCtx = null;
@@ -298,13 +343,11 @@ const playBadge    = () => { initAudio(); [659.25, 783.99, 987.77, 1318.5].forEa
 // voices ロードが非同期のブラウザでは初回呼び出し時点で空配列が返ることが
 // あるため、null を「キャッシュ未確定」として扱う。`voiceschanged` で再取得。
 let cachedJaVoice = null;
-let voicesResolved = false;
 function getJaVoice() {
   if (cachedJaVoice) return cachedJaVoice;
   if (!window.speechSynthesis) return null;
   const voices = speechSynthesis.getVoices();
   if (!voices || voices.length === 0) return null; // 未ロード：キャッシュしない
-  voicesResolved = true;
   cachedJaVoice = voices.find(v => v.lang && v.lang.startsWith('ja')) || null;
   return cachedJaVoice;
 }
@@ -363,7 +406,9 @@ function burstConfetti() {
     tilt: Math.random()*0.07+0.05, ang: 0
   }));
   function render() {
-    if (document.hidden) { return; } // タブが隠れたら描画を止める（後でも勝手に戻らない）
+    // タブが隠れたら描画を止める。このとき消しておかないと、最後のコマが
+    // 画面に貼りついたまま残り、戻ってきたとき紙吹雪が固まって見える。
+    if (document.hidden) { ctx.clearRect(0,0,cssW,cssH); return; }
     ctx.clearRect(0,0,cssW,cssH);
     let active = 0;
     particles.forEach(p => {
@@ -422,8 +467,9 @@ async function fetchKanjiVG(char) {
    呼び出し側で画数（ストローク数）が一致していることを保証してから
    呼ぶこと（画数違反は採点せず、別途やり直しフローを起こす）。
 
-   観点と配点：
-     ・かきじゅん         30点（始点の位置 + 向きベクトル）
+   観点と配点（合計100点。scoreHandwriting の items と必ずそろえること）：
+     ・かきじゅん         15点（画の順番だけを見る）
+     ・はじめと むき      15点（画ごとの始点の位置 + 向きベクトル）
      ・マスの つかいかた  30点（マスを4等分した部屋の使い方）
      ・せんの こうさ      20点（必要な交差ペアの有無）
      ・おおきさ・いち     20点（バウンディングボックスの大きさ・中心）
@@ -639,29 +685,50 @@ function evalCrossings(usrPolys, tplPolys) {
   return (2 * precision * recall) / (precision + recall);
 }
 
-// 観点④：おおきさ・いち（0..1）
-// サイズと中心ズレを「相乗平均」で結合する（どちらかが破綻したら全体が落ちる）。
-function evalBalance(usrPolys) {
-  let xmin = 1, xmax = 0, ymin = 1, ymax = 0, n = 0;
-  for (const poly of usrPolys) for (const p of poly) {
-    if (p.x < xmin) xmin = p.x;
-    if (p.x > xmax) xmax = p.x;
-    if (p.y < ymin) ymin = p.y;
-    if (p.y > ymax) ymax = p.y;
+// 点列全体の外形（無ければ null）
+function bboxOfPolys(polys) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, n = 0;
+  for (const poly of polys || []) for (const p of poly) {
+    if (p.x < x0) x0 = p.x;
+    if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y;
+    if (p.y > y1) y1 = p.y;
     n++;
   }
-  if (n === 0) return 0;
-  const w = xmax - xmin, h = ymax - ymin;
-  // 一辺 0.65〜0.95 が満点。小さすぎは二次関数で大きく減点
-  const sizeOk = (v) => {
-    if (v >= 0.65 && v <= 0.95) return 1;
-    if (v < 0.65) { const r = v / 0.65; return Math.max(0, r * r); }
-    return Math.max(0, 1 - (v - 0.95) / 0.05);
+  return n === 0 ? null : { x0, y0, x1, y1 };
+}
+
+// 観点④：おおきさ・いち（0..1）
+// サイズと中心ズレを「相乗平均」で結合する（どちらかが破綻したら全体が落ちる）。
+//
+// ＜なおした不具合＞
+// もとは「一辺 0.65〜0.95・中心はマスのまんなか」という決めうちの数字で
+// 測っていた。しかし正しく書いても
+//   ・「し」「へ」「つ」…… 字によって幅・高さは大きくちがう
+//   ・「っ」「ゃ」…… 小書き文字は小さく、右下に寄せて書くのが正しい
+// ため、きちんと書けているのに大きく減点されてしまっていた。
+// お手本（KanjiVG）そのものの外形とくらべるように直した。
+function evalBalance(usrPolys, tplPolys) {
+  const ub = bboxOfPolys(usrPolys);
+  if (!ub) return 0;
+  // お手本が取れないときだけ、これまでどおり「マスいっぱい・まんなか」を目安に
+  const tb = bboxOfPolys(tplPolys) || { x0: 0.15, y0: 0.15, x1: 0.85, y1: 0.85 };
+  const tw = tb.x1 - tb.x0, th = tb.y1 - tb.y0;
+  const uw = ub.x1 - ub.x0, uh = ub.y1 - ub.y0;
+  // 大きさ：お手本にたいする比率で見る。0.8〜1.25 倍なら満点。
+  // 小さすぎは二次関数で大きく減点（縮こまって書くくせを直したいため）。
+  const sizeOk = (u, t) => {
+    if (t < 0.02) return 1;               // ほぼ点の画は大きさを問わない
+    const r = u / t;
+    if (r >= 0.8 && r <= 1.25) return 1;
+    if (r < 0.8) { const k = r / 0.8; return Math.max(0, k * k); }
+    return Math.max(0, 1 - (r - 1.25) / 0.5);
   };
-  const sizeScore = (sizeOk(w) + sizeOk(h)) / 2;
-  const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
-  const cd = Math.hypot(cx - 0.5, cy - 0.5);
-  // 中心からのズレ 0.18 以上で 0 点
+  const sizeScore = (sizeOk(uw, tw) + sizeOk(uh, th)) / 2;
+  const ucx = (ub.x0 + ub.x1) / 2, ucy = (ub.y0 + ub.y1) / 2;
+  const tcx = (tb.x0 + tb.x1) / 2, tcy = (tb.y0 + tb.y1) / 2;
+  const cd = Math.hypot(ucx - tcx, ucy - tcy);
+  // お手本の中心からのズレ 0.18（マスの 1/5 弱）以上で 0 点
   const centerScore = Math.max(0, 1 - cd / 0.18);
   return Math.sqrt(sizeScore * centerScore);
 }
@@ -691,7 +758,7 @@ function scoreHandwriting(userStrokes, templatePaths) {
     { key: 'startdir',  label: 'はじめと むき',     max: 15, raw: evalStrokeStartAndDir(usrPolys, tplPolys) },
     { key: 'rooms',     label: 'マスの つかいかた', max: 30, raw: evalRooms(usrPolys, tplPolys) },
     { key: 'crossings', label: 'せんの こうさ',     max: 20, raw: evalCrossings(usrPolys, tplPolys) },
-    { key: 'balance',   label: 'おおきさ・いち',     max: 20, raw: evalBalance(usrPolys) },
+    { key: 'balance',   label: 'おおきさ・いち',     max: 20, raw: evalBalance(usrPolys, tplPolys) },
   ];
   const breakdown = items.map(it => ({
     key: it.key,
@@ -739,6 +806,88 @@ function getPathLength(pathStr) {
   __svgMeasureSvg.removeChild(p);
   __pathLengthCache.set(pathStr, len);
   return len;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   3.9. お手本（フォント）と かきじゅんデータ（KanjiVG）の位置合わせ
+
+   ＜なおした不具合＞
+   うすいお手本の文字はフォントで描き、🔴 の書きはじめマーカー・書き順アニメ・
+   採点は KanjiVG のストロークで持っている。この 2 つは別々の座標系なので、
+   これまでは「フォントを 0.86em で マスの中央に置く」という決め打ちで
+   重ねていた。そのため
+     ・textBaseline='middle' の基準（フォントの ascent/descent の中点）は
+       書体ごとに違い、たてに数％ずれる
+     ・字ごとに字面の大きさが違うので、拡大率も字ごとに合っていない
+     ・「っ」「ゃ」などの小書き文字は KanjiVG では小さく右下に寄っているのに、
+       フォントは 0.86em で中央に描かれるため、大きく外れる
+   という理由で、ほとんどの文字でマーカーが実際の書きはじめとずれていた。
+
+   そこで「フォントの字形の外形」を実測し、「KanjiVG のストロークの外形」に
+   ぴったり重なるよう 拡大率と位置を計算してから描く。こうすると
+   マーカー・アニメ・採点はいっさい変えずに、すべてが同じ場所を指す。
+   ────────────────────────────────────────────────────────────── */
+
+// KanjiVG のパスは「線の中心線」なので、フォントの字形（塗りつぶした形）より
+// 線の太さの半分だけ内側にある。かきじゅんアニメと同じ太さ（109 座標系で 6）
+// の半分だけ外へひろげて、見た目の外形どうしを比べられるようにする。
+const KVG_HALF_STROKE = 3 / 109;
+
+// KanjiVG ストローク全体の外形（0..1）。paths 配列ごとにキャッシュする。
+const __tplBoxCache = new WeakMap();
+function getTemplateBox(paths) {
+  if (!paths || paths.length === 0) return null;
+  const cached = __tplBoxCache.get(paths);
+  if (cached !== undefined) return cached;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const d of paths) {
+    // 採点と同じ 24 分割を使う（sampleSvgPath 側のキャッシュを共有できる）
+    for (const p of sampleSvgPath(d, 24)) {
+      if (p.x < x0) x0 = p.x;
+      if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y;
+      if (p.y > y1) y1 = p.y;
+    }
+  }
+  let box = null;
+  if (x1 > x0 && y1 > y0) {
+    box = {
+      x0: Math.max(0, x0 - KVG_HALF_STROKE), y0: Math.max(0, y0 - KVG_HALF_STROKE),
+      x1: Math.min(1, x1 + KVG_HALF_STROKE), y1: Math.min(1, y1 + KVG_HALF_STROKE),
+    };
+  }
+  __tplBoxCache.set(paths, box);
+  return box;
+}
+
+// お手本の文字を KanjiVG の外形に合わせるための { k（倍率）, x, y（描画原点）}。
+// ctx には あらかじめ font / textAlign='left' / textBaseline='alphabetic' を
+// 設定しておくこと。合わせられないときは null（＝中央ぞろえにフォールバック）。
+function fitGlyphToTemplate(ctx, ch, size, paths) {
+  const box = getTemplateBox(paths);
+  if (!box || !ch) return null;
+  let m;
+  try { m = ctx.measureText(ch); } catch (e) { return null; }
+  // actualBoundingBox* に対応していない古いブラウザでは実測できない
+  if (!m || typeof m.actualBoundingBoxAscent !== 'number' || typeof m.actualBoundingBoxRight !== 'number') return null;
+  const gx0 = -m.actualBoundingBoxLeft, gx1 = m.actualBoundingBoxRight;
+  const gy0 = -m.actualBoundingBoxAscent, gy1 = m.actualBoundingBoxDescent;
+  const gw = gx1 - gx0, gh = gy1 - gy0;
+  if (!(gw > 0) || !(gh > 0)) return null;
+  const tw = (box.x1 - box.x0) * size, th = (box.y1 - box.y0) * size;
+  // たて・よこ どちらも近づける等方倍率（字形をゆがめないので対角線で合わせる）
+  let k = Math.hypot(tw, th) / Math.hypot(gw, gh);
+  if (!isFinite(k) || k <= 0) return null;
+  // 想定外のフォント計測でお手本が暴れないよう、常識的な範囲に収める
+  k = Math.min(Math.max(k, 0.5), 2);
+  // 最後の安全網：どんな場合もマスからはみ出させない
+  const maxK = (size * 0.96) / Math.max(gw, gh);
+  if (k > maxK) k = maxK;
+  return {
+    k,
+    x: ((box.x0 + box.x1) / 2) * size - k * ((gx0 + gx1) / 2),
+    y: ((box.y0 + box.y1) / 2) * size - k * ((gy0 + gy1) / 2),
+  };
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -854,19 +1003,21 @@ function useDailyChallenge(kanaMode, mastered) {
 }
 
 // 取得済みバッジ管理
-// 改善：earned が同期更新される前に effect が再実行されても二重トーストを
-// 起こさないよう、関数型 setter で差分を計算する。
-function useAchievements({ mastered, words, streak, setEarned, onNew }) {
+// 通知（トースト）は state の更新関数の中では鳴らさない。React は更新関数を
+// 複数回呼ぶことがあり（開発時の二重実行や再試行）、そのたびにトーストが
+// 出てしまう。「すでに知らせたバッジ」を ref で覚えて差分だけ通知する。
+function useAchievements({ mastered, words, streak, earned, setEarned, onNew }) {
+  const notifiedRef = useRef(null);
   useEffect(() => {
+    // 初回は保存済みのバッジを「通知ずみ」として扱う（起動のたびに鳴らさない）
+    if (notifiedRef.current === null) notifiedRef.current = new Set(earned || []);
     const ctx = { m: mastered, w: words, s: streak };
     const nowEarned = BADGES.filter(b => b.check(ctx)).map(b => b.id);
-    setEarned(prev => {
-      const set = new Set(prev);
-      const fresh = nowEarned.filter(id => !set.has(id));
-      if (fresh.length === 0) return prev;
-      fresh.forEach(id => onNew && onNew(BADGES.find(b => b.id === id)));
-      return nowEarned;
-    });
+    const fresh = nowEarned.filter(id => !notifiedRef.current.has(id));
+    if (fresh.length === 0) return;
+    fresh.forEach(id => notifiedRef.current.add(id));
+    setEarned(prev => (prev.length === nowEarned.length && nowEarned.every(id => prev.includes(id))) ? prev : nowEarned);
+    if (onNew) fresh.forEach(id => onNew(BADGES.find(b => b.id === id)));
     // eslint-disable-next-line
   }, [mastered, words, streak]);
 }
@@ -1196,7 +1347,7 @@ function DailyChallenge({ char, kanaMode, progress, onPick }) {
     <button onClick={() => onPick(char)}
       className="w-full bg-gradient-to-r from-amber-100 via-pink-100 to-sky-100 border-2 border-amber-300 rounded-2xl p-2 md:p-3 flex items-center gap-2 md:gap-3 shadow-sm hover:shadow-md transition-all active:scale-[0.99] kkm-shimmer">
       <div className="flex items-center justify-center bg-white rounded-xl w-10 h-10 md:w-16 md:h-16 border-2 border-amber-400 shadow-inner shrink-0 kkm-float">
-        <span className="text-2xl md:text-4xl font-black text-amber-700">{char}</span>
+        <span className="kkm-glyph text-2xl md:text-4xl text-amber-700">{char}</span>
       </div>
       <div className="flex-1 text-left min-w-0">
         <div className="text-[10px] md:text-xs font-black text-amber-600 flex items-center gap-1">
@@ -1281,7 +1432,7 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
             const info = STAGE_INFO[stage];
             return (
               <button key={i} onClick={() => onSelect(char)}
-                className={`aspect-square rounded-lg font-black text-lg md:text-3xl border-2 shadow-sm relative transition-all active:scale-95 ${cls} ${extra}`}>
+                className={`kkm-glyph aspect-square rounded-lg text-lg md:text-3xl border-2 shadow-sm relative transition-all active:scale-95 ${cls} ${extra}`}>
                 {char}
                 {!isCurrent && stage > 0 && (
                   <span className={`absolute -top-1 -right-1 text-xs leading-none ${stage === 4 ? 'kkm-sparkle' : ''}`}>{info.icon}</span>
@@ -1333,7 +1484,7 @@ function stageMascotMessage(char, stage, so) {
   return '💮 かんぺき！ もう いちど かいてみる？';
 }
 
-function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, onNext, playMode, practiceCount, voiceOn, onGoToWords, fetchError, onRetryFetch }) {
+function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, practiceCount, voiceOn, onGoToWords, fetchError, onRetryFetch }) {
   const writeRef = useRef(null);
   const inkRef   = useRef(null);
   const guideRef = useRef(null);
@@ -1363,6 +1514,13 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
   // 高頻度な pointermove を rAF で合流させて 1 フレーム 1 描画に抑える
   const pendingPointsRef = useRef([]);
   const rafIdRef = useRef(0);
+  // 1文字ぶん書きおえたあとの「お祝い → リセット」タイマー。
+  // 途中で別の文字に切りかえられたときに取り消せるよう ref で持つ
+  // （放っておくと、次の文字で書きはじめた線が消されてしまう）。
+  const resetTimerRef = useRef(0);
+  function clearResetTimer() {
+    if (resetTimerRef.current) { clearTimeout(resetTimerRef.current); resetTimerRef.current = 0; }
+  }
 
   // ステージから派生するモード
   const stage = stageObj?.stage ?? 0;
@@ -1373,6 +1531,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
 
   /* --- ライフサイクル --- */
   useEffect(() => {
+    clearResetTimer();
     setCurrentStroke(0); setIsCleared(false);
     setMistakes(0); setHasMistaken(false);
     // 未学習の文字を選んだら、まず書き順アニメを自動再生（スキップ可）
@@ -1447,12 +1606,13 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     };
   }, []);
 
-  // Web フォント（Klee One）読み込み後にガイドを再描画
+  // 教科書体（Web フォント）が使えるようになったらお手本を描きなおす。
+  // 未ロードのあいだは代替書体の寸法で位置合わせしてしまうため必須。
   useEffect(() => {
-    if (!document.fonts || !document.fonts.ready) return;
-    document.fonts.ready.then(() => {
+    return onKyokashoFontReady(() => {
       if (stateRef.current.char) redrawGuide();
-    }).catch(() => {});
+    });
+    // eslint-disable-next-line
   }, []);
 
   useEffect(() => { redrawInk(); /* eslint-disable-line */ }, [currentStroke, paths]);
@@ -1528,7 +1688,9 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = 0;
       pendingPointsRef.current = [];
+      clearResetTimer();
     };
+    // eslint-disable-next-line
   }, []);
 
   // rAF バッチ：1 フレームに蓄積した点をひと続きの lineTo として描く
@@ -1583,16 +1745,31 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     if (stateRef.current.stage >= 2) return;
     const ch = stateRef.current.char;
     if (!ch) return;
-    // 教科書体（OS バンドル）→ Klee One（Web フォント）→ 丸ゴ の順でフォールバック。
+    // 書体は index.html の --kkm-font-kyokasho（UD デジタル教科書体）に統一。
     // 画ごとのストロークデータは KanjiVG が引き続き持つので、書き順アニメ・
     // 始点マーカー・採点ロジックは変わらない。
+    // ただし字形の位置・大きさは fitGlyphToTemplate で KanjiVG に合わせる。
     ctx.save();
     ctx.fillStyle = '#e2e8f0'; // slate-200
     const fontSize = Math.round(s * 0.86);
-    ctx.font = `${fontSize}px 'UD デジタル 教科書体 N-R', 'UD Digi Kyokasho N-R', 'UD デジタル 教科書体 NK-R', 'UD Digi Kyokasho NK-R', 'Klee One', 'Hiragino Maru Gothic ProN', sans-serif`;
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'center';
-    ctx.fillText(ch, s / 2, s / 2);
+    // 合成ボールドで線が太ると字形がくずれるので、太さは 400 に固定する
+    ctx.font = `400 ${fontSize}px ${kyokashoFontStack()}`;
+    // measureText の外形は基準点（textAlign / textBaseline）からの距離で返るので、
+    // 実測のまえに基準点を左・ベースラインに固定しておく。
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    const fit = fitGlyphToTemplate(ctx, ch, s, stateRef.current.paths);
+    if (fit) {
+      // 実測した字形の外形を、お手本ストロークの外形にぴったり重ねる
+      ctx.translate(fit.x, fit.y);
+      ctx.scale(fit.k, fit.k);
+      ctx.fillText(ch, 0, 0);
+    } else {
+      // かきじゅんデータがまだ無い／実測できないブラウザ：これまでどおり中央に
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText(ch, s / 2, s / 2);
+    }
     ctx.restore();
   }
   // 旧 inkRef（KanjiVG ストロークで完了画を表示）はガイドと字形が
@@ -1703,12 +1880,17 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       if (next >= ps.length) {
         playPingPong();
         setMascotMsg('できたよ！'); setMascotMood('happy');
+        // 「💮 よくできました」を出すあいだは書けないようにする（isCleared）。
+        // これまで true にする箇所が無く、演出がまったく出ていなかった。
+        setIsCleared(true);
         onRoundComplete(ch, !hm);
-        setTimeout(() => {
+        clearResetTimer();
+        resetTimerRef.current = setTimeout(() => {
+          resetTimerRef.current = 0;
           setCurrentStroke(0); setIsCleared(false);
           setMistakes(0); setHasMistaken(false);
           clearAll(); redrawGuide();
-        }, 700);
+        }, 1300);   // ExcellentPopup の演出（出る→見せる→消える）が終わる長さ
       } else {
         playPingPong();
         setMascotMsg('いい ちょうし！'); setMascotMood('happy');
@@ -1746,6 +1928,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     });
   }
   function restart() {
+    clearResetTimer();
     setCurrentStroke(0); setIsCleared(false);
     setMistakes(0); setHasMistaken(false);
     clearAll(); redrawGuide();
@@ -1781,6 +1964,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     onRoundComplete(ch, result.passed);
   }
   function closeScorePopup() {
+    clearResetTimer();
     setScoreInfo(null);
     setCurrentStroke(0); setMistakes(0); setHasMistaken(false);
     clearAll();
@@ -2101,7 +2285,9 @@ function StrokeOrderAnime({ paths, char, onClose }) {
    ────────────────────────────────────────────────────────────── */
 function ExcellentPopup() {
   const [show, setShow] = useState(false);
-  useEffect(() => { setShow(true); const t = setTimeout(() => setShow(false), 1400); return () => clearTimeout(t); }, []);
+  // 出る(0.5秒) → 見せる(0.3秒) → 消える(0.5秒)。呼び出し側は 1.3 秒後に外すので、
+  // 途中でぶつ切りにならないようここのタイミングと合わせておくこと。
+  useEffect(() => { setShow(true); const t = setTimeout(() => setShow(false), 800); return () => clearTimeout(t); }, []);
   return (
     <div className={`fixed inset-0 z-[150] pointer-events-none flex items-center justify-center transition-all duration-500 ${
       show ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
@@ -2213,7 +2399,7 @@ function WordMasterPopup({ info, onClose }) {
           <div className="flex justify-center gap-2 my-2 md:my-3">
             {info.chars.map((c, i) => (
               <div key={i} className="relative">
-                <span className="inline-block bg-white rounded-2xl border-4 border-amber-400 w-14 h-14 md:w-20 md:h-20 flex items-center justify-center text-3xl md:text-5xl font-black text-amber-700 shadow-lg animate-pulse">{c}</span>
+                <span className="kkm-glyph inline-block bg-white rounded-2xl border-4 border-amber-400 w-14 h-14 md:w-20 md:h-20 flex items-center justify-center text-3xl md:text-5xl text-amber-700 shadow-lg animate-pulse">{c}</span>
                 <span className="absolute -top-2 -right-2 text-2xl md:text-3xl">💮</span>
               </div>
             ))}
@@ -2420,20 +2606,32 @@ function ShiritoriGame({ words, voiceOn }) {
   const [currentChar, setCurrentChar] = useState(null);
   const [thinking, setThinking] = useState(false);
   const [bestChain, setBestChain] = useState(() => {
-    try { return parseInt(localStorage.getItem('kkm_siri_best') || '0'); } catch { return 0; }
+    try {
+      const n = parseInt(localStorage.getItem(KEY_SIRI_BEST) || '0', 10);
+      return Number.isFinite(n) && n > 0 ? n : 0;   // 壊れた値で NaN にならないように
+    } catch { return 0; }
   });
   const chainRef = useRef(null);
+  // コンピュータの「かんがえてる」タイマー。画面を離れたり もういちど
+  // はじめたりしたときに取り消せるよう ref で持つ（放っておくと、あとから
+  // 前のゲームの手が割りこんでくる）。
+  const cpuTimerRef = useRef(0);
+  function clearCpuTimer() {
+    if (cpuTimerRef.current) { clearTimeout(cpuTimerRef.current); cpuTimerRef.current = 0; }
+  }
+  useEffect(() => clearCpuTimer, []);
 
   const hiraganaWords = words.filter(w => w.kanaMode === 'hiragana');
 
   function updateBest(len) {
     if (len > bestChain) {
       setBestChain(len);
-      try { localStorage.setItem('kkm_siri_best', String(len)); } catch {}
+      safeLocalStorageSet(KEY_SIRI_BEST, String(len));
     }
   }
 
   function startGame() {
+    clearCpuTimer();
     const playerFirstChars = new Set(hiraganaWords.map(w => w.text[0]));
     let startOptions = SHIRITORI_CPU_WORDS.filter(w => {
       const last = getLastChar(w.w);
@@ -2474,7 +2672,9 @@ function ShiritoriGame({ words, voiceOn }) {
     hapticOk();
 
     setThinking(true);
-    setTimeout(() => {
+    clearCpuTimer();
+    cpuTimerRef.current = setTimeout(() => {
+      cpuTimerRef.current = 0;
       const available = SHIRITORI_CPU_WORDS.filter(w => w.w[0] === lastChar && !newUsed.has(w.w));
       if (available.length === 0) {
         updateBest(newChain.length);
@@ -2506,6 +2706,7 @@ function ShiritoriGame({ words, voiceOn }) {
   }
 
   function forfeit() {
+    clearCpuTimer();
     updateBest(chain.length);
     setGameState('lost');
     setThinking(false);
@@ -2603,7 +2804,7 @@ function ShiritoriGame({ words, voiceOn }) {
               <div className="shrink-0 space-y-2">
                 <div className="text-center">
                   <span className="inline-block bg-sky-100 border-2 border-sky-300 rounded-xl px-4 py-1.5">
-                    <span className="text-2xl font-black text-sky-700">「{currentChar}」</span>
+                    <span className="kkm-glyph text-2xl text-sky-700">「{currentChar}」</span>
                     <span className="text-sm text-sky-600 ml-1">から はじまる ことばは？</span>
                   </span>
                 </div>
@@ -2689,11 +2890,10 @@ function ShiritoriGame({ words, voiceOn }) {
 /* ──────────────────────────────────────────────────────────────
    18. <WordCollection>
    ────────────────────────────────────────────────────────────── */
-function WordCollection({ kanaMode, setKanaMode, progress, mastered, usableInWords, words, onAdd, onDelete, voiceOn }) {
+function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words, onAdd, onDelete, voiceOn }) {
   const [addOpen, setAddOpen] = useState(false);
   const collected = words.filter(w => w.kanaMode === kanaMode);
   const hints = kanaMode === 'katakana' ? WORD_HINTS_KATA : WORD_HINTS_HIRA;
-  const list  = kanaMode === 'katakana' ? KATA_LIST : HIRA_LIST;
   const availableHints = hints.filter(h => h.w.split('').every(c => usableInWords.includes(c)) && !words.some(w => w.text === h.w));
   // ステージ3（あと一歩で💮）の文字一覧 — モチベーション用
   const almostChars = (kanaMode === 'katakana' ? KATA_ALL_LIST : HIRA_ALL_LIST).filter(c => getStage(progress, c) === 3);
@@ -2733,7 +2933,7 @@ function WordCollection({ kanaMode, setKanaMode, progress, mastered, usableInWor
                 <span className="text-4xl group-hover:scale-110 transition-transform" aria-hidden="true">{w.emoji || '✨'}</span>
                 <button onClick={() => speakText(w.text, voiceOn)} disabled={!voiceOn}
                   aria-label={voiceOn ? `${w.text} を よみあげる` : `${w.text}`}
-                  className="font-black text-lg text-slate-700 hover:text-amber-600 transition-all active:scale-95 disabled:cursor-default">
+                  className="kkm-glyph text-lg text-slate-700 hover:text-amber-600 transition-all active:scale-95 disabled:cursor-default">
                   {w.text}
                 </button>
                 <button onClick={() => onDelete(w.id)}
@@ -2755,7 +2955,7 @@ function WordCollection({ kanaMode, setKanaMode, progress, mastered, usableInWor
           </div>
           <div className="flex flex-wrap gap-1.5">
             {almostChars.map(c => (
-              <span key={c} className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white border-2 border-violet-400 font-black text-violet-700 text-xl shadow-sm">
+              <span key={c} className="kkm-glyph inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white border-2 border-violet-400 text-violet-700 text-xl shadow-sm">
                 {c}
               </span>
             ))}
@@ -2794,7 +2994,7 @@ function WordCollection({ kanaMode, setKanaMode, progress, mastered, usableInWor
       </button>
 
       {addOpen && (
-        <WordAddModal kanaMode={kanaMode} progress={progress} usableInWords={usableInWords} list={list} voiceOn={voiceOn}
+        <WordAddModal kanaMode={kanaMode} progress={progress} usableInWords={usableInWords} voiceOn={voiceOn}
           onCancel={() => setAddOpen(false)}
           onSave={(w) => { onAdd(w); speakText(w.text, voiceOn); setAddOpen(false); }}/>
       )}
@@ -2805,7 +3005,7 @@ function WordCollection({ kanaMode, setKanaMode, progress, mastered, usableInWor
 /* ──────────────────────────────────────────────────────────────
    19. <WordAddModal>
    ────────────────────────────────────────────────────────────── */
-function WordAddModal({ kanaMode, progress, usableInWords, list, voiceOn, onCancel, onSave }) {
+function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, onSave }) {
   const [text, setText] = useState('');
   const [emoji, setEmoji] = useState(EMOJI_CHOICES[0]);
   const [kindTab, setKindTab] = useState('seion');
@@ -2831,7 +3031,7 @@ function WordAddModal({ kanaMode, progress, usableInWords, list, voiceOn, onCanc
         <div className="px-4 md:px-6 overflow-y-auto flex-1 min-h-0">
         <div className="bg-amber-50 rounded-2xl border-2 border-amber-200 p-3 md:p-4 mb-3 flex items-center gap-3 min-h-[80px]">
           <span className="text-4xl md:text-5xl">{emoji}</span>
-          <span className="flex-1 text-2xl md:text-3xl font-black text-slate-700 break-all">
+          <span className="kkm-glyph flex-1 text-2xl md:text-3xl text-slate-700 break-all">
             {text || <span className="text-slate-300">なにを かこうかな？</span>}
           </span>
           {text.length > 0 && (
@@ -2867,7 +3067,7 @@ function WordAddModal({ kanaMode, progress, usableInWords, list, voiceOn, onCanc
             ✨ この ことばで <span className="text-rose-500 text-base">{willMaster.length}</span>こ の じが 💮 になるよ！
             <div className="mt-1 flex justify-center gap-1.5">
               {willMaster.map(c => (
-                <span key={c} className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-white border-2 border-amber-400 text-amber-700 text-base">{c}</span>
+                <span key={c} className="kkm-glyph inline-flex items-center justify-center w-7 h-7 rounded-md bg-white border-2 border-amber-400 text-amber-700 text-base">{c}</span>
               ))}
             </div>
           </div>
@@ -2893,7 +3093,7 @@ function WordAddModal({ kanaMode, progress, usableInWords, list, voiceOn, onCanc
               const willPromote = stage === 3;
               return (
                 <button key={i} disabled={!ok} onClick={() => addChar(c)}
-                  className={`relative aspect-square rounded-lg font-black text-xl md:text-2xl border-2 transition-all active:scale-95 ${
+                  className={`kkm-glyph relative aspect-square rounded-lg text-xl md:text-2xl border-2 transition-all active:scale-95 ${
                     ok
                       ? (willPromote
                           ? 'bg-violet-50 border-violet-400 text-violet-700 hover:bg-violet-100 shadow-sm ring-2 ring-violet-200'
@@ -3135,7 +3335,6 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
       onRoundComplete={onRoundComplete}
       onMistakeStreakReset={onMistakeStreakReset}
       onStrokeCountMismatch={onStrokeCountMismatch}
-      onNext={nextChar} playMode={playMode}
       practiceCount={practiceCount} voiceOn={voiceOn}
       onGoToWords={onGoToWords}
       fetchError={fetchError} onRetryFetch={retryFetch}/>
@@ -3173,7 +3372,7 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
         </button>
         {currentChar && (
           <div className="shrink-0 flex items-center justify-center bg-white rounded-2xl w-12 h-12 border-2 border-amber-300 shadow-inner">
-            <span className="text-2xl font-black text-amber-700">{currentChar}</span>
+            <span className="kkm-glyph text-2xl text-amber-700">{currentChar}</span>
           </div>
         )}
       </div>
@@ -3239,7 +3438,9 @@ function App() {
   const [kanaMode, setKanaMode] = useState('hiragana');
   const [kanaKind, setKanaKind] = useState('seion');
   const [progress, setProgress] = useState(loadInitialProgress);
-  useEffect(() => { try { localStorage.setItem(KEY_PROGRESS, JSON.stringify(progress)); } catch {} }, [progress]);
+  // いちばん大事な学習記録。容量オーバーで保存できなかったときは、黙って
+  // 失うのではなく safeLocalStorageSet 経由で画面に知らせる。
+  useEffect(() => { safeLocalStorageSet(KEY_PROGRESS, JSON.stringify(progress)); }, [progress]);
   const mastered = useMemo(() => getMasteredList(progress), [progress]);
   const usableInWords = useMemo(() => getUsableInWordsList(progress), [progress]);
   const [words, setWords]       = useLocalStorage(KEY_WORDS, []);
@@ -3263,7 +3464,7 @@ function App() {
   // 音声リスト読み込み（ブラウザによっては遅延発火）
   useEffect(() => {
     if (!window.speechSynthesis) return;
-    function refresh() { cachedJaVoice = null; voicesResolved = false; getJaVoice(); }
+    function refresh() { cachedJaVoice = null; getJaVoice(); }
     speechSynthesis.addEventListener
       ? speechSynthesis.addEventListener('voiceschanged', refresh)
       : (speechSynthesis.onvoiceschanged = refresh);
@@ -3300,7 +3501,7 @@ function App() {
   }, []);
 
   // バッジ達成監視
-  useAchievements({ mastered, words, streak, setEarned,
+  useAchievements({ mastered, words, streak, earned, setEarned,
     onNew: (b) => setToastBadge(b) });
 
   const bumpCount = useCallback((char) => {
@@ -3416,7 +3617,8 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col kkm-app-bg overflow-hidden relative kkm-app-root" style={{ fontFamily: "'UD デジタル 教科書体 N-R', 'UD Digi Kyokasho N-R', 'UD デジタル 教科書体 NK-R', 'UD Digi Kyokasho NK-R', 'Klee One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif", fontWeight: 600 }}>
+    <div className="h-screen flex flex-col kkm-app-bg overflow-hidden relative kkm-app-root"
+      style={{ fontFamily: 'var(--kkm-font-kyokasho)', fontWeight: 600 }}>
       <canvas id="confettiCanvas" className="fixed inset-0 pointer-events-none z-[400]"/>
       <Header view={view} setView={setView} mastered={mastered}
         onReset={() => setResetOpen(true)}
@@ -3442,7 +3644,7 @@ function App() {
         {view === 'words' && (
           <div className="flex-1 p-3 md:p-4 min-h-0 overflow-hidden">
             <WordCollection kanaMode={kanaMode} setKanaMode={setKanaMode}
-              progress={progress} mastered={mastered} usableInWords={usableInWords}
+              progress={progress} usableInWords={usableInWords}
               words={words}
               onAdd={addWord} onDelete={deleteWord} voiceOn={voiceOn}/>
           </div>
