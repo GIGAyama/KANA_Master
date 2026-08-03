@@ -8,7 +8,7 @@
    ============================================================== */
 
 // App.jsx などを更新したら必ず数字を上げること（古いキャッシュを破棄するため）
-const VERSION = 'v12';
+const VERSION = 'v13';
 
 // このアプリ専用の目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io というサイト全体で
@@ -27,6 +27,7 @@ const SHELL_ASSETS = [
   './studyLog.js',
   './studySession.js',
   './manifest.webmanifest',
+  './offline.html',
   './favicon.png',
   './icon-192.png',
   './icon-512.png',
@@ -113,7 +114,13 @@ self.addEventListener('fetch', (event) => {
         return fresh;
       } catch (e) {
         const cache = await caches.open(SHELL_CACHE);
-        return (await cache.match('./index.html')) || (await cache.match('./')) || Response.error();
+        // 本体が保存されていればそれを出す。まだ保存されていない
+        // （初回から圏外だった）ときは、ブラウザの「接続できません」
+        // 画面ではなく、アプリと同じ配色の offline.html を出す。
+        return (await cache.match('./index.html'))
+            || (await cache.match('./'))
+            || (await cache.match('./offline.html'))
+            || Response.error();
       }
     })());
     return;
