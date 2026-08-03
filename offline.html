@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#b34328" />
+    <title>かきかたマスター | インターネットにつながっていません</title>
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <!--
+      圏外のときに出る画面。「壊れた」と思わせないことが目的なので、
+      アプリと同じ配色（theme_color #b34328 / background_color #faf7f0）にしてある。
+
+      この画面が出るのは、通信ができないうえに index.html も保存されていない
+      ときだけ。つまり Tailwind も React も Klee One も取れない。
+      そのため CSS は直書きで1枚に閉じ、フォントは端末にあるものだけを使う。
+      UD デジタル教科書体があればそれが使われ、無ければ游教科書体・
+      ヒラギノ明朝と落ちていく。index.html の --kkm-font-kyokasho と同じ並び。
+    -->
+    <style>
+      :root {
+        --shu: #b34328;
+        --paper: #faf7f0;
+        --panel: #ffffff;
+        --sumi: #2e2a25;
+        --rule: #ded8cd;
+      }
+      * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        min-height: 100vh;   /* 古い端末むけのフォールバック */
+        min-height: 100dvh;  /* 実際に使われる値 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: calc(24px + env(safe-area-inset-top, 0px))
+                 calc(24px + env(safe-area-inset-right, 0px))
+                 calc(24px + env(safe-area-inset-bottom, 0px))
+                 calc(24px + env(safe-area-inset-left, 0px));
+        background: var(--paper);
+        color: var(--sumi);
+        font-family: 'UD デジタル 教科書体 N-R', 'UD Digi Kyokasho N-R',
+                     'UDデジタル教科書体N-R', '游教科書体', 'YuKyokasho',
+                     'Hiragino Mincho ProN', system-ui, serif;
+        font-weight: 600;
+        line-height: 1.8;
+      }
+      .card {
+        width: 100%;
+        max-width: 420px;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(46, 42, 37, 0.08);
+        padding: 32px 24px;
+        text-align: center;
+      }
+      .mark { font-size: clamp(48px, 14vw, 76px); line-height: 1; margin-bottom: 8px; }
+      /* 日本語は語の途中で折り返すと読みにくい。区切りは <br> で明示し、それ以外では割らない。 */
+      h1 { font-size: clamp(20px, 5vw, 26px); font-weight: 700; margin: 0 0 12px; word-break: keep-all; }
+      p { font-size: clamp(15px, 3.6vw, 17px); margin: 0 0 22px; word-break: keep-all; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 56px;      /* 児童の指でも押せる大きさ（Part I §2-4） */
+        width: 100%;
+        padding: 0 20px;
+        font-size: clamp(16px, 4vw, 18px);
+        font-weight: 700;
+        font-family: inherit;
+        /* #b34328 の上の白は 5.60:1。計算して確かめてある。 */
+        color: #ffffff;
+        background: var(--shu);
+        border: none;
+        border-radius: 14px;
+        box-shadow: 0 4px 0 #93331e;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #93331e; }
+      .btn:focus-visible { outline: 3px solid var(--sumi); outline-offset: 3px; }
+      .hint {
+        margin-top: 18px;
+        margin-bottom: 0;
+        font-size: clamp(13px, 3.2vw, 14px);
+        /* 紙(#faf7f0)の上で 6.87:1。sumi-500 の #7a7267 は 4.43:1 で足りなかった。 */
+        color: #5c554c;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+      }
+      @media (forced-colors: active) {
+        .btn { border: 2px solid ButtonText; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="mark" aria-hidden="true">📡</div>
+      <h1>いま インターネットに<br />つながっていません</h1>
+      <p>
+        Wi-Fi が つながっているか たしかめてから、<br />
+        下の ボタンを おしてね。
+      </p>
+      <button class="btn" id="retry" type="button">もういちど ためす</button>
+      <p class="hint">
+        ホームがめんに かきかたマスターを おいてあると、<br />
+        つながっていなくても つかえます。
+      </p>
+    </main>
+    <script>
+      document.getElementById('retry').addEventListener('click', function () {
+        location.reload();
+      });
+      // つながり直したら、児童が押さなくても自動でもどる
+      window.addEventListener('online', function () {
+        location.replace('./');
+      });
+    </script>
+  </body>
+</html>
