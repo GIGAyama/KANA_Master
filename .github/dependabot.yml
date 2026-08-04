@@ -1,0 +1,21 @@
+# 依存の 更新を 月に 1回 だけ しらせる。
+# ビルドに つかう道具（React・Tailwind・esbuild）は 版を 固定してあるので、
+# 上がったことに 気づく 手だてが ないと 古いまま 置き去りに なる。
+#
+# ※ メジャー更新は 自動で 取りこまない。React 18 → 19 のような 変更は
+#   画面の 動きが かわるおそれが あるので、人が 見てから にする。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly

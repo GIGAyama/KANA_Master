@@ -1,1 +1,10 @@
 node_modules/
+.DS_Store
+.env
+.env.*
+npm-debug.log*
+.tailwind-entry.css
+
+# 注意：js/ css/ vendor/ data/ は「生成物だが コミットする」。
+# GitHub Pages は リポジトリを そのまま 配るため、ここを 追跡から 外すと
+# 公開ページが 空に なる。原本は src/ と tailwind.config.js。
