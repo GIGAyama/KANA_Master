@@ -129,7 +129,18 @@ AM  … ビルドし直したら 中身が かわった（＝走らせ忘れ）
 **ビルドを 導入する リポジトリでは `"type": "module"` を 書かず、
 自分の ツールを `.mjs` に する。** `tailwind.config.js` も CommonJS のままに する。
 
-### 9. Tailwind CDN → ビルドに 移す前に、**クラス名を 組み立てていないか 数える**
+### 9. 🆕 `--no-save` で 入れた 道具は CI で 必ず こける
+
+手元で `npm i --no-save playwright` として 測っていると、そのまま 動くので
+気づけない。**CI は `npm ci` なので 入らず、`Cannot find package 'playwright'` で 落ちる。**
+
+`npx playwright install` が 成功するのも 紛らわしい。あれは npx が その場で
+取ってくるだけで、`node_modules` には 残らない。
+
+**計測に つかう道具は かならず devDependencies に 版つきで 書くこと。**
+確かめ方は「別の場所に `git archive` で 出して `npm ci` してから 走らせる」。
+
+### 10. Tailwind CDN → ビルドに 移す前に、**クラス名を 組み立てていないか 数える**
 
 CDN 版は ブラウザの DOM を 見て CSS を 作るので、動的に 組み立てた
 クラス名でも 効く。ビルドは ソースを 読むので **効かなくなる。**

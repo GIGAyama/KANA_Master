@@ -25,6 +25,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const p = (...xs) => join(ROOT, ...xs);
 const read = (f) => (existsSync(p(f)) ? readFileSync(p(f), 'utf8') : null);
 
+/* git が つかえない場所（tarball を ひろげただけ、など）でも
+   検査ぜんたいが スタックトレースで 死なないようにする。
+   「見られなかった」ことは はっきり 出す。だまって 素通りさせない。 */
+const git = (args) => {
+  try { return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
+  catch (e) { return null; }
+};
+
 /* コメントを 落としてから 判定する。
    「localStorage は 操作しない」という **注意書き** に 検査が 反応して
    誤検知する、という 事故が 実際に あった。 */
@@ -49,8 +57,9 @@ const CHECKS = [
 
   { id: 'SECRETS', title: '秘密ファイルを コミットしていない',
     run: () => {
-      const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n');
-      return tracked.filter((f) => /(^|\/)(\.clasp\.json|\.env(\..*)?|.*\.pem|id_rsa)$/.test(f))
+      const out = git(['ls-files']);
+      if (out === null) return ['git が つかえないので 見られなかった（未計測）'];
+      return out.split('\n').filter((f) => /(^|\/)(\.clasp\.json|\.env(\..*)?|.*\.pem|id_rsa)$/.test(f))
         .map((f) => `${f} が 追跡されている`);
     } },
 
@@ -251,8 +260,9 @@ const CHECKS = [
          「AM」「 M」＝ ビルドし直したら 中身が かわった（＝走らせ忘れ）
          「??」＝ 追跡していない 生成物
          ここを 見わけないと、はじめて コミットする ときに かならず 落ちる。 */
-      const lines = execFileSync('git', ['status', '--porcelain', '--', 'js', 'css', 'vendor'],
-        { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+      const status = git(['status', '--porcelain', '--', 'js', 'css', 'vendor']);
+      if (status === null) return ['git が つかえないので 見られなかった（未計測）'];
+      const lines = status.split('\n').filter(Boolean);
       const dirty = lines.filter((l) => l.startsWith('??') || l[1] === 'M' || l[1] === 'D');
       return dirty.length ? [`原本を 直したのに npm run build を 走らせていない:\n${dirty.join('\n')}`] : [];
     } },
