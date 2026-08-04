@@ -61,6 +61,7 @@
       h1 { font-size: clamp(20px, 5vw, 26px); font-weight: 700; margin: 0 0 12px; word-break: keep-all; }
       p { font-size: clamp(15px, 3.6vw, 17px); margin: 0 0 22px; word-break: keep-all; }
       .btn {
+        text-decoration: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -104,20 +105,15 @@
         Wi-Fi が つながっているか たしかめてから、<br />
         下の ボタンを おしてね。
       </p>
-      <button class="btn" id="retry" type="button">もういちど ためす</button>
+      <!-- 読みこみ直しは <a href> で 行う。
+           この画面が 出るのは「ネットに つながらず、アプリ本体も 手元に
+           ない」状況なので、JavaScript にも 外部の ファイルにも たよらない。
+           （インラインの <script> は CSP でも 止まる） -->
+      <a class="btn" href="./">もういちど ひらく</a>
       <p class="hint">
         ホームがめんに かきかたマスターを おいてあると、<br />
         つながっていなくても つかえます。
       </p>
     </main>
-    <script>
-      document.getElementById('retry').addEventListener('click', function () {
-        location.reload();
-      });
-      // つながり直したら、児童が押さなくても自動でもどる
-      window.addEventListener('online', function () {
-        location.replace('./');
-      });
-    </script>
   </body>
 </html>

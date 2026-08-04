@@ -1,0 +1,70 @@
+# 品質ゲート。
+#
+# ⚠️ pull_request でも 走らせること。
+#   push: branches: [main] だけだと、PR の 時点で 落ちていることに
+#   気づけず、main に 入ってから はじめて 赤くなる。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 依存を入れる
+        run: npm ci
+
+      - name: 品質ゲート（静的）
+        # 生成物が 原本と そろっているか（npm run build の 走らせ忘れ）も ここで 見る
+        run: node tools/check-project.mjs
+
+      - name: 検査そのものが 動いているかを たしかめる
+        # 「0件でした」だけでは 検査が 何も 見ていない 場合と 区別が つかない。
+        # わざと 壊した 入力を 与えて、ちゃんと 落ちることを 見る。
+        run: node tools/check-project.mjs --self-test
+
+      - name: 学習ログ（study.v1）のテスト
+        run: node tools/check-study.js
+
+  measure:
+    # 実ブラウザでの 計測（コントラスト・タップ領域・Service Worker）。
+    # 読むだけでは わからないので、実際に ひらいて 測る。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 依存を入れる
+        run: npm ci
+
+      - name: ブラウザを 入れる
+        run: npx playwright install --with-deps chromium
+
+      - name: 手元のサーバーを 立てる
+        run: |
+          node tools/serve.mjs 8788 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8788/KANA_Master/ >/dev/null && break
+            sleep 1
+          done
+
+      - name: 見え方を 測る（コントラスト・タップ44px・CSP・JSエラー）
+        run: node tools/measure-display.mjs
+
+      - name: PWA の ふるまいを 測る
+        run: node tools/measure-pwa.mjs

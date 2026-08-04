@@ -8,8 +8,55 @@
 
 ## つかいかた
 
-ブラウザで `index.html` をひらくだけで うごきます（ビルド不要）。
-GitHub Pages でも公開しています。
+GitHub Pages で公開しています。
+
+**公開 URL： https://gigayama.github.io/KANA_Master/**
+
+手元で見るときは、`file://` ではなく サブパス付きのサーバーで開いてください。
+Service Worker も CSP も manifest も `file://` では効かないため、
+本番と同じ `/KANA_Master/` の下でないと 測っても意味のある結果になりません。
+
+```bash
+npm install
+npm run build        # 原本 → 生成物（js/ css/ vendor/）
+node tools/serve.mjs 8788
+# http://127.0.0.1:8788/KANA_Master/
+```
+
+### 原本と生成物
+
+**このアプリは ビルドします。** もとは `cdn.tailwindcss.com` /
+`unpkg.com` の React / `@babel/standalone` を ブラウザへ送っていましたが、
+学校のネットワークは これらを ふさいでいることがあり、
+**1本でも ふさがれると 画面が 白いまま 何も出ません。**
+（実測：改修前は CDN が届かない環境で「よみこみちゅう…」から進まず、
+押せるボタン 0 個。改修後は同じ環境で 23 個）
+
+| 直すところ（原本） | 生成物（**手で編集しない**） |
+| --- | --- |
+| `src/App.jsx` | `js/app.js` |
+| `src/extra.css` ＋ `tailwind.config.js` | `css/app.css` |
+| `src/install-hook.js` | `js/install-hook.js` |
+| `src/boot.js` | `js/boot.js` |
+| `package.json` の react / react-dom | `vendor/react.js` |
+| （`npm run kanjivg`） | `data/kanjivg-kana.js` |
+
+生成物も リポジトリに コミットします。GitHub Pages が リポジトリを
+そのまま配るためで、追跡から外すと 公開ページが空になります。
+
+> **原本を直したら かならず `npm run build` を走らせてから push すること。**
+> 走らせ忘れは CI（`node tools/check-project.mjs`）が見つけます。
+
+### 検査
+
+| コマンド | 見るもの |
+| --- | --- |
+| `npm run check` | 品質ゲート（静的）＋ 学習ログのテスト |
+| `node tools/check-project.mjs --self-test` | **検査そのものが動いているか**（わざと壊した入力を与える） |
+| `node tools/measure-display.mjs` | 実ブラウザで コントラスト・タップ44px・CSP違反・JSエラー |
+| `node tools/measure-pwa.mjs` | Service Worker の登録・初回リロード・更新・圏外・他アプリのキャッシュ |
+
+実測の結果は `AUDIT.md` にあります。
 
 **公開 URL： https://gigayama.github.io/KANA_Master/**
 
@@ -607,8 +654,16 @@ Web フォントとして配布することは許諾されていません。そ�
 ## お手本は「かきじゅんデータ」から描く
 
 うすいお手本・書き順アニメ・書きはじめの赤い点・自動採点は、**すべて同じ
-KanjiVG のストロークデータ 1 つから**作っています（`App.jsx` の
+KanjiVG のストロークデータ 1 つから**作っています（`src/App.jsx` の
 `drawKvgStroke()` と `KVG_STROKE_W`）。
+
+**データは リポジトリの中に持っています**（`data/kanjivg-kana.js`・
+ひらがな／カタカナ 176 文字・49KB）。もとは 使うたびに
+`cdn.jsdelivr.net` から とっていましたが、学校のネットワークが そこを
+ふさいでいると **お手本も 書き順アニメも なぞり書きも 出ません。**
+このアプリの いちばん だいじな機能が、アプリの外の事情で 止まっていました。
+取りこみ直しは `npm run kanjivg`。ライセンスは `THIRD-PARTY-NOTICES.md`
+（KanjiVG／CC BY-SA 3.0）を見てください。
 
 以前はお手本だけをフォントで描いていました。しかしフォントの字形と KanjiVG
 のストロークは**別の書きぶり**なので、
@@ -698,17 +753,29 @@ KanjiVG のストロークデータ 1 つから**作っています（`App.jsx` 
 
 | ファイル | 役割 |
 | --- | --- |
-| `index.html` | 起動ページ（配色・アニメーション・書体・PWA 設定・SW 登録） |
-| `App.jsx` | アプリ本体（React・ブラウザ内 Babel で変換） |
+| `index.html` | 起動ページ（CSP・PWA 設定・読みこむものの並び） |
+| **`src/App.jsx`** | アプリ本体（React・**原本**） |
+| **`src/extra.css`** | アプリ固有の CSS（**原本**） |
+| **`tailwind.config.js`** | 配色（テーマ）の唯一の定義場所（**原本**） |
+| **`src/install-hook.js`** | `beforeinstallprompt` の捕捉（`<head>` 最上部・**原本**） |
+| **`src/boot.js`** | Service Worker の登録と「あたらしい ばん」のおしらせ（**原本**） |
+| `js/` `css/` `vendor/` `data/` | **生成物。手で編集しない**（`npm run build` / `npm run kanjivg`） |
 | `studyLog.js` | 学習ログ `study.v1` の保存だけを行う層（**全アプリ共通・不変**） |
 | `studySession.js` | 学習ログの組み立て（このアプリ固有・純関数） |
-| `tools/check-study.js` | 学習ログの仕様準拠テスト（`node tools/check-study.js`） |
+| `tools/build.mjs` | ビルド |
+| `tools/fetch-kanjivg.mjs` | かきじゅんデータの取りこみ |
+| `tools/check-project.mjs` | 品質ゲート（`--self-test` で 検査自体を確かめる） |
+| `tools/check-study.js` | 学習ログの仕様準拠テスト |
+| `tools/measure-display.mjs` | 実ブラウザでの コントラスト・タップ領域の計測 |
+| `tools/measure-pwa.mjs` | Service Worker の ふるまいの計測 |
+| `tools/serve.mjs` | 本番と同じサブパスで配る 手元用サーバー |
 | `manifest.webmanifest` | PWA マニフェスト |
-| `sw.js` | Service Worker（オフライン対応・書き順データのキャッシュ） |
+| `sw.js` | Service Worker（オフライン対応） |
+| `offline.html` | 圏外用の画面（JS も外部資産も使わない） |
 | `icon-*.png` / `apple-touch-icon.png` / `favicon.png` | アプリアイコン |
 | `mascot.png` / `mascot-full.png` | マスコット「えんぴつせんせい」の絵（顔・ぜんしん） |
 
-`App.jsx` の 大きな くぎりは 見出しコメントの番号で たどれます。
+`src/App.jsx` の 大きな くぎりは 見出しコメントの番号で たどれます。
 とくに あたらしい しくみは 次のところです。
 
 | 番号 | 中身 |
