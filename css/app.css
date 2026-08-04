@@ -1,0 +1,525 @@
+/* 生成物です。手で編集しないでください。原本を直して `npm run build` を走らせること。 */
+*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.container{width:100%}@media (min-width:640px){.container{max-width:640px}}@media (min-width:768px){.container{max-width:768px}}@media (min-width:1024px){.container{max-width:1024px}}@media (min-width:1280px){.container{max-width:1280px}}@media (min-width:1536px){.container{max-width:1536px}}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.visible{visibility:visible}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.-inset-6{inset:-1.5rem}.inset-0{inset:0}.inset-x-0{left:0;right:0}.inset-x-1{left:.25rem;right:.25rem}.-right-1{right:-.25rem}.-right-1\.5{right:-.375rem}.-top-1{top:-.25rem}.-top-1\.5{top:-.375rem}.bottom-0{bottom:0}.bottom-1{bottom:.25rem}.bottom-20{bottom:5rem}.left-0{left:0}.left-1{left:.25rem}.left-1\/2{left:50%}.left-2{left:.5rem}.left-3{left:.75rem}.left-\[-5px\]{left:-5px}.right-0{right:0}.right-1{right:.25rem}.right-2{right:.5rem}.right-3{right:.75rem}.top-0{top:0}.top-1{top:.25rem}.top-1\/2{top:50%}.top-2{top:.5rem}.top-20{top:5rem}.z-10,.z-\[10\]{z-index:10}.z-\[150\]{z-index:150}.z-\[15\]{z-index:15}.z-\[170\]{z-index:170}.z-\[180\]{z-index:180}.z-\[1\]{z-index:1}.z-\[200\]{z-index:200}.z-\[20\]{z-index:20}.z-\[300\]{z-index:300}.z-\[30\]{z-index:30}.z-\[350\]{z-index:350}.z-\[400\]{z-index:400}.z-\[500\]{z-index:500}.z-\[5\]{z-index:5}.mx-1{margin-left:.25rem;margin-right:.25rem}.mx-3{margin-left:.75rem;margin-right:.75rem}.mx-auto{margin-left:auto;margin-right:auto}.my-4{margin-top:1rem;margin-bottom:1rem}.my-auto{margin-top:auto;margin-bottom:auto}.-mb-1\.5{margin-bottom:-.375rem}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.ml-0\.5{margin-left:.125rem}.ml-1{margin-left:.25rem}.ml-2{margin-left:.5rem}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.mt-2{margin-top:.5rem}.mt-2\.5{margin-top:.625rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.block{display:block}.inline-block{display:inline-block}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.inline-grid{display:inline-grid}.hidden{display:none}.aspect-square{aspect-ratio:1/1}.h-1\.5{height:.375rem}.h-10{height:2.5rem}.h-11{height:2.75rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-16{height:4rem}.h-2{height:.5rem}.h-2\.5{height:.625rem}.h-20{height:5rem}.h-24{height:6rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-7{height:1.75rem}.h-8{height:2rem}.h-9{height:2.25rem}.h-\[15px\]{height:15px}.h-\[18px\]{height:18px}.h-\[2px\]{height:2px}.h-\[3px\]{height:3px}.h-full{height:100%}.h-screen{height:100vh}.max-h-\[26vh\]{max-height:26vh}.max-h-\[85vh\]{max-height:85vh}.max-h-\[86vh\]{max-height:86vh}.max-h-\[92vh\]{max-height:92vh}.min-h-0{min-height:0}.min-h-\[32px\]{min-height:32px}.min-h-\[40px\]{min-height:40px}.min-h-\[42px\]{min-height:42px}.min-h-\[44px\]{min-height:44px}.min-h-\[48px\]{min-height:48px}.min-h-\[52px\]{min-height:52px}.min-h-\[56px\]{min-height:56px}.min-h-\[64px\]{min-height:64px}.min-h-\[76px\]{min-height:76px}.w-0\.5{width:.125rem}.w-1{width:.25rem}.w-1\.5{width:.375rem}.w-10{width:2.5rem}.w-11{width:2.75rem}.w-12{width:3rem}.w-14{width:3.5rem}.w-2\.5{width:.625rem}.w-20{width:5rem}.w-24{width:6rem}.w-5{width:1.25rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-\[15px\]{width:15px}.w-full{width:100%}.min-w-0{min-width:0}.min-w-\[18px\]{min-width:18px}.min-w-\[32px\]{min-width:32px}.min-w-\[40px\]{min-width:40px}.min-w-\[44px\]{min-width:44px}.max-w-2xl{max-width:42rem}.max-w-3xl{max-width:48rem}.max-w-\[19rem\]{max-width:19rem}.max-w-\[68\%\]{max-width:68%}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.max-w-xl{max-width:36rem}.max-w-xs{max-width:20rem}.flex-1{flex:1 1 0%}.flex-\[2\]{flex:2}.shrink{flex-shrink:1}.shrink-0{flex-shrink:0}.-translate-x-1\/2{--tw-translate-x:-50%}.-translate-x-1\/2,.-translate-y-1\/2{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.-translate-y-1\/2{--tw-translate-y:-50%}.-translate-y-3{--tw-translate-y:-0.75rem}.-translate-y-3,.translate-y-0{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.translate-y-0{--tw-translate-y:0px}.-rotate-90{--tw-rotate:-90deg}.-rotate-90,.rotate-45{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.rotate-45{--tw-rotate:45deg}.scale-100{--tw-scale-x:1;--tw-scale-y:1}.scale-100,.scale-75{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.scale-75{--tw-scale-x:.75;--tw-scale-y:.75}.scale-90{--tw-scale-x:.9;--tw-scale-y:.9}.scale-90,.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes ping{75%,to{transform:scale(2);opacity:0}}.animate-ping{animation:ping 1s cubic-bezier(0,0,.2,1) infinite}.cursor-crosshair{cursor:crosshair}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;-moz-user-select:none;user-select:none}.resize{resize:both}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}.grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}.flex-row{flex-direction:row}.flex-row-reverse{flex-direction:row-reverse}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.items-baseline{align-items:baseline}.items-stretch{align-items:stretch}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-0\.5{gap:.125rem}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.gap-5{gap:1.25rem}.gap-x-2\.5{-moz-column-gap:.625rem;column-gap:.625rem}.gap-y-1{row-gap:.25rem}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.divide-y>:not([hidden])~:not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px*(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px*var(--tw-divide-y-reverse))}.divide-sumi-200>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(222 216 205/var(--tw-divide-opacity,1))}.self-stretch{align-self:stretch}.overflow-auto{overflow:auto}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis}.truncate,.whitespace-nowrap{white-space:nowrap}.break-all{word-break:break-all}.rounded{border-radius:.25rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.rounded-b-lg{border-bottom-right-radius:.5rem;border-bottom-left-radius:.5rem}.rounded-t-lg{border-top-left-radius:.5rem;border-top-right-radius:.5rem}.rounded-t-md{border-top-left-radius:.375rem;border-top-right-radius:.375rem}.rounded-bl-sm{border-bottom-left-radius:.125rem}.rounded-br-sm{border-bottom-right-radius:.125rem}.border{border-width:1px}.border-2{border-width:2px}.border-x-2{border-left-width:2px;border-right-width:2px}.border-b{border-bottom-width:1px}.border-b-2{border-bottom-width:2px}.border-l{border-left-width:1px}.border-l-4{border-left-width:4px}.border-t{border-top-width:1px}.border-t-2{border-top-width:2px}.border-t-4{border-top-width:4px}.border-dashed{border-style:dashed}.border-ai-200{--tw-border-opacity:1;border-color:rgb(186 203 222/var(--tw-border-opacity,1))}.border-ai-300{--tw-border-opacity:1;border-color:rgb(143 169 198/var(--tw-border-opacity,1))}.border-ai-400{--tw-border-opacity:1;border-color:rgb(96 129 166/var(--tw-border-opacity,1))}.border-ai-700{--tw-border-opacity:1;border-color:rgb(38 58 84/var(--tw-border-opacity,1))}.border-fuji-200{--tw-border-opacity:1;border-color:rgb(213 203 227/var(--tw-border-opacity,1))}.border-fuji-300{--tw-border-opacity:1;border-color:rgb(182 168 205/var(--tw-border-opacity,1))}.border-fuji-400{--tw-border-opacity:1;border-color:rgb(146 128 178/var(--tw-border-opacity,1))}.border-fuji-700{--tw-border-opacity:1;border-color:rgb(73 60 96/var(--tw-border-opacity,1))}.border-midori-200{--tw-border-opacity:1;border-color:rgb(191 213 192/var(--tw-border-opacity,1))}.border-midori-300{--tw-border-opacity:1;border-color:rgb(150 184 152/var(--tw-border-opacity,1))}.border-midori-400{--tw-border-opacity:1;border-color:rgb(109 152 114/var(--tw-border-opacity,1))}.border-midori-500{--tw-border-opacity:1;border-color:rgb(79 125 86/var(--tw-border-opacity,1))}.border-midori-700{--tw-border-opacity:1;border-color:rgb(49 80 53/var(--tw-border-opacity,1))}.border-shu-200{--tw-border-opacity:1;border-color:rgb(244 206 194/var(--tw-border-opacity,1))}.border-shu-300{--tw-border-opacity:1;border-color:rgb(233 169 150/var(--tw-border-opacity,1))}.border-shu-400{--tw-border-opacity:1;border-color:rgb(217 126 101/var(--tw-border-opacity,1))}.border-shu-500{--tw-border-opacity:1;border-color:rgb(200 90 60/var(--tw-border-opacity,1))}.border-shu-600{--tw-border-opacity:1;border-color:rgb(179 67 40/var(--tw-border-opacity,1))}.border-shu-700{--tw-border-opacity:1;border-color:rgb(147 51 30/var(--tw-border-opacity,1))}.border-sumi-100{--tw-border-opacity:1;border-color:rgb(239 236 229/var(--tw-border-opacity,1))}.border-sumi-200{--tw-border-opacity:1;border-color:rgb(222 216 205/var(--tw-border-opacity,1))}.border-sumi-300{--tw-border-opacity:1;border-color:rgb(195 188 174/var(--tw-border-opacity,1))}.border-sumi-400{--tw-border-opacity:1;border-color:rgb(155 147 134/var(--tw-border-opacity,1))}.border-sumi-700{--tw-border-opacity:1;border-color:rgb(68 63 56/var(--tw-border-opacity,1))}.border-white{--tw-border-opacity:1;border-color:rgb(255 255 255/var(--tw-border-opacity,1))}.border-yamabuki-200{--tw-border-opacity:1;border-color:rgb(242 220 166/var(--tw-border-opacity,1))}.border-yamabuki-300{--tw-border-opacity:1;border-color:rgb(232 196 112/var(--tw-border-opacity,1))}.border-yamabuki-400{--tw-border-opacity:1;border-color:rgb(217 168 64/var(--tw-border-opacity,1))}.border-yamabuki-700{--tw-border-opacity:1;border-color:rgb(122 86 24/var(--tw-border-opacity,1))}.\!border-l-shu-600{--tw-border-opacity:1!important;border-left-color:rgb(179 67 40/var(--tw-border-opacity,1))!important}.border-l-ai-600{--tw-border-opacity:1;border-left-color:rgb(48 74 108/var(--tw-border-opacity,1))}.border-l-fuji-600{--tw-border-opacity:1;border-left-color:rgb(92 74 121/var(--tw-border-opacity,1))}.border-l-midori-600{--tw-border-opacity:1;border-left-color:rgb(61 101 68/var(--tw-border-opacity,1))}.border-l-shu-600{--tw-border-opacity:1;border-left-color:rgb(179 67 40/var(--tw-border-opacity,1))}.border-l-sumi-600{--tw-border-opacity:1;border-left-color:rgb(92 85 76/var(--tw-border-opacity,1))}.border-l-yamabuki-600{--tw-border-opacity:1;border-left-color:rgb(156 110 29/var(--tw-border-opacity,1))}.border-t-ai-600{--tw-border-opacity:1;border-top-color:rgb(48 74 108/var(--tw-border-opacity,1))}.border-t-fuji-600{--tw-border-opacity:1;border-top-color:rgb(92 74 121/var(--tw-border-opacity,1))}.border-t-midori-600{--tw-border-opacity:1;border-top-color:rgb(61 101 68/var(--tw-border-opacity,1))}.border-t-shu-600{--tw-border-opacity:1;border-top-color:rgb(179 67 40/var(--tw-border-opacity,1))}.border-t-sumi-600{--tw-border-opacity:1;border-top-color:rgb(92 85 76/var(--tw-border-opacity,1))}.border-t-yamabuki-600{--tw-border-opacity:1;border-top-color:rgb(156 110 29/var(--tw-border-opacity,1))}.bg-ai-50{--tw-bg-opacity:1;background-color:rgb(240 244 249/var(--tw-bg-opacity,1))}.bg-ai-500{--tw-bg-opacity:1;background-color:rgb(64 96 138/var(--tw-bg-opacity,1))}.bg-ai-600{--tw-bg-opacity:1;background-color:rgb(48 74 108/var(--tw-bg-opacity,1))}.bg-fuji-50{--tw-bg-opacity:1;background-color:rgb(245 243 249/var(--tw-bg-opacity,1))}.bg-fuji-500{--tw-bg-opacity:1;background-color:rgb(117 95 151/var(--tw-bg-opacity,1))}.bg-fuji-600{--tw-bg-opacity:1;background-color:rgb(92 74 121/var(--tw-bg-opacity,1))}.bg-midori-50{--tw-bg-opacity:1;background-color:rgb(241 246 241/var(--tw-bg-opacity,1))}.bg-midori-500{--tw-bg-opacity:1;background-color:rgb(79 125 86/var(--tw-bg-opacity,1))}.bg-midori-600{--tw-bg-opacity:1;background-color:rgb(61 101 68/var(--tw-bg-opacity,1))}.bg-shu-100{--tw-bg-opacity:1;background-color:rgb(250 231 225/var(--tw-bg-opacity,1))}.bg-shu-400{--tw-bg-opacity:1;background-color:rgb(217 126 101/var(--tw-bg-opacity,1))}.bg-shu-50{--tw-bg-opacity:1;background-color:rgb(253 245 242/var(--tw-bg-opacity,1))}.bg-shu-500{--tw-bg-opacity:1;background-color:rgb(200 90 60/var(--tw-bg-opacity,1))}.bg-shu-600{--tw-bg-opacity:1;background-color:rgb(179 67 40/var(--tw-bg-opacity,1))}.bg-sumi-200{--tw-bg-opacity:1;background-color:rgb(222 216 205/var(--tw-bg-opacity,1))}.bg-sumi-300{--tw-bg-opacity:1;background-color:rgb(195 188 174/var(--tw-bg-opacity,1))}.bg-sumi-50{--tw-bg-opacity:1;background-color:rgb(248 246 242/var(--tw-bg-opacity,1))}.bg-sumi-500{--tw-bg-opacity:1;background-color:rgb(122 114 103/var(--tw-bg-opacity,1))}.bg-sumi-600{--tw-bg-opacity:1;background-color:rgb(92 85 76/var(--tw-bg-opacity,1))}.bg-sumi-900\/25{background-color:rgba(28,25,22,.25)}.bg-sumi-900\/40{background-color:rgba(28,25,22,.4)}.bg-sumi-900\/45{background-color:rgba(28,25,22,.45)}.bg-sumi-900\/50{background-color:rgba(28,25,22,.5)}.bg-washi-100{--tw-bg-opacity:1;background-color:rgb(250 247 240/var(--tw-bg-opacity,1))}.bg-washi-300{--tw-bg-opacity:1;background-color:rgb(234 226 210/var(--tw-bg-opacity,1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.bg-white\/95{background-color:hsla(0,0%,100%,.95)}.bg-yamabuki-100{--tw-bg-opacity:1;background-color:rgb(249 238 211/var(--tw-bg-opacity,1))}.bg-yamabuki-400{--tw-bg-opacity:1;background-color:rgb(217 168 64/var(--tw-bg-opacity,1))}.bg-yamabuki-50{--tw-bg-opacity:1;background-color:rgb(253 248 236/var(--tw-bg-opacity,1))}.bg-yamabuki-600{--tw-bg-opacity:1;background-color:rgb(156 110 29/var(--tw-bg-opacity,1))}.object-contain{-o-object-fit:contain;object-fit:contain}.p-0\.5{padding:.125rem}.p-1{padding:.25rem}.p-1\.5{padding:.375rem}.p-2{padding:.5rem}.p-2\.5{padding:.625rem}.p-3{padding:.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-0\.5{padding-left:.125rem;padding-right:.125rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-10{padding-left:2.5rem;padding-right:2.5rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-3\.5{padding-left:.875rem;padding-right:.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.px-8{padding-left:2rem;padding-right:2rem}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-10{padding-top:2.5rem;padding-bottom:2.5rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-3\.5{padding-top:.875rem;padding-bottom:.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.pb-1{padding-bottom:.25rem}.pb-1\.5{padding-bottom:.375rem}.pb-2{padding-bottom:.5rem}.pb-2\.5{padding-bottom:.625rem}.pb-3{padding-bottom:.75rem}.pb-4{padding-bottom:1rem}.pl-2{padding-left:.5rem}.pr-2\.5{padding-right:.625rem}.pt-1{padding-top:.25rem}.pt-2{padding-top:.5rem}.pt-3{padding-top:.75rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.align-middle{vertical-align:middle}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-5xl{font-size:3rem;line-height:1}.text-6xl{font-size:3.75rem;line-height:1}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[13px\]{font-size:13px}.text-\[8px\]{font-size:8px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-black{font-weight:900}.font-medium{font-weight:500}.font-semibold{font-weight:600}.tabular-nums{--tw-numeric-spacing:tabular-nums;font-variant-numeric:var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction)}.leading-none{line-height:1}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-\[0\.2em\]{letter-spacing:.2em}.tracking-wide{letter-spacing:.025em}.text-ai-600{--tw-text-opacity:1;color:rgb(48 74 108/var(--tw-text-opacity,1))}.text-ai-700{--tw-text-opacity:1;color:rgb(38 58 84/var(--tw-text-opacity,1))}.text-fuji-600{--tw-text-opacity:1;color:rgb(92 74 121/var(--tw-text-opacity,1))}.text-fuji-700{--tw-text-opacity:1;color:rgb(73 60 96/var(--tw-text-opacity,1))}.text-midori-600{--tw-text-opacity:1;color:rgb(61 101 68/var(--tw-text-opacity,1))}.text-midori-700{--tw-text-opacity:1;color:rgb(49 80 53/var(--tw-text-opacity,1))}.text-shu-500{--tw-text-opacity:1;color:rgb(200 90 60/var(--tw-text-opacity,1))}.text-shu-600{--tw-text-opacity:1;color:rgb(179 67 40/var(--tw-text-opacity,1))}.text-shu-700{--tw-text-opacity:1;color:rgb(147 51 30/var(--tw-text-opacity,1))}.text-shu-800{--tw-text-opacity:1;color:rgb(115 42 26/var(--tw-text-opacity,1))}.text-sumi-600{--tw-text-opacity:1;color:rgb(92 85 76/var(--tw-text-opacity,1))}.text-sumi-700{--tw-text-opacity:1;color:rgb(68 63 56/var(--tw-text-opacity,1))}.text-sumi-800{--tw-text-opacity:1;color:rgb(46 42 37/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.text-yamabuki-700{--tw-text-opacity:1;color:rgb(122 86 24/var(--tw-text-opacity,1))}.text-yamabuki-800{--tw-text-opacity:1;color:rgb(92 65 20/var(--tw-text-opacity,1))}.underline{text-decoration-line:underline}.opacity-0{opacity:0}.opacity-100{opacity:1}.opacity-50{opacity:.5}.opacity-60{opacity:.6}.opacity-70{opacity:.7}.opacity-90{opacity:.9}.shadow{--tw-shadow:0 1px 3px 0 rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color)}.shadow,.shadow-2xl{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color)}.shadow-lg,.shadow-md{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color)}.shadow-sm,.shadow-xl{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color),0 8px 10px -6px var(--tw-shadow-color)}.outline{outline-style:solid}.ring-1{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color)}.ring-1,.ring-2{box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.ring-2{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color)}.ring-shu-200{--tw-ring-opacity:1;--tw-ring-color:rgb(244 206 194/var(--tw-ring-opacity,1))}.ring-shu-400{--tw-ring-opacity:1;--tw-ring-color:rgb(217 126 101/var(--tw-ring-opacity,1))}.drop-shadow-sm{--tw-drop-shadow:drop-shadow(0 1px 1px rgba(0,0,0,.05))}.drop-shadow-sm,.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur{--tw-backdrop-blur:blur(8px)}.backdrop-blur,.backdrop-blur-sm{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1)}.duration-150,.transition-colors{transition-duration:.15s}.duration-300{transition-duration:.3s}.duration-500{transition-duration:.5s}.duration-700{transition-duration:.7s}.ease-in-out{transition-timing-function:cubic-bezier(.4,0,.2,1)}.ease-out{transition-timing-function:cubic-bezier(0,0,.2,1)}.hover\:border-shu-300:hover{--tw-border-opacity:1;border-color:rgb(233 169 150/var(--tw-border-opacity,1))}.hover\:border-shu-400:hover{--tw-border-opacity:1;border-color:rgb(217 126 101/var(--tw-border-opacity,1))}.hover\:border-sumi-400:hover{--tw-border-opacity:1;border-color:rgb(155 147 134/var(--tw-border-opacity,1))}.hover\:bg-ai-100:hover{--tw-bg-opacity:1;background-color:rgb(220 229 240/var(--tw-bg-opacity,1))}.hover\:bg-ai-50:hover{--tw-bg-opacity:1;background-color:rgb(240 244 249/var(--tw-bg-opacity,1))}.hover\:bg-fuji-100:hover{--tw-bg-opacity:1;background-color:rgb(234 229 241/var(--tw-bg-opacity,1))}.hover\:bg-midori-50:hover{--tw-bg-opacity:1;background-color:rgb(241 246 241/var(--tw-bg-opacity,1))}.hover\:bg-shu-50:hover{--tw-bg-opacity:1;background-color:rgb(253 245 242/var(--tw-bg-opacity,1))}.hover\:bg-sumi-100:hover{--tw-bg-opacity:1;background-color:rgb(239 236 229/var(--tw-bg-opacity,1))}.hover\:bg-washi-100:hover{--tw-bg-opacity:1;background-color:rgb(250 247 240/var(--tw-bg-opacity,1))}.hover\:bg-washi-200:hover{--tw-bg-opacity:1;background-color:rgb(244 239 228/var(--tw-bg-opacity,1))}.hover\:bg-yamabuki-100:hover{--tw-bg-opacity:1;background-color:rgb(249 238 211/var(--tw-bg-opacity,1))}.hover\:text-shu-600:hover{--tw-text-opacity:1;color:rgb(179 67 40/var(--tw-text-opacity,1))}.hover\:text-shu-700:hover{--tw-text-opacity:1;color:rgb(147 51 30/var(--tw-text-opacity,1))}.hover\:text-shu-800:hover{--tw-text-opacity:1;color:rgb(115 42 26/var(--tw-text-opacity,1))}.hover\:underline:hover{text-decoration-line:underline}.disabled\:cursor-default:disabled{cursor:default}.disabled\:cursor-not-allowed:disabled{cursor:not-allowed}.disabled\:opacity-40:disabled{opacity:.4}.disabled\:opacity-50:disabled{opacity:.5}.disabled\:opacity-60:disabled{opacity:.6}.group:hover .group-hover\:text-shu-700{--tw-text-opacity:1;color:rgb(147 51 30/var(--tw-text-opacity,1))}@media (min-width:640px){.sm\:inline{display:inline}.sm\:flex{display:flex}.sm\:hidden{display:none}.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.sm\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.sm\:grid-cols-8{grid-template-columns:repeat(8,minmax(0,1fr))}}@media (min-width:768px){.md\:-mb-2{margin-bottom:-.5rem}.md\:mb-3{margin-bottom:.75rem}.md\:block{display:block}.md\:inline{display:inline}.md\:hidden{display:none}.md\:aspect-auto{aspect-ratio:auto}.md\:h-12{height:3rem}.md\:h-14{height:3.5rem}.md\:h-20{height:5rem}.md\:h-24{height:6rem}.md\:h-28{height:7rem}.md\:w-12{width:3rem}.md\:w-14{width:3.5rem}.md\:w-2{width:.5rem}.md\:w-24{width:6rem}.md\:w-28{width:7rem}.md\:w-32{width:8rem}.md\:w-8{width:2rem}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.md\:grid-cols-6{grid-template-columns:repeat(6,minmax(0,1fr))}.md\:gap-1\.5{gap:.375rem}.md\:gap-2\.5{gap:.625rem}.md\:gap-3{gap:.75rem}.md\:gap-4{gap:1rem}.md\:p-2\.5{padding:.625rem}.md\:p-3{padding:.75rem}.md\:p-4{padding:1rem}.md\:p-5{padding:1.25rem}.md\:px-2\.5{padding-left:.625rem;padding-right:.625rem}.md\:px-3{padding-left:.75rem;padding-right:.75rem}.md\:px-4{padding-left:1rem;padding-right:1rem}.md\:px-5{padding-left:1.25rem;padding-right:1.25rem}.md\:px-7{padding-left:1.75rem;padding-right:1.75rem}.md\:px-8{padding-left:2rem;padding-right:2rem}.md\:px-9{padding-left:2.25rem;padding-right:2.25rem}.md\:py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.md\:py-2{padding-top:.5rem;padding-bottom:.5rem}.md\:py-4{padding-top:1rem;padding-bottom:1rem}.md\:py-5{padding-top:1.25rem;padding-bottom:1.25rem}.md\:py-6{padding-top:1.5rem;padding-bottom:1.5rem}.md\:pt-5{padding-top:1.25rem}.md\:text-2xl{font-size:1.5rem;line-height:2rem}.md\:text-3xl{font-size:1.875rem;line-height:2.25rem}.md\:text-4xl{font-size:2.25rem;line-height:2.5rem}.md\:text-5xl{font-size:3rem;line-height:1}.md\:text-6xl{font-size:3.75rem;line-height:1}.md\:text-7xl{font-size:4.5rem;line-height:1}.md\:text-\[10px\]{font-size:10px}.md\:text-\[11px\]{font-size:11px}.md\:text-\[9px\]{font-size:9px}.md\:text-base{font-size:1rem;line-height:1.5rem}.md\:text-lg{font-size:1.125rem;line-height:1.75rem}.md\:text-sm{font-size:.875rem;line-height:1.25rem}.md\:text-xl{font-size:1.25rem;line-height:1.75rem}.md\:text-xs{font-size:.75rem;line-height:1rem}.md\:opacity-0{opacity:0}.group:hover .md\:group-hover\:opacity-100{opacity:1}}@media (min-width:1024px){.lg\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.lg\:px-4{padding-left:1rem;padding-right:1rem}}@media (min-width:1280px){.xl\:block{display:block}.xl\:flex{display:flex}}
+
+/* ===== ここから src/extra.css（原本） ===== */
+/* アプリじゅうで使う書体はこの 1 つの変数にまとめる（唯一の定義場所） */
+:root {
+  --kkm-font-kyokasho:
+    'UD デジタル 教科書体 N-R', 'UDデジタル教科書体N-R', 'UD Digi Kyokasho N-R',
+    'UD デジタル 教科書体 NK-R', 'UDデジタル教科書体NK-R', 'UD Digi Kyokasho NK-R',
+    'UD デジタル 教科書体 NP-R', 'UDデジタル教科書体NP-R', 'UD Digi Kyokasho NP-R',
+    'YuKyokasho Yoko', 'YuKyokasho', '游教科書体',
+    'Klee One',
+    'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+}
+/* 配色の CSS 変数（Tailwind の外＝キャンバス描画や擬似要素で使う分）。
+   値は tailwind.config の shu / sumi / washi と そろえておくこと。 */
+:root {
+  --kkm-shu:        #b34328;   /* 朱色（テーマカラー） */
+  --kkm-shu-light:  #d97e65;
+  --kkm-shu-pale:   #f4cec2;
+  --kkm-sumi:       #2e2a25;   /* 墨（本文・じぶんで書く線） */
+  --kkm-sumi-soft:  #7a7267;
+  --kkm-paper:      #faf7f0;   /* 生成りの紙 */
+  --kkm-rule:       #ded8cd;   /* 罫線 */
+  --kkm-guide:      #e5ded0;   /* うすく刷ったお手本の文字 */
+}
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background-color: var(--kkm-paper);
+  font-family: var(--kkm-font-kyokasho);
+  font-weight: 600;
+  color: var(--kkm-sumi);
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 端末の文字サイズ設定で レイアウトが 崩れないようにする（拡大は 妨げない） */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* ダブルタップ拡大の 300ms 遅延を 消す。
+   拡大そのものは viewport で 禁止していないので、ピンチでは ひろがる。 */
+body { touch-action: manipulation; }
+/* 引っぱり更新の 暴発を 防ぐ（練習中に 画面が 上へ 逃げると 書けなくなる） */
+body, .kkm-scroll-area { overscroll-behavior: contain; }
+
+/* よみこみ中の 表示（js/app.js を 読んでいる あいだ だけ 見える） */
+.kkm-loading {
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #93331e;                /* 生成りの紙（#faf7f0）の上で 6.1:1 */
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: .08em;
+}
+@supports not (height: 100dvh) {
+  .kkm-loading { height: 100vh; }
+}
+
+/* タップ領域 44px。
+   ボタン自体を 大きくして 満たそうとすると、詰めて 組んである
+   ツールバーで 折り返しが 起き 別の 破綻を 生む。
+   **見た目は そのままに、当たり判定だけ** 疑似要素で ひろげる。 */
+/* :where() で 書くのは わざと。詳細度が 0 に なるので、すでに
+   Tailwind の .absolute / .fixed が 付いている ボタン（閉じるボタンなど）の
+   位置指定を こちらが 上書きして こわしてしまうことが ない。
+   もともと 位置指定が ある要素は それが 基準に なるので、これで 正しく 効く。 */
+:where(.tap-44) { position: relative; }
+.tap-44::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%; height: 100%;
+  min-width: 44px; min-height: 44px;
+}
+/* チェックボックス・ラジオには この手が つかえない（input は 疑似要素を
+   持てない）。かこみの <label> 側で 高さを 確保する。 */
+label.tap-44 { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* アプリの ボタンは すべて .kkm-btn を 付けてある。
+   1つずつ .tap-44 を 足して 回ると かならず 付け忘れが 出る
+   （実際、ふりがなの色でも「送信ボタンだけ 漏れていた」例がある）ので、
+   まとめて 当たり判定を ひろげる。
+   ::after は 朱色の波紋（.kkm-ripple）が 使っているので ::before を つかう。
+   見た目は 何も 変わらない。指の 当たる 範囲だけが ひろがる。 */
+:where(.kkm-btn) { position: relative; }
+.kkm-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%; height: 100%;
+  min-width: 44px; min-height: 44px;
+  pointer-events: auto;
+}
+
+/* スライダー（かきじゅんアニメの はやさ）。
+   つまみの ある 帯そのものは 8px しか なく 指では つかめない。
+   帯の 見た目は 8px の ままに、input の 高さだけを 44px に ひろげる。 */
+input[type="range"] {
+  height: 44px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  accent-color: var(--kkm-shu);
+  touch-action: manipulation;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--kkm-rule);
+}
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--kkm-rule);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px; height: 24px;
+  margin-top: -8px;               /* 8px の帯の 中央に そろえる */
+  border-radius: 9999px;
+  background: var(--kkm-shu);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(46, 42, 37, .3);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 24px; height: 24px;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: var(--kkm-shu);
+}
+
+/* ハイコントラストモード（forced-colors）。
+   背景色が すべて OS の色に 置きかえられるため、色だけで
+   「押せる」ことを 伝えている ボタンが 平らな板に 見えてしまう。
+   わくを 足して、押せることが 形で わかるようにする。 */
+@media (forced-colors: active) {
+  button, [role="button"], .kkm-btn {
+    border: 2px solid ButtonText;
+    forced-color-adjust: none;
+  }
+  :focus-visible { outline: 3px solid Highlight; }
+}
+/* 「学習する文字そのもの」を出すところ（もじ表・ことば・お手本など）。
+   UD デジタル教科書体は太さが 1 種類しかないため、font-black などで
+   太字を指定するとブラウザが線を太らせる合成ボールドになり、
+   とめ・はね・はらいの形がくずれてしまう。ここでは合成を止めて、
+   書体そのままの字形を見せる。
+   ※ Tailwind CDN が後から注入する .font-black に勝つよう !important。 */
+.kkm-glyph {
+  font-family: var(--kkm-font-kyokasho) !important;
+  font-weight: 400 !important;
+  font-synthesis: none;
+  -webkit-font-synthesis: none;
+}
+/* user-select は誤コピー防止のため UI 要素に限って無効化（テキスト読み上げや
+   コピー機能のために <body> 全体への適用はやめる）。 */
+button, canvas, [role="button"], .kkm-no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* キーボード操作時の見やすいフォーカスリング（マウスでは控えめに） */
+:focus { outline: none; }
+:focus-visible {
+  outline: 3px solid var(--kkm-shu);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* OS のモーション抑制設定を尊重 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* スクロールバーをスマートに */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #c3bcae; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9b9386; }
+/* range スライダー */
+
+/* =====================================================================
+   アニメーション
+
+   ねらい：おちついた見た目のまま、「おした」「せいかいした」の手ごたえは
+   はっきり返す。演出は 朱色の赤ペン（花丸・はんこ・下線）をモチーフに、
+   線が引かれていく動きで表現する。
+   ※ 動きを減らす設定（prefers-reduced-motion）は上でまとめて止めている。
+   ===================================================================== */
+
+/* --- あらわれる --- */
+@keyframes kkm-pop-in {
+  0%   { transform: scale(0.88); opacity: 0; }
+  60%  { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes kkm-rise-in {
+  0%   { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes kkm-fade-in {
+  0% { opacity: 0; } 100% { opacity: 1; }
+}
+@keyframes kkm-sheet-up {
+  0%   { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+.kkm-pop-in  { animation: kkm-pop-in .32s cubic-bezier(.22,1.2,.36,1) both; }
+.kkm-rise-in { animation: kkm-rise-in .34s cubic-bezier(.22,1,.36,1) both; }
+.kkm-fade-in { animation: kkm-fade-in .25s ease-out both; }
+.kkm-sheet-up{ animation: kkm-sheet-up .3s cubic-bezier(.22,1,.36,1) both; }
+
+/* --- はんこ（印）を おす --- 段位・ステージアップの演出 --- */
+@keyframes kkm-stamp {
+  0%   { transform: scale(2.1) rotate(-14deg); opacity: 0; }
+  45%  { transform: scale(0.92) rotate(-4deg); opacity: 1; }
+  65%  { transform: scale(1.05) rotate(-6deg); }
+  100% { transform: scale(1) rotate(-5deg); opacity: 1; }
+}
+.kkm-stamp { animation: kkm-stamp .5s cubic-bezier(.3,1.4,.5,1) both; }
+
+/* --- 赤ペンで線を引く --- 見出しの下線・花丸・チェック --- */
+@keyframes kkm-draw {
+  0%   { stroke-dashoffset: var(--kkm-dash, 1000); }
+  100% { stroke-dashoffset: 0; }
+}
+.kkm-draw {
+  stroke-dasharray: var(--kkm-dash, 1000);
+  animation: kkm-draw var(--kkm-draw-dur, .7s) cubic-bezier(.5,.1,.3,1) both;
+  animation-delay: var(--kkm-draw-delay, 0s);
+}
+@keyframes kkm-underline {
+  0%   { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+.kkm-underline { transform-origin: left center; animation: kkm-underline .45s cubic-bezier(.5,.1,.3,1) both; }
+
+/* --- ボタン：おした手ごたえ --- */
+.kkm-btn {
+  transition: transform .12s cubic-bezier(.3,1.4,.5,1),
+              box-shadow .12s ease-out,
+              background-color .18s ease-out,
+              border-color .18s ease-out,
+              color .18s ease-out;
+  will-change: transform;
+}
+.kkm-btn:active:not(:disabled) { transform: translateY(2px) scale(.975); }
+.kkm-btn:hover:not(:disabled)  { filter: brightness(1.03); }
+/* おした瞬間に 朱色の波紋がひろがる（墨がにじむイメージ） */
+.kkm-ripple { position: relative; overflow: hidden; }
+.kkm-ripple::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(1);
+  pointer-events: none;
+}
+@keyframes kkm-ripple-out {
+  0%   { opacity: .22; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(24); }
+}
+.kkm-ripple:active:not(:disabled)::after { animation: kkm-ripple-out .5s ease-out; }
+
+/* --- ゆらぐ・ひかる（ひかえめに） --- */
+@keyframes kkm-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes kkm-breathe {
+  0%, 100% { transform: scale(1); opacity: .9; }
+  50%      { transform: scale(1.06); opacity: 1; }
+}
+@keyframes kkm-sheen {
+  0%   { background-position: -180% 0; }
+  60%, 100% { background-position: 180% 0; }
+}
+@keyframes kkm-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(179,67,40,0.35); }
+  70%  { box-shadow: 0 0 0 10px rgba(179,67,40,0); }
+  100% { box-shadow: 0 0 0 0 rgba(179,67,40,0); }
+}
+@keyframes kkm-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+/* マスコット（えんぴつせんせい）が しょんぼりしている ようす。
+   絵は 1 まいなので、かたむきと 色みだけで きもちを あらわす。 */
+.kkm-mascot-sad { transform: rotate(-5deg); filter: saturate(0.75) brightness(0.98); opacity: .9; }
+.kkm-float      { animation: kkm-float 3.6s ease-in-out infinite; }
+.kkm-breathe    { animation: kkm-breathe 2.4s ease-in-out infinite; }
+.kkm-pulse-ring { animation: kkm-pulse-ring 2s ease-out infinite; }
+.kkm-shake      { animation: kkm-shake .4s ease-in-out both; }
+
+/* 金いろの光沢（かんぺきになった もじ・ごほうび） */
+.kkm-sheen { position: relative; overflow: hidden; }
+.kkm-sheen::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.7) 50%, transparent 62%);
+  background-size: 220% 100%;
+  animation: kkm-sheen 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* バッジ獲得トースト：明示的に 2 回バウンドして自然に止まる */
+@keyframes kkm-bounce-twice {
+  0%   { transform: translate(-50%, -120%); opacity: 0; }
+  18%  { transform: translate(-50%, 0); opacity: 1; }
+  32%  { transform: translate(-50%, -14px); }
+  46%  { transform: translate(-50%, 0); }
+  58%  { transform: translate(-50%, -6px); }
+  70%  { transform: translate(-50%, 0); }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+.kkm-badge-toast { animation: kkm-bounce-twice 1.3s cubic-bezier(.34,1.5,.64,1) both; will-change: transform; }
+
+/* カードを持ちあげる（ホバー・タップ） */
+.kkm-lift { transition: transform .18s cubic-bezier(.3,1.3,.5,1), box-shadow .18s ease-out; }
+.kkm-lift:hover  { transform: translateY(-2px); }
+.kkm-lift:active { transform: translateY(0) scale(.99); }
+
+/* =====================================================================
+   背景：国語の教科書の紙面
+   生成りの和紙に、原稿用紙のような ごくうすい マス目を敷く。
+   ===================================================================== */
+.kkm-app-bg {
+  background-color: var(--kkm-paper);
+  background-image:
+    linear-gradient(rgba(179,67,40,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(179,67,40,0.045) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, rgba(179,67,40,0.05) 0%, transparent 60%);
+  background-size: 48px 48px, 48px 48px, 100% 320px;
+  background-attachment: fixed;
+}
+
+/* 朱色の見出し罫（セクションの左に立てる縦棒） */
+.kkm-heading-rule {
+  border-left: 4px solid var(--kkm-shu);
+  padding-left: 0.5rem;
+  line-height: 1.25;
+}
+/* 紙面のカード（白い用紙） */
+.kkm-sheet {
+  background: #fff;
+  border: 1px solid var(--kkm-rule);
+  box-shadow: 0 1px 2px rgba(46,42,37,0.05);
+}
+/* 背景のマス目より前面にアプリ本体を出す。
+   ここで position まで上書きすると、直下にいる紙吹雪キャンバスや
+   モーダル・トースト（position:fixed）まで巻きぞえで relative に
+   なってしまい、画面のなかに居座って レイアウトを押しつぶす。
+   （Tailwind の .fixed とセレクタの強さが同じなので、CSS の
+     読みこみ順しだいでどちらが勝つか変わる＝こわれやすい。）
+   そのため position を与えるのは 実際に並べる 3 つだけにする。 */
+.kkm-app-bg > * { z-index: 1; }
+.kkm-app-bg > nav,
+.kkm-app-bg > main,
+.kkm-app-bg > footer { position: relative; }
+/* 紙吹雪は必ず画面ぜんたいに固定（id 指定なので順序に左右されない） */
+#confettiCanvas { position: fixed; inset: 0; z-index: 400; }
+
+/* =====================================================================
+   端末非依存レイアウト：あらゆる解像度で「かきじゅん」ボタンまで必ず表示する
+   ===================================================================== */
+
+/* ルートは実描画領域(dvh)に正確にフィット（アドレスバー込み）。
+   100vh だと モバイルの アドレスバーの ぶんだけ はみ出す。
+   Tailwind の .h-screen に勝つよう !important。 */
+.kkm-app-root {
+  height: 100dvh !important;
+  /* ノッチ／ホームインジケータ（iPhone 等）を避ける安全余白。
+     PWA スタンドアロン起動時に UI が隠れないようにする。 */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-sizing: border-box;
+}
+
+/* キャンバス用：正方形だがコンテナの幅・高さどちらにも絶対にはみ出さない。
+   container queries で min(横幅, 縦幅) に揃える。 */
+.kkm-square-fit-container {
+  container-type: size;
+}
+.kkm-square-fit {
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+}
+/* container queries 非対応ブラウザ向けフォールバック */
+@supports not (container-type: size) {
+  .kkm-square-fit {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+/* ── 高さ ≤ 820px（タブレット横置きや低解像度ノートPC）── */
+@media (max-height: 820px) {
+  .kkm-app-root > nav { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+  .kkm-app-root > footer { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.2 !important; }
+  /* メイン領域とプラクティスボードの内側余白を圧縮 */
+  .kkm-app-root main > .kkm-main-pad { padding: 0.375rem !important; gap: 0.375rem !important; }
+  .kkm-practice-board { padding: 0.5rem !important; }
+  .kkm-practice-board .kkm-board-header { margin-bottom: 0.25rem !important; }
+  /* マスコットは飾り要素なので最初に隠す */
+  .kkm-practice-mascot { display: none !important; }
+  /* ステッパーは小さくしてマージン縮小 */
+  .kkm-stepper-row { margin-bottom: 0.25rem !important; font-size: 10px !important; }
+  .kkm-stepper-row > div { padding: 2px 2px !important; }
+  .kkm-stepper-row > div > div:first-child { font-size: 1rem !important; line-height: 1 !important; }
+  /* ボタン群は必ず見える：マージンと内側パディングを縮小 */
+  .kkm-practice-buttons { margin-top: 0.375rem !important; gap: 0.25rem !important; }
+  .kkm-practice-buttons > button { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; font-size: 0.8125rem !important; }
+  .kkm-practice-board > button.kkm-cta-btn { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; margin-top: 0.25rem !important; font-size: 0.8125rem !important; }
+}
+
+/* ── 高さ ≤ 700px ── */
+@media (max-height: 700px) {
+  .kkm-daily-wrap { display: none !important; }
+  .kkm-progress-row { display: none !important; }
+  .kkm-practice-board { padding: 0.375rem !important; }
+  .kkm-stepper-row > div > div:nth-child(2) { font-size: 9px !important; }
+  .kkm-app-root > nav h1 { font-size: 0.875rem !important; }
+}
+
+/* ── 高さ ≤ 580px（小型 Chromebook、横置き低解像度タブレット）── */
+@media (max-height: 580px) {
+  .kkm-stepper-row { display: none !important; }
+  .kkm-app-root > footer { display: none !important; }
+  .kkm-practice-board .kkm-board-header { display: none !important; }
+  .kkm-app-root main > .kkm-main-pad { padding: 0.25rem !important; gap: 0.25rem !important; }
+}
+
+/* ── 究極の安全網：それでも収まらない極小画面では縦スクロール許可 ── */
+@media (max-height: 460px) {
+  .kkm-app-root {
+    height: auto !important;
+    min-height: 100dvh;
+    overflow-y: auto !important;
+  }
+  .kkm-app-root > main { overflow: visible !important; }
+  .kkm-app-root .kkm-main-pad { overflow: visible !important; }
+  .kkm-square-fit { width: min(60dvh, 90vw); height: min(60dvh, 90vw); }
+}
+
+/* =====================================================================
+   「あたらしい ばんが あります」の おしらせ（js/boot.js が つくる）
+
+   おす まで 切りかわらない。書きかけの 字が 消えると こまるため。
+   ===================================================================== */
+.kkm-update-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  /* ホームバーの ぶんを 足して、iPhone で 下に かくれないようにする */
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: min(92vw, 30rem);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #93331e;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(46, 42, 37, .18);
+  font-size: 0.9375rem;
+}
+.kkm-update-toast__msg   { color: #443f38; font-weight: 600; }  /* 白地で 9.1:1 */
+.kkm-update-toast__btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #93331e;
+  background: #b34328;        /* 白ぬき文字で 5.3:1 */
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.kkm-update-toast__btn:disabled { opacity: .6; cursor: default; }
+.kkm-update-toast__later {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #c3bcae;
+  background: #fff;
+  color: #5c554c;             /* 白地で 7.0:1 */
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* =====================================================================
+   印刷
+
+   このアプリに 印刷して 配るための 画面は 無い。それでも 先生が
+   Ctrl+P を 押すことは あるので、画面に 貼りついている ボタンや
+   おしらせが 紙に 出てしまわないように しておく。
+   ===================================================================== */
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #fff;
+  }
+  .no-print,
+  .kkm-update-toast,
+  #confettiCanvas { display: none !important; }
+  .kkm-app-root { height: auto !important; overflow: visible !important; }
+  a[href]::after { content: ""; }   /* URL を 併記しない */
+}

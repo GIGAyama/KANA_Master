@@ -1,0 +1,521 @@
+/* アプリじゅうで使う書体はこの 1 つの変数にまとめる（唯一の定義場所） */
+:root {
+  --kkm-font-kyokasho:
+    'UD デジタル 教科書体 N-R', 'UDデジタル教科書体N-R', 'UD Digi Kyokasho N-R',
+    'UD デジタル 教科書体 NK-R', 'UDデジタル教科書体NK-R', 'UD Digi Kyokasho NK-R',
+    'UD デジタル 教科書体 NP-R', 'UDデジタル教科書体NP-R', 'UD Digi Kyokasho NP-R',
+    'YuKyokasho Yoko', 'YuKyokasho', '游教科書体',
+    'Klee One',
+    'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+}
+/* 配色の CSS 変数（Tailwind の外＝キャンバス描画や擬似要素で使う分）。
+   値は tailwind.config の shu / sumi / washi と そろえておくこと。 */
+:root {
+  --kkm-shu:        #b34328;   /* 朱色（テーマカラー） */
+  --kkm-shu-light:  #d97e65;
+  --kkm-shu-pale:   #f4cec2;
+  --kkm-sumi:       #2e2a25;   /* 墨（本文・じぶんで書く線） */
+  --kkm-sumi-soft:  #7a7267;
+  --kkm-paper:      #faf7f0;   /* 生成りの紙 */
+  --kkm-rule:       #ded8cd;   /* 罫線 */
+  --kkm-guide:      #e5ded0;   /* うすく刷ったお手本の文字 */
+}
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background-color: var(--kkm-paper);
+  font-family: var(--kkm-font-kyokasho);
+  font-weight: 600;
+  color: var(--kkm-sumi);
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 端末の文字サイズ設定で レイアウトが 崩れないようにする（拡大は 妨げない） */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* ダブルタップ拡大の 300ms 遅延を 消す。
+   拡大そのものは viewport で 禁止していないので、ピンチでは ひろがる。 */
+body { touch-action: manipulation; }
+/* 引っぱり更新の 暴発を 防ぐ（練習中に 画面が 上へ 逃げると 書けなくなる） */
+body, .kkm-scroll-area { overscroll-behavior: contain; }
+
+/* よみこみ中の 表示（js/app.js を 読んでいる あいだ だけ 見える） */
+.kkm-loading {
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #93331e;                /* 生成りの紙（#faf7f0）の上で 6.1:1 */
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: .08em;
+}
+@supports not (height: 100dvh) {
+  .kkm-loading { height: 100vh; }
+}
+
+/* タップ領域 44px。
+   ボタン自体を 大きくして 満たそうとすると、詰めて 組んである
+   ツールバーで 折り返しが 起き 別の 破綻を 生む。
+   **見た目は そのままに、当たり判定だけ** 疑似要素で ひろげる。 */
+/* :where() で 書くのは わざと。詳細度が 0 に なるので、すでに
+   Tailwind の .absolute / .fixed が 付いている ボタン（閉じるボタンなど）の
+   位置指定を こちらが 上書きして こわしてしまうことが ない。
+   もともと 位置指定が ある要素は それが 基準に なるので、これで 正しく 効く。 */
+:where(.tap-44) { position: relative; }
+.tap-44::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%; height: 100%;
+  min-width: 44px; min-height: 44px;
+}
+/* チェックボックス・ラジオには この手が つかえない（input は 疑似要素を
+   持てない）。かこみの <label> 側で 高さを 確保する。 */
+label.tap-44 { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* アプリの ボタンは すべて .kkm-btn を 付けてある。
+   1つずつ .tap-44 を 足して 回ると かならず 付け忘れが 出る
+   （実際、ふりがなの色でも「送信ボタンだけ 漏れていた」例がある）ので、
+   まとめて 当たり判定を ひろげる。
+   ::after は 朱色の波紋（.kkm-ripple）が 使っているので ::before を つかう。
+   見た目は 何も 変わらない。指の 当たる 範囲だけが ひろがる。 */
+:where(.kkm-btn) { position: relative; }
+.kkm-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%; height: 100%;
+  min-width: 44px; min-height: 44px;
+  pointer-events: auto;
+}
+
+/* スライダー（かきじゅんアニメの はやさ）。
+   つまみの ある 帯そのものは 8px しか なく 指では つかめない。
+   帯の 見た目は 8px の ままに、input の 高さだけを 44px に ひろげる。 */
+input[type="range"] {
+  height: 44px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  accent-color: var(--kkm-shu);
+  touch-action: manipulation;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--kkm-rule);
+}
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--kkm-rule);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px; height: 24px;
+  margin-top: -8px;               /* 8px の帯の 中央に そろえる */
+  border-radius: 9999px;
+  background: var(--kkm-shu);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(46, 42, 37, .3);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 24px; height: 24px;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: var(--kkm-shu);
+}
+
+/* ハイコントラストモード（forced-colors）。
+   背景色が すべて OS の色に 置きかえられるため、色だけで
+   「押せる」ことを 伝えている ボタンが 平らな板に 見えてしまう。
+   わくを 足して、押せることが 形で わかるようにする。 */
+@media (forced-colors: active) {
+  button, [role="button"], .kkm-btn {
+    border: 2px solid ButtonText;
+    forced-color-adjust: none;
+  }
+  :focus-visible { outline: 3px solid Highlight; }
+}
+/* 「学習する文字そのもの」を出すところ（もじ表・ことば・お手本など）。
+   UD デジタル教科書体は太さが 1 種類しかないため、font-black などで
+   太字を指定するとブラウザが線を太らせる合成ボールドになり、
+   とめ・はね・はらいの形がくずれてしまう。ここでは合成を止めて、
+   書体そのままの字形を見せる。
+   ※ Tailwind CDN が後から注入する .font-black に勝つよう !important。 */
+.kkm-glyph {
+  font-family: var(--kkm-font-kyokasho) !important;
+  font-weight: 400 !important;
+  font-synthesis: none;
+  -webkit-font-synthesis: none;
+}
+/* user-select は誤コピー防止のため UI 要素に限って無効化（テキスト読み上げや
+   コピー機能のために <body> 全体への適用はやめる）。 */
+button, canvas, [role="button"], .kkm-no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* キーボード操作時の見やすいフォーカスリング（マウスでは控えめに） */
+:focus { outline: none; }
+:focus-visible {
+  outline: 3px solid var(--kkm-shu);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* OS のモーション抑制設定を尊重 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* スクロールバーをスマートに */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #c3bcae; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9b9386; }
+/* range スライダー */
+
+/* =====================================================================
+   アニメーション
+
+   ねらい：おちついた見た目のまま、「おした」「せいかいした」の手ごたえは
+   はっきり返す。演出は 朱色の赤ペン（花丸・はんこ・下線）をモチーフに、
+   線が引かれていく動きで表現する。
+   ※ 動きを減らす設定（prefers-reduced-motion）は上でまとめて止めている。
+   ===================================================================== */
+
+/* --- あらわれる --- */
+@keyframes kkm-pop-in {
+  0%   { transform: scale(0.88); opacity: 0; }
+  60%  { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes kkm-rise-in {
+  0%   { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes kkm-fade-in {
+  0% { opacity: 0; } 100% { opacity: 1; }
+}
+@keyframes kkm-sheet-up {
+  0%   { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+.kkm-pop-in  { animation: kkm-pop-in .32s cubic-bezier(.22,1.2,.36,1) both; }
+.kkm-rise-in { animation: kkm-rise-in .34s cubic-bezier(.22,1,.36,1) both; }
+.kkm-fade-in { animation: kkm-fade-in .25s ease-out both; }
+.kkm-sheet-up{ animation: kkm-sheet-up .3s cubic-bezier(.22,1,.36,1) both; }
+
+/* --- はんこ（印）を おす --- 段位・ステージアップの演出 --- */
+@keyframes kkm-stamp {
+  0%   { transform: scale(2.1) rotate(-14deg); opacity: 0; }
+  45%  { transform: scale(0.92) rotate(-4deg); opacity: 1; }
+  65%  { transform: scale(1.05) rotate(-6deg); }
+  100% { transform: scale(1) rotate(-5deg); opacity: 1; }
+}
+.kkm-stamp { animation: kkm-stamp .5s cubic-bezier(.3,1.4,.5,1) both; }
+
+/* --- 赤ペンで線を引く --- 見出しの下線・花丸・チェック --- */
+@keyframes kkm-draw {
+  0%   { stroke-dashoffset: var(--kkm-dash, 1000); }
+  100% { stroke-dashoffset: 0; }
+}
+.kkm-draw {
+  stroke-dasharray: var(--kkm-dash, 1000);
+  animation: kkm-draw var(--kkm-draw-dur, .7s) cubic-bezier(.5,.1,.3,1) both;
+  animation-delay: var(--kkm-draw-delay, 0s);
+}
+@keyframes kkm-underline {
+  0%   { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+.kkm-underline { transform-origin: left center; animation: kkm-underline .45s cubic-bezier(.5,.1,.3,1) both; }
+
+/* --- ボタン：おした手ごたえ --- */
+.kkm-btn {
+  transition: transform .12s cubic-bezier(.3,1.4,.5,1),
+              box-shadow .12s ease-out,
+              background-color .18s ease-out,
+              border-color .18s ease-out,
+              color .18s ease-out;
+  will-change: transform;
+}
+.kkm-btn:active:not(:disabled) { transform: translateY(2px) scale(.975); }
+.kkm-btn:hover:not(:disabled)  { filter: brightness(1.03); }
+/* おした瞬間に 朱色の波紋がひろがる（墨がにじむイメージ） */
+.kkm-ripple { position: relative; overflow: hidden; }
+.kkm-ripple::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(1);
+  pointer-events: none;
+}
+@keyframes kkm-ripple-out {
+  0%   { opacity: .22; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(24); }
+}
+.kkm-ripple:active:not(:disabled)::after { animation: kkm-ripple-out .5s ease-out; }
+
+/* --- ゆらぐ・ひかる（ひかえめに） --- */
+@keyframes kkm-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes kkm-breathe {
+  0%, 100% { transform: scale(1); opacity: .9; }
+  50%      { transform: scale(1.06); opacity: 1; }
+}
+@keyframes kkm-sheen {
+  0%   { background-position: -180% 0; }
+  60%, 100% { background-position: 180% 0; }
+}
+@keyframes kkm-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(179,67,40,0.35); }
+  70%  { box-shadow: 0 0 0 10px rgba(179,67,40,0); }
+  100% { box-shadow: 0 0 0 0 rgba(179,67,40,0); }
+}
+@keyframes kkm-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+/* マスコット（えんぴつせんせい）が しょんぼりしている ようす。
+   絵は 1 まいなので、かたむきと 色みだけで きもちを あらわす。 */
+.kkm-mascot-sad { transform: rotate(-5deg); filter: saturate(0.75) brightness(0.98); opacity: .9; }
+.kkm-float      { animation: kkm-float 3.6s ease-in-out infinite; }
+.kkm-breathe    { animation: kkm-breathe 2.4s ease-in-out infinite; }
+.kkm-pulse-ring { animation: kkm-pulse-ring 2s ease-out infinite; }
+.kkm-shake      { animation: kkm-shake .4s ease-in-out both; }
+
+/* 金いろの光沢（かんぺきになった もじ・ごほうび） */
+.kkm-sheen { position: relative; overflow: hidden; }
+.kkm-sheen::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.7) 50%, transparent 62%);
+  background-size: 220% 100%;
+  animation: kkm-sheen 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* バッジ獲得トースト：明示的に 2 回バウンドして自然に止まる */
+@keyframes kkm-bounce-twice {
+  0%   { transform: translate(-50%, -120%); opacity: 0; }
+  18%  { transform: translate(-50%, 0); opacity: 1; }
+  32%  { transform: translate(-50%, -14px); }
+  46%  { transform: translate(-50%, 0); }
+  58%  { transform: translate(-50%, -6px); }
+  70%  { transform: translate(-50%, 0); }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+.kkm-badge-toast { animation: kkm-bounce-twice 1.3s cubic-bezier(.34,1.5,.64,1) both; will-change: transform; }
+
+/* カードを持ちあげる（ホバー・タップ） */
+.kkm-lift { transition: transform .18s cubic-bezier(.3,1.3,.5,1), box-shadow .18s ease-out; }
+.kkm-lift:hover  { transform: translateY(-2px); }
+.kkm-lift:active { transform: translateY(0) scale(.99); }
+
+/* =====================================================================
+   背景：国語の教科書の紙面
+   生成りの和紙に、原稿用紙のような ごくうすい マス目を敷く。
+   ===================================================================== */
+.kkm-app-bg {
+  background-color: var(--kkm-paper);
+  background-image:
+    linear-gradient(rgba(179,67,40,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(179,67,40,0.045) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, rgba(179,67,40,0.05) 0%, transparent 60%);
+  background-size: 48px 48px, 48px 48px, 100% 320px;
+  background-attachment: fixed;
+}
+
+/* 朱色の見出し罫（セクションの左に立てる縦棒） */
+.kkm-heading-rule {
+  border-left: 4px solid var(--kkm-shu);
+  padding-left: 0.5rem;
+  line-height: 1.25;
+}
+/* 紙面のカード（白い用紙） */
+.kkm-sheet {
+  background: #fff;
+  border: 1px solid var(--kkm-rule);
+  box-shadow: 0 1px 2px rgba(46,42,37,0.05);
+}
+/* 背景のマス目より前面にアプリ本体を出す。
+   ここで position まで上書きすると、直下にいる紙吹雪キャンバスや
+   モーダル・トースト（position:fixed）まで巻きぞえで relative に
+   なってしまい、画面のなかに居座って レイアウトを押しつぶす。
+   （Tailwind の .fixed とセレクタの強さが同じなので、CSS の
+     読みこみ順しだいでどちらが勝つか変わる＝こわれやすい。）
+   そのため position を与えるのは 実際に並べる 3 つだけにする。 */
+.kkm-app-bg > * { z-index: 1; }
+.kkm-app-bg > nav,
+.kkm-app-bg > main,
+.kkm-app-bg > footer { position: relative; }
+/* 紙吹雪は必ず画面ぜんたいに固定（id 指定なので順序に左右されない） */
+#confettiCanvas { position: fixed; inset: 0; z-index: 400; }
+
+/* =====================================================================
+   端末非依存レイアウト：あらゆる解像度で「かきじゅん」ボタンまで必ず表示する
+   ===================================================================== */
+
+/* ルートは実描画領域(dvh)に正確にフィット（アドレスバー込み）。
+   100vh だと モバイルの アドレスバーの ぶんだけ はみ出す。
+   Tailwind の .h-screen に勝つよう !important。 */
+.kkm-app-root {
+  height: 100dvh !important;
+  /* ノッチ／ホームインジケータ（iPhone 等）を避ける安全余白。
+     PWA スタンドアロン起動時に UI が隠れないようにする。 */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-sizing: border-box;
+}
+
+/* キャンバス用：正方形だがコンテナの幅・高さどちらにも絶対にはみ出さない。
+   container queries で min(横幅, 縦幅) に揃える。 */
+.kkm-square-fit-container {
+  container-type: size;
+}
+.kkm-square-fit {
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+}
+/* container queries 非対応ブラウザ向けフォールバック */
+@supports not (container-type: size) {
+  .kkm-square-fit {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+/* ── 高さ ≤ 820px（タブレット横置きや低解像度ノートPC）── */
+@media (max-height: 820px) {
+  .kkm-app-root > nav { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+  .kkm-app-root > footer { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.2 !important; }
+  /* メイン領域とプラクティスボードの内側余白を圧縮 */
+  .kkm-app-root main > .kkm-main-pad { padding: 0.375rem !important; gap: 0.375rem !important; }
+  .kkm-practice-board { padding: 0.5rem !important; }
+  .kkm-practice-board .kkm-board-header { margin-bottom: 0.25rem !important; }
+  /* マスコットは飾り要素なので最初に隠す */
+  .kkm-practice-mascot { display: none !important; }
+  /* ステッパーは小さくしてマージン縮小 */
+  .kkm-stepper-row { margin-bottom: 0.25rem !important; font-size: 10px !important; }
+  .kkm-stepper-row > div { padding: 2px 2px !important; }
+  .kkm-stepper-row > div > div:first-child { font-size: 1rem !important; line-height: 1 !important; }
+  /* ボタン群は必ず見える：マージンと内側パディングを縮小 */
+  .kkm-practice-buttons { margin-top: 0.375rem !important; gap: 0.25rem !important; }
+  .kkm-practice-buttons > button { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; font-size: 0.8125rem !important; }
+  .kkm-practice-board > button.kkm-cta-btn { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; margin-top: 0.25rem !important; font-size: 0.8125rem !important; }
+}
+
+/* ── 高さ ≤ 700px ── */
+@media (max-height: 700px) {
+  .kkm-daily-wrap { display: none !important; }
+  .kkm-progress-row { display: none !important; }
+  .kkm-practice-board { padding: 0.375rem !important; }
+  .kkm-stepper-row > div > div:nth-child(2) { font-size: 9px !important; }
+  .kkm-app-root > nav h1 { font-size: 0.875rem !important; }
+}
+
+/* ── 高さ ≤ 580px（小型 Chromebook、横置き低解像度タブレット）── */
+@media (max-height: 580px) {
+  .kkm-stepper-row { display: none !important; }
+  .kkm-app-root > footer { display: none !important; }
+  .kkm-practice-board .kkm-board-header { display: none !important; }
+  .kkm-app-root main > .kkm-main-pad { padding: 0.25rem !important; gap: 0.25rem !important; }
+}
+
+/* ── 究極の安全網：それでも収まらない極小画面では縦スクロール許可 ── */
+@media (max-height: 460px) {
+  .kkm-app-root {
+    height: auto !important;
+    min-height: 100dvh;
+    overflow-y: auto !important;
+  }
+  .kkm-app-root > main { overflow: visible !important; }
+  .kkm-app-root .kkm-main-pad { overflow: visible !important; }
+  .kkm-square-fit { width: min(60dvh, 90vw); height: min(60dvh, 90vw); }
+}
+
+/* =====================================================================
+   「あたらしい ばんが あります」の おしらせ（js/boot.js が つくる）
+
+   おす まで 切りかわらない。書きかけの 字が 消えると こまるため。
+   ===================================================================== */
+.kkm-update-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  /* ホームバーの ぶんを 足して、iPhone で 下に かくれないようにする */
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: min(92vw, 30rem);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #93331e;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(46, 42, 37, .18);
+  font-size: 0.9375rem;
+}
+.kkm-update-toast__msg   { color: #443f38; font-weight: 600; }  /* 白地で 9.1:1 */
+.kkm-update-toast__btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #93331e;
+  background: #b34328;        /* 白ぬき文字で 5.3:1 */
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.kkm-update-toast__btn:disabled { opacity: .6; cursor: default; }
+.kkm-update-toast__later {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #c3bcae;
+  background: #fff;
+  color: #5c554c;             /* 白地で 7.0:1 */
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* =====================================================================
+   印刷
+
+   このアプリに 印刷して 配るための 画面は 無い。それでも 先生が
+   Ctrl+P を 押すことは あるので、画面に 貼りついている ボタンや
+   おしらせが 紙に 出てしまわないように しておく。
+   ===================================================================== */
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #fff;
+  }
+  .no-print,
+  .kkm-update-toast,
+  #confettiCanvas { display: none !important; }
+  .kkm-app-root { height: auto !important; overflow: visible !important; }
+  a[href]::after { content: ""; }   /* URL を 併記しない */
+}

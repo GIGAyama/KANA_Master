@@ -1,33 +1,48 @@
 /* ==============================================================
    Service Worker — ひらがな・カタカナ かきかたマスター
    --------------------------------------------------------------
-   ・アプリ本体（App shell）と CDN 依存をキャッシュしてオフライン起動を可能にする
-   ・練習した文字の KanjiVG（書き順データ）は使うたびにキャッシュに残し、
-     一度でも見た文字は電波がなくても書けるようにする
-   ・キャッシュ名にバージョンを持たせ、更新時に古いキャッシュを掃除する
+   ・アプリ本体（App shell）を キャッシュして 圏外でも 起動できるようにする
+   ・キャッシュ名に バージョンを 持たせ、更新時に 古いキャッシュを 掃除する
+
+   【重要】activate では 自アプリ以外の キャッシュを 削除しない。
+     gigayama.github.io は 複数アプリで 同一オリジンを 共有しているため、
+     CACHE_PREFIX で はじまる キャッシュだけを 掃除する。
+     （caches.keys() を 全消しすると 他のアプリが 圏外で 起動しなくなる）
+
+   【重要】この Service Worker は localStorage を 一切 操作しない。
+     （Service Worker からは そもそも 触れない。学習ログは 画面側の責任）
    ============================================================== */
 
-// App.jsx などを更新したら必ず数字を上げること（古いキャッシュを破棄するため）
-const VERSION = 'v13';
+// 原本を直して npm run build を走らせたら、かならず この数字を 上げること
+// （上げ忘れると 古いキャッシュが 残り、更新が 反映されない）
+const APP_VERSION = 'v14';
 
-// このアプリ専用の目じるし。
-// キャッシュ置き場（CacheStorage）は gigayama.github.io というサイト全体で
-// 共有されており、同じサイトに置いた他のアプリの保存も一緒に見えてしまう。
-// 掃除するときは「自分の名札が付いた保存だけ」に限ること。
+// このアプリ専用の 目じるし。
+// キャッシュ置き場（CacheStorage）は gigayama.github.io という サイト全体で
+// 共有されており、同じサイトに 置いた 他のアプリの 保存も 一緒に 見えてしまう。
+// 掃除するときは「自分の 名札が 付いた 保存だけ」に 限ること。
 const CACHE_PREFIX  = 'kkm-';
-const SHELL_CACHE   = `${CACHE_PREFIX}shell-${VERSION}`;
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${VERSION}`;
-const KANJI_CACHE   = `${CACHE_PREFIX}kanjivg`; // 文字データは版に依存しないので使い回す
+const CACHE_STATIC  = `${CACHE_PREFIX}shell-${APP_VERSION}`;
+const CACHE_RUNTIME = `${CACHE_PREFIX}runtime-${APP_VERSION}`;
 
-// 起動に最低限必要なアプリ本体。相対パスで登録し、GitHub Pages のサブパスでも動く。
-const SHELL_ASSETS = [
+/* 起動に 必要な アプリ本体。相対パスで 登録し、GitHub Pages の
+   サブパス（/KANA_Master/）でも そのまま 動くようにする。
+
+   CDN から とってくる 実行コードは もう 1 バイトも 無い。
+   React も かきじゅんデータも この一覧の 中に 入っている。 */
+const PRECACHE_URLS = [
   './',
   './index.html',
-  './App.jsx',
+  './offline.html',
+  './manifest.webmanifest',
+  './css/app.css',
+  './vendor/react.js',
+  './data/kanjivg-kana.js',
   './studyLog.js',
   './studySession.js',
-  './manifest.webmanifest',
-  './offline.html',
+  './js/app.js',
+  './js/install-hook.js',
+  './js/boot.js',
   './favicon.png',
   './icon-192.png',
   './icon-512.png',
@@ -38,64 +53,37 @@ const SHELL_ASSETS = [
   './mascot-full.png',
 ];
 
-// 初回起動を速くするために事前取得したい CDN 依存（取得失敗しても致命的にしない）
-const CDN_ASSETS = [
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/react@18/umd/react.production.min.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js',
-];
-
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const cache = await caches.open(SHELL_CACHE);
-    // 本体は必須（1つでも欠けたら install 失敗にして再試行させる）
-    await cache.addAll(SHELL_ASSETS);
-    // CDN は best-effort（オフライン初回や CDN 障害でも install を失敗させない）
-    await Promise.allSettled(CDN_ASSETS.map(async (url) => {
-      try {
-        const res = await fetch(url, { mode: 'cors' });
-        if (res && (res.ok || res.type === 'opaque')) await cache.put(url, res.clone());
-      } catch (e) { /* 無視 */ }
-    }));
-    await self.skipWaiting();
+    const cache = await caches.open(CACHE_STATIC);
+    // 1本でも 失敗すると addAll 全体が 落ちるため、個別に 入れる
+    await Promise.all(PRECACHE_URLS.map((u) =>
+      cache.add(new Request(u, { cache: 'reload' }))
+        .catch((err) => console.warn('[sw] precache skipped', u, err))));
+
+    // ここでは skipWaiting しない。
+    // 児童が 書いている 最中に 画面が 入れかわると、書きかけの 字や
+    // えらんだ もじが 消える。画面側で「さいしんに する」を
+    // おしてもらってから 切りかえる（js/boot.js）。
   })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    // 現行以外の shell/runtime キャッシュを削除（KanjiVG は残す）
-    // ※ 対象は「kkm- で始まる＝このアプリの保存」だけ。ここで全部を消すと、
-    //   同じ gigayama.github.io に置いた他のアプリ（けいさんカードなど）の
-    //   オフライン用データまで巻きぞえで消えてしまう。
-    const keep = new Set([SHELL_CACHE, RUNTIME_CACHE, KANJI_CACHE]);
-    const names = await caches.keys();
-    await Promise.all(names.map((n) =>
-      (n.startsWith(CACHE_PREFIX) && !keep.has(n)) ? caches.delete(n) : null
-    ));
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_STATIC && k !== CACHE_RUNTIME)
+      .map((k) => caches.delete(k)));          // ← 自アプリ分だけ 削除
     await self.clients.claim();
   })());
 });
 
-// ページからの指示で即時更新できるようにする
+// 画面側で「さいしんに する」が おされたときだけ 切りかえる
 self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+  const d = event.data;
+  // 旧版の画面が 文字列で 送ってくる場合も 受けられるようにしておく
+  if (d === 'SKIP_WAITING' || (d && d.type === 'SKIP_WAITING')) self.skipWaiting();
 });
-
-function isKanjiVG(url) {
-  return url.hostname === 'cdn.jsdelivr.net' && url.pathname.includes('/KanjiVG/');
-}
-function isManifest(url) {
-  return url.origin === self.location.origin && url.pathname.endsWith('/manifest.webmanifest');
-}
-function isCdnDependency(url) {
-  return (
-    url.hostname === 'cdn.tailwindcss.com' ||
-    url.hostname === 'unpkg.com' ||
-    url.hostname === 'fonts.googleapis.com' ||
-    url.hostname === 'fonts.gstatic.com'
-  );
-}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
@@ -104,19 +92,19 @@ self.addEventListener('fetch', (event) => {
   let url;
   try { url = new URL(req.url); } catch (e) { return; }
 
-  // 1) ページ遷移（HTML）：ネットワーク優先 → 失敗したらキャッシュの index.html
+  /* 1) 画面遷移（HTML）：ネットワーク優先。
+        更新を すぐ 届け、圏外なら 保存してある 本体を 出す。
+        本体も まだ 無い（はじめから 圏外だった）ときは、ブラウザの
+        「接続できません」画面ではなく アプリと同じ配色の offline.html。 */
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
         const fresh = await fetch(req);
-        const cache = await caches.open(SHELL_CACHE);
+        const cache = await caches.open(CACHE_STATIC);
         cache.put('./index.html', fresh.clone()).catch(() => {});
         return fresh;
       } catch (e) {
-        const cache = await caches.open(SHELL_CACHE);
-        // 本体が保存されていればそれを出す。まだ保存されていない
-        // （初回から圏外だった）ときは、ブラウザの「接続できません」
-        // 画面ではなく、アプリと同じ配色の offline.html を出す。
+        const cache = await caches.open(CACHE_STATIC);
         return (await cache.match('./index.html'))
             || (await cache.match('./'))
             || (await cache.match('./offline.html'))
@@ -126,58 +114,47 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2) KanjiVG（書き順データ）：stale-while-revalidate。一度取れれば以後オフラインでも使える
-  if (isKanjiVG(url)) {
+  /* 2) マニフェスト：ネットワーク優先（圏外のときだけ キャッシュ）。
+        ブラウザは この内容で インストール可否と アプリの識別子（id）を
+        判定する。キャッシュ優先にすると 古い id を 返してしまい、
+        「アプリにする」が 出ない・別アプリと 同一視される 原因になる。 */
+  if (url.origin === self.location.origin && url.pathname.endsWith('/manifest.webmanifest')) {
     event.respondWith((async () => {
-      const cache = await caches.open(KANJI_CACHE);
-      const cached = await cache.match(req);
-      const network = fetch(req).then((res) => {
-        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone()).catch(() => {});
-        return res;
-      }).catch(() => null);
-      return cached || (await network) || Response.error();
-    })());
-    return;
-  }
-
-  // 3) マニフェスト：ネットワーク優先（オフライン時のみキャッシュ）。
-  //    ブラウザはこの内容でインストール可否とアプリの識別子（id）を判定する。
-  //    キャッシュ優先にすると古い id を返してしまい、「アプリにする」が
-  //    出ない・別アプリと同一視される、といった不具合の原因になる。
-  if (isManifest(url)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(SHELL_CACHE);
+      const cache = await caches.open(CACHE_STATIC);
       try {
         const fresh = await fetch(req);
         if (fresh && fresh.ok) cache.put(req, fresh.clone()).catch(() => {});
         return fresh;
       } catch (e) {
-        return (await cache.match(req)) || (await cache.match('./manifest.webmanifest')) || Response.error();
+        return (await cache.match(req))
+            || (await cache.match('./manifest.webmanifest'))
+            || Response.error();
       }
     })());
     return;
   }
 
-  // 4) このアプリのフォルダ（/KANA_Master/…）の中のファイル
-  //    & CDN 依存：キャッシュ優先 → バックグラウンド更新
-  //    ※ 同じサイトでも自分のフォルダの外＝他のアプリのファイルは触らない。
-  //      横取りしてキャッシュすると、他のアプリに古い中身を返してしまう。
-  const inScope = req.url.startsWith(self.registration.scope);
-  if (inScope || isCdnDependency(url)) {
+  /* 3) このアプリの フォルダ（/KANA_Master/…）の 中のファイル：
+        キャッシュ優先（校内 Wi-Fi が こんでいても すぐ 出る）→ 影で 更新。
+        ※ 同じサイトでも 自分の フォルダの 外＝ 他のアプリの ファイルは
+          さわらない。横取りして キャッシュすると、他のアプリに
+          古い 中身を 返してしまう。 */
+  if (req.url.startsWith(self.registration.scope)) {
     event.respondWith((async () => {
-      const cacheName = inScope ? SHELL_CACHE : RUNTIME_CACHE;
-      const cache = await caches.open(cacheName);
+      const cache = await caches.open(CACHE_STATIC);
       const cached = await cache.match(req);
       if (cached) {
-        // 影で更新（次回に反映）。失敗は黙って無視。
         fetch(req).then((res) => {
-          if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone()).catch(() => {});
+          if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
         }).catch(() => {});
         return cached;
       }
       try {
         const res = await fetch(req);
-        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone()).catch(() => {});
+        if (res && res.ok) {
+          const runtime = await caches.open(CACHE_RUNTIME);
+          runtime.put(req, res.clone()).catch(() => {});
+        }
         return res;
       } catch (e) {
         return Response.error();
@@ -186,5 +163,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // それ以外はふつうにネットワークへ
+  // それ以外（Google Fonts など 見た目だけの もの）は ふつうに ネットワークへ。
+  // 届かなくても 端末の フォントに 落ちるだけで、アプリは 動く。
 });

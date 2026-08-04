@@ -2,587 +2,110 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <!-- 拡大の禁止（user-scalable=no / maximum-scale=1.0）は書かない。
+       誤ズームを防ぐ効果より、見えづらい子が 拡大できない害のほうが 大きい。
+       誤ズームは CSS の touch-action（body: manipulation ／ 手書き面: none）で
+       じゅうぶん おさえられる。 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- ===== Content-Security-Policy =====
+       このページが 読みこんでよい相手を 明示して 縛る。
+       ・script-src 'self' … スクリプトは 自分のフォルダの ファイルだけ。
+         インラインの <script> と onclick= は 実行されなくなるので、
+         このアプリは すべて 外部ファイル（js/…）に 切り出してある。
+       ・style-src に 'unsafe-inline' が いるのは、React が style={{…}} で
+         書く インラインスタイルを 使っているため。
+       ・connect-src 'self' … かきじゅんデータを アプリの中に 持ったので、
+         外へ 通信する 必要が まったく ない。
+
+       ⚠️ frame-ancestors は ここには 書かない。
+          <meta> 経由では **無視され**、読みこむたび コンソールに 警告が出るだけ。
+          他サイトへの 埋めこみを 止めるには HTTP ヘッダーが 要るが、
+          GitHub Pages では 足せない。独自ドメインや CDN を 挟むときに
+          サーバー側で frame-ancestors 'none' を 設定すること。 -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self';
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+    img-src 'self' data: blob:;
+    connect-src 'self';
+    worker-src 'self';
+    manifest-src 'self';
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+  " />
+
   <title>ひらがな・カタカナかきかたマスター</title>
   <meta name="description" content="小学1年生のための、ひらがな・カタカナの かきじゅん れんしゅう＆ことばあつめアプリ。書き順アニメ・なぞり書き・自動採点で、たのしく文字が身につきます。" />
-  <link rel="icon" type="image/png" href="favicon.png" />
 
-  <!-- ===== PWA（ホーム画面に「アプリ」として追加できるように） ===== -->
-  <link rel="manifest" href="manifest.webmanifest" />
+  <!-- ===== インストールの合図を「いちばん先に」受けとる =====
+       beforeinstallprompt は 条件がそろうと 読みこみ直後に 一度だけ 飛んでくる。
+       ほかの読みこみより 後だと 合図を 取りこぼし、通信が遅い端末で
+       「アプリにする」ボタンが 出なくなる。
+       CSP に 'unsafe-inline' を 足さずに 済むよう、インラインではなく
+       小さな外部ファイルにして 同期読みこみする。 -->
+  <script src="./js/install-hook.js"></script>
+
+  <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#b34328" />
   <meta name="color-scheme" content="light" />
-  <!-- iOS（Safari）向け：フルスクリーン化とアイコン -->
+
+  <link rel="icon" type="image/png" href="./favicon.png" />
+  <!-- apple-touch-icon には 透明を ふくむ画像を 指さないこと。
+       iOS は 透明部分を 黒で うめるため、ホーム画面で アイコンの 四隅だけが
+       黒く 出る。この 180×180 は 下地を 端まで のばした 不透明の 専用画像。 -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="かきかたマスター" />
-  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
-  <!-- ===== インストール状態の監視（必ず <head> の最上流で登録する） =====
-       beforeinstallprompt は「ページ読み込み直後」に一度だけ発火する。
-       この登録が <body> の末尾や React の描画後だと、発火に間に合わず
-       イベントを取りこぼして「アプリにする」ボタンが二度と出せなくなる。
-       そのため CDN や App.jsx より前、同期スクリプトとして登録する。 -->
-  <script>
-    (function () {
-      var api = window.__kkmInstall = {
-        deferred: null,   // 保持した beforeinstallprompt イベント
-      };
-
-      // インストール済みのウィンドウ（スタンドアロン起動）かどうか。
-      // ここが true のときだけ「アプリにする」ボタンを隠す。
-      // ＝ localStorage 等に「インストール済み」を焼き付けないので、
-      //   アンインストール後はまたボタンが出る。
-      api.isStandalone = function () {
-        try {
-          if (navigator.standalone === true) return true; // iOS Safari
-          if (!window.matchMedia) return false;
-          var modes = ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'];
-          for (var i = 0; i < modes.length; i++) {
-            if (window.matchMedia('(display-mode: ' + modes[i] + ')').matches) return true;
-          }
-        } catch (e) {}
-        return false;
-      };
-
-      // 端末の種類（案内文の出し分け用）
-      api.platform = (function () {
-        var ua = navigator.userAgent || '';
-        if (/CrOS/.test(ua)) return 'chromeos';
-        if (/Android/.test(ua)) return 'android';
-        if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
-        if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return 'ios'; // iPadOS
-        if (/Edg\//.test(ua)) return 'edge';
-        return 'desktop';
-      })();
-
-      // 状態が変わったことを App 側へ通知する
-      api.notify = function () {
-        try { window.dispatchEvent(new CustomEvent('kkm-install-change')); } catch (e) {}
-      };
-
-      window.addEventListener('beforeinstallprompt', function (e) {
-        // 既定のミニ情報バーを抑止し、アプリ内のボタンから任意のタイミングで出す
-        e.preventDefault();
-        api.deferred = e;
-        window.__kkmDeferredInstall = e; // 旧版 App.jsx との互換用
-        api.notify();
-      });
-
-      window.addEventListener('appinstalled', function () {
-        api.deferred = null;
-        window.__kkmDeferredInstall = null;
-        api.notify();
-      });
-    })();
-  </script>
-
-  <!-- Tailwind CSS（CDN） -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- ===== 配色（テーマ）の唯一の定義場所 =====
-       「国語の教科書」をイメージした、おちついた和の配色。
-       主役は 朱色（しゅいろ）＝ 先生の赤ペン・朱肉の色。
-
-         shu      朱色    … テーマカラー。見出し・アクティブ・正解の演出
-         sumi     墨      … 文字色とニュートラル（すこし温かみのある灰）
-         washi    和紙    … 背景・カードの下地（生成りの紙）
-         ai       藍      … カタカナ・情報（朱の対になる寒色）
-         midori   若竹    … 「できた」をあらわす色（なぞりクリア）
-         yamabuki 山吹    … ごほうび・かんぺき（金いろ）
-         fuji     藤      … 「じぶんでかく」段階
-
-       Tailwind のクラス（bg-shu-600 など）はここで定義した名前が使える。
-       色をかえたいときは この 1 か所だけを直すこと。 -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            shu:      { 50:'#fdf5f2', 100:'#fae7e1', 200:'#f4cec2', 300:'#e9a996', 400:'#d97e65', 500:'#c85a3c', 600:'#b34328', 700:'#93331e', 800:'#732a1a', 900:'#552017' },
-            sumi:     { 50:'#f8f6f2', 100:'#efece5', 200:'#ded8cd', 300:'#c3bcae', 400:'#9b9386', 500:'#7a7267', 600:'#5c554c', 700:'#443f38', 800:'#2e2a25', 900:'#1c1916' },
-            washi:    { 50:'#fdfbf7', 100:'#faf7f0', 200:'#f4efe4', 300:'#eae2d2', 400:'#dbd0ba' },
-            ai:       { 50:'#f0f4f9', 100:'#dce5f0', 200:'#bacbde', 300:'#8fa9c6', 400:'#6081a6', 500:'#40608a', 600:'#304a6c', 700:'#263a54', 800:'#1d2d41', 900:'#16222f' },
-            midori:   { 50:'#f1f6f1', 100:'#dfeade', 200:'#bfd5c0', 300:'#96b898', 400:'#6d9872', 500:'#4f7d56', 600:'#3d6544', 700:'#315035', 800:'#26402a', 900:'#1c2f20' },
-            yamabuki: { 50:'#fdf8ec', 100:'#f9eed3', 200:'#f2dca6', 300:'#e8c470', 400:'#d9a840', 500:'#c08c26', 600:'#9c6e1d', 700:'#7a5618', 800:'#5c4114', 900:'#443010' },
-            fuji:     { 50:'#f5f3f9', 100:'#eae5f1', 200:'#d5cbe3', 300:'#b6a8cd', 400:'#9280b2', 500:'#755f97', 600:'#5c4a79', 700:'#493c60', 800:'#382f4a', 900:'#282136' },
-          },
-        },
-      },
-    };
-  </script>
+  <!-- ===== スタイル（生成物：tailwind.config.js ＋ src/extra.css） =====
+       もとは cdn.tailwindcss.com を ブラウザに 読ませて、その場で CSS を
+       つくらせていた。学校のネットワークが そこを ふさぐと 色も レイアウトも
+       一切 当たらないため、ビルドで 先に つくる形に あらためた。
+       直すのは tailwind.config.js と src/extra.css。`npm run build` で 生成。 -->
+  <link rel="stylesheet" href="./css/app.css" />
 
   <!-- ===== 教科書体フォント =====
        表示する文字は「UD デジタル 教科書体」に統一する。
        このフォントは Windows 10 以降に標準搭載されている Morisawa 社の製品で、
        Web フォントとして配布することは許諾されていない。そのため
-         1) 端末にインストールされていれば それを使う（N / NK / NP、和名・欧文名・
-            スペース無しの別名まで並べて 取りこぼさないようにする）
+         1) 端末にインストールされていれば それを使う
          2) macOS の「游教科書体」
          3) どれも無ければ Google Fonts の Klee One（教科書体スタイルの楷書）
-       の順にフォールバックする。
-       ※ フォント指定は必ずこの 1 か所（--kkm-font-kyokasho）だけに書くこと。
-         App.jsx のキャンバス描画もこの変数を読んでいるので、ここを直せば
-         画面のすべての文字が同じ書体でそろう。 -->
+       の順にフォールバックする（src/extra.css の --kkm-font-kyokasho）。
+
+       Google Fonts は「見た目だけ」の依存なので、学校で ふさがれても
+       字の形が かわるだけで アプリは そのまま 動く。だから CDN のままでよい。
+       （実行コード＝React などは ふさがれると 起動しないので 自己ホストした） -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
 
-  <!-- React 18 + ReactDOM 18（UMD CDN） -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-  <!-- Babel（ブラウザ上でJSXを変換） -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- JSX 変換は classic ランタイム（React.createElement）を強制する。
-       Babel 8 では preset-react の既定が automatic ランタイムになり、
-       "react/jsx-runtime" を import しようとするため、UMD版（グローバルの
-       React/ReactDOM）では「Failed to resolve module specifier
-       "react/jsx-runtime"」となりページが開けない。これを防ぐための設定。
-       ※ Babel が <script type="text/babel"> を処理する前（DOMContentLoaded
-         前）に同期実行される必要があるので、必ず App.jsx より前に置く。 -->
-  <script>
-    Babel.registerPreset('react-classic', {
-      presets: [[Babel.availablePresets['react'], { runtime: 'classic' }]],
-    });
-  </script>
-
-  <!-- ===== 学習ログ（共通スキーマ study.v1） =====
-       GIGA山の学習アプリは、学習のたびに共通形式のログを端末
-       （localStorage の `study.records.v1`）にためる。先生は「まなびクエスト」
-       からそれをまとめて見る。**アプリは保存だけで、送信は一切しない。**
-
-       このアプリは Babel standalone で <script type="text/babel"> を変換する
-       構成のため App.jsx から import ができない。そこでグローバル形態
-       （globalThis.StudyLog / globalThis.KanaStudy）で先に読みこむ
-       （仕様書 §5.1.1・§3.10.6）。App.jsx より前に置くこと。
-
-         studyLog.js     … 全アプリ共通・不変（保存だけ）
-         studySession.js … このアプリ固有（何を1レコードにするか）
-
-       どちらかが読めなくてもアプリはそのまま動く（記録が残らないだけ）。 -->
-  <script src="./studyLog.js"></script>
-  <script src="./studySession.js"></script>
-
-  <style>
-    /* アプリじゅうで使う書体はこの 1 つの変数にまとめる（唯一の定義場所） */
-    :root {
-      --kkm-font-kyokasho:
-        'UD デジタル 教科書体 N-R', 'UDデジタル教科書体N-R', 'UD Digi Kyokasho N-R',
-        'UD デジタル 教科書体 NK-R', 'UDデジタル教科書体NK-R', 'UD Digi Kyokasho NK-R',
-        'UD デジタル 教科書体 NP-R', 'UDデジタル教科書体NP-R', 'UD Digi Kyokasho NP-R',
-        'YuKyokasho Yoko', 'YuKyokasho', '游教科書体',
-        'Klee One',
-        'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
-    }
-    /* 配色の CSS 変数（Tailwind の外＝キャンバス描画や擬似要素で使う分）。
-       値は tailwind.config の shu / sumi / washi と そろえておくこと。 */
-    :root {
-      --kkm-shu:        #b34328;   /* 朱色（テーマカラー） */
-      --kkm-shu-light:  #d97e65;
-      --kkm-shu-pale:   #f4cec2;
-      --kkm-sumi:       #2e2a25;   /* 墨（本文・じぶんで書く線） */
-      --kkm-sumi-soft:  #7a7267;
-      --kkm-paper:      #faf7f0;   /* 生成りの紙 */
-      --kkm-rule:       #ded8cd;   /* 罫線 */
-      --kkm-guide:      #e5ded0;   /* うすく刷ったお手本の文字 */
-    }
-    html, body, #root {
-      height: 100%;
-      margin: 0;
-      background-color: var(--kkm-paper);
-      font-family: var(--kkm-font-kyokasho);
-      font-weight: 600;
-      color: var(--kkm-sumi);
-      -webkit-touch-callout: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    /* 「学習する文字そのもの」を出すところ（もじ表・ことば・お手本など）。
-       UD デジタル教科書体は太さが 1 種類しかないため、font-black などで
-       太字を指定するとブラウザが線を太らせる合成ボールドになり、
-       とめ・はね・はらいの形がくずれてしまう。ここでは合成を止めて、
-       書体そのままの字形を見せる。
-       ※ Tailwind CDN が後から注入する .font-black に勝つよう !important。 */
-    .kkm-glyph {
-      font-family: var(--kkm-font-kyokasho) !important;
-      font-weight: 400 !important;
-      font-synthesis: none;
-      -webkit-font-synthesis: none;
-    }
-    /* user-select は誤コピー防止のため UI 要素に限って無効化（テキスト読み上げや
-       コピー機能のために <body> 全体への適用はやめる）。 */
-    button, canvas, [role="button"], .kkm-no-select {
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    /* キーボード操作時の見やすいフォーカスリング（マウスでは控えめに） */
-    :focus { outline: none; }
-    :focus-visible {
-      outline: 3px solid var(--kkm-shu);
-      outline-offset: 2px;
-      border-radius: 6px;
-    }
-    /* OS のモーション抑制設定を尊重 */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.001ms !important;
-        scroll-behavior: auto !important;
-      }
-    }
-    /* スクロールバーをスマートに */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-thumb { background: #c3bcae; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #9b9386; }
-    /* range スライダー */
-    input[type=range] { height: 8px; accent-color: var(--kkm-shu); }
-
-    /* =====================================================================
-       アニメーション
-
-       ねらい：おちついた見た目のまま、「おした」「せいかいした」の手ごたえは
-       はっきり返す。演出は 朱色の赤ペン（花丸・はんこ・下線）をモチーフに、
-       線が引かれていく動きで表現する。
-       ※ 動きを減らす設定（prefers-reduced-motion）は上でまとめて止めている。
-       ===================================================================== */
-
-    /* --- あらわれる --- */
-    @keyframes kkm-pop-in {
-      0%   { transform: scale(0.88); opacity: 0; }
-      60%  { transform: scale(1.02); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes kkm-rise-in {
-      0%   { transform: translateY(10px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
-    }
-    @keyframes kkm-fade-in {
-      0% { opacity: 0; } 100% { opacity: 1; }
-    }
-    @keyframes kkm-sheet-up {
-      0%   { transform: translateY(100%); }
-      100% { transform: translateY(0); }
-    }
-    .kkm-pop-in  { animation: kkm-pop-in .32s cubic-bezier(.22,1.2,.36,1) both; }
-    .kkm-rise-in { animation: kkm-rise-in .34s cubic-bezier(.22,1,.36,1) both; }
-    .kkm-fade-in { animation: kkm-fade-in .25s ease-out both; }
-    .kkm-sheet-up{ animation: kkm-sheet-up .3s cubic-bezier(.22,1,.36,1) both; }
-
-    /* --- はんこ（印）を おす --- 段位・ステージアップの演出 --- */
-    @keyframes kkm-stamp {
-      0%   { transform: scale(2.1) rotate(-14deg); opacity: 0; }
-      45%  { transform: scale(0.92) rotate(-4deg); opacity: 1; }
-      65%  { transform: scale(1.05) rotate(-6deg); }
-      100% { transform: scale(1) rotate(-5deg); opacity: 1; }
-    }
-    .kkm-stamp { animation: kkm-stamp .5s cubic-bezier(.3,1.4,.5,1) both; }
-
-    /* --- 赤ペンで線を引く --- 見出しの下線・花丸・チェック --- */
-    @keyframes kkm-draw {
-      0%   { stroke-dashoffset: var(--kkm-dash, 1000); }
-      100% { stroke-dashoffset: 0; }
-    }
-    .kkm-draw {
-      stroke-dasharray: var(--kkm-dash, 1000);
-      animation: kkm-draw var(--kkm-draw-dur, .7s) cubic-bezier(.5,.1,.3,1) both;
-      animation-delay: var(--kkm-draw-delay, 0s);
-    }
-    @keyframes kkm-underline {
-      0%   { transform: scaleX(0); }
-      100% { transform: scaleX(1); }
-    }
-    .kkm-underline { transform-origin: left center; animation: kkm-underline .45s cubic-bezier(.5,.1,.3,1) both; }
-
-    /* --- ボタン：おした手ごたえ --- */
-    .kkm-btn {
-      transition: transform .12s cubic-bezier(.3,1.4,.5,1),
-                  box-shadow .12s ease-out,
-                  background-color .18s ease-out,
-                  border-color .18s ease-out,
-                  color .18s ease-out;
-      will-change: transform;
-    }
-    .kkm-btn:active:not(:disabled) { transform: translateY(2px) scale(.975); }
-    .kkm-btn:hover:not(:disabled)  { filter: brightness(1.03); }
-    /* おした瞬間に 朱色の波紋がひろがる（墨がにじむイメージ） */
-    .kkm-ripple { position: relative; overflow: hidden; }
-    .kkm-ripple::after {
-      content: '';
-      position: absolute; left: 50%; top: 50%;
-      width: 12px; height: 12px; margin: -6px 0 0 -6px;
-      border-radius: 9999px;
-      background: currentColor;
-      opacity: 0;
-      transform: scale(1);
-      pointer-events: none;
-    }
-    @keyframes kkm-ripple-out {
-      0%   { opacity: .22; transform: scale(1); }
-      100% { opacity: 0;   transform: scale(24); }
-    }
-    .kkm-ripple:active:not(:disabled)::after { animation: kkm-ripple-out .5s ease-out; }
-
-    /* --- ゆらぐ・ひかる（ひかえめに） --- */
-    @keyframes kkm-float {
-      0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(-4px); }
-    }
-    @keyframes kkm-breathe {
-      0%, 100% { transform: scale(1); opacity: .9; }
-      50%      { transform: scale(1.06); opacity: 1; }
-    }
-    @keyframes kkm-sheen {
-      0%   { background-position: -180% 0; }
-      60%, 100% { background-position: 180% 0; }
-    }
-    @keyframes kkm-pulse-ring {
-      0%   { box-shadow: 0 0 0 0 rgba(179,67,40,0.35); }
-      70%  { box-shadow: 0 0 0 10px rgba(179,67,40,0); }
-      100% { box-shadow: 0 0 0 0 rgba(179,67,40,0); }
-    }
-    @keyframes kkm-shake {
-      0%, 100% { transform: translateX(0); }
-      20% { transform: translateX(-5px); }
-      40% { transform: translateX(5px); }
-      60% { transform: translateX(-3px); }
-      80% { transform: translateX(3px); }
-    }
-    /* マスコット（えんぴつせんせい）が しょんぼりしている ようす。
-       絵は 1 まいなので、かたむきと 色みだけで きもちを あらわす。 */
-    .kkm-mascot-sad { transform: rotate(-5deg); filter: saturate(0.75) brightness(0.98); opacity: .9; }
-    .kkm-float      { animation: kkm-float 3.6s ease-in-out infinite; }
-    .kkm-breathe    { animation: kkm-breathe 2.4s ease-in-out infinite; }
-    .kkm-pulse-ring { animation: kkm-pulse-ring 2s ease-out infinite; }
-    .kkm-shake      { animation: kkm-shake .4s ease-in-out both; }
-
-    /* 金いろの光沢（かんぺきになった もじ・ごほうび） */
-    .kkm-sheen { position: relative; overflow: hidden; }
-    .kkm-sheen::after {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.7) 50%, transparent 62%);
-      background-size: 220% 100%;
-      animation: kkm-sheen 3.6s ease-in-out infinite;
-      pointer-events: none;
-    }
-
-    /* バッジ獲得トースト：明示的に 2 回バウンドして自然に止まる */
-    @keyframes kkm-bounce-twice {
-      0%   { transform: translate(-50%, -120%); opacity: 0; }
-      18%  { transform: translate(-50%, 0); opacity: 1; }
-      32%  { transform: translate(-50%, -14px); }
-      46%  { transform: translate(-50%, 0); }
-      58%  { transform: translate(-50%, -6px); }
-      70%  { transform: translate(-50%, 0); }
-      100% { transform: translate(-50%, 0); opacity: 1; }
-    }
-    .kkm-badge-toast { animation: kkm-bounce-twice 1.3s cubic-bezier(.34,1.5,.64,1) both; will-change: transform; }
-
-    /* カードを持ちあげる（ホバー・タップ） */
-    .kkm-lift { transition: transform .18s cubic-bezier(.3,1.3,.5,1), box-shadow .18s ease-out; }
-    .kkm-lift:hover  { transform: translateY(-2px); }
-    .kkm-lift:active { transform: translateY(0) scale(.99); }
-
-    /* =====================================================================
-       背景：国語の教科書の紙面
-       生成りの和紙に、原稿用紙のような ごくうすい マス目を敷く。
-       ===================================================================== */
-    .kkm-app-bg {
-      background-color: var(--kkm-paper);
-      background-image:
-        linear-gradient(rgba(179,67,40,0.045) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(179,67,40,0.045) 1px, transparent 1px),
-        radial-gradient(circle at 50% 0%, rgba(179,67,40,0.05) 0%, transparent 60%);
-      background-size: 48px 48px, 48px 48px, 100% 320px;
-      background-attachment: fixed;
-    }
-
-    /* 朱色の見出し罫（セクションの左に立てる縦棒） */
-    .kkm-heading-rule {
-      border-left: 4px solid var(--kkm-shu);
-      padding-left: 0.5rem;
-      line-height: 1.25;
-    }
-    /* 紙面のカード（白い用紙） */
-    .kkm-sheet {
-      background: #fff;
-      border: 1px solid var(--kkm-rule);
-      box-shadow: 0 1px 2px rgba(46,42,37,0.05);
-    }
-    /* 背景のマス目より前面にアプリ本体を出す。
-       ここで position まで上書きすると、直下にいる紙吹雪キャンバスや
-       モーダル・トースト（position:fixed）まで巻きぞえで relative に
-       なってしまい、画面のなかに居座って レイアウトを押しつぶす。
-       （Tailwind の .fixed とセレクタの強さが同じなので、CSS の
-         読みこみ順しだいでどちらが勝つか変わる＝こわれやすい。）
-       そのため position を与えるのは 実際に並べる 3 つだけにする。 */
-    .kkm-app-bg > * { z-index: 1; }
-    .kkm-app-bg > nav,
-    .kkm-app-bg > main,
-    .kkm-app-bg > footer { position: relative; }
-    /* 紙吹雪は必ず画面ぜんたいに固定（id 指定なので順序に左右されない） */
-    #confettiCanvas { position: fixed; inset: 0; z-index: 400; }
-
-    /* =====================================================================
-       端末非依存レイアウト：あらゆる解像度で「かきじゅん」ボタンまで必ず表示する
-       ===================================================================== */
-
-    /* ルートは実描画領域(dvh)に正確にフィット（アドレスバー込み）。
-       100vh は古いブラウザ向けフォールバック。
-       Tailwind CDN が後から注入する .h-screen に勝つよう !important。 */
-    .kkm-app-root {
-      height: 100vh !important;
-      height: 100dvh !important;
-      /* ノッチ／ホームインジケータ（iPhone 等）を避ける安全余白。
-         PWA スタンドアロン起動時に UI が隠れないようにする。 */
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      padding-left: env(safe-area-inset-left, 0px);
-      padding-right: env(safe-area-inset-right, 0px);
-      box-sizing: border-box;
-    }
-
-    /* キャンバス用：正方形だがコンテナの幅・高さどちらにも絶対にはみ出さない。
-       container queries で min(横幅, 縦幅) に揃える。 */
-    .kkm-square-fit-container {
-      container-type: size;
-    }
-    .kkm-square-fit {
-      width: min(100cqw, 100cqh);
-      height: min(100cqw, 100cqh);
-    }
-    /* container queries 非対応ブラウザ向けフォールバック */
-    @supports not (container-type: size) {
-      .kkm-square-fit {
-        width: 100%;
-        height: 100%;
-        max-width: 100%;
-        max-height: 100%;
-        aspect-ratio: 1 / 1;
-      }
-    }
-
-    /* ── 高さ ≤ 820px（タブレット横置きや低解像度ノートPC）── */
-    @media (max-height: 820px) {
-      .kkm-app-root > nav { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
-      .kkm-app-root > footer { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.2 !important; }
-      /* メイン領域とプラクティスボードの内側余白を圧縮 */
-      .kkm-app-root main > .kkm-main-pad { padding: 0.375rem !important; gap: 0.375rem !important; }
-      .kkm-practice-board { padding: 0.5rem !important; }
-      .kkm-practice-board .kkm-board-header { margin-bottom: 0.25rem !important; }
-      /* マスコットは飾り要素なので最初に隠す */
-      .kkm-practice-mascot { display: none !important; }
-      /* ステッパーは小さくしてマージン縮小 */
-      .kkm-stepper-row { margin-bottom: 0.25rem !important; font-size: 10px !important; }
-      .kkm-stepper-row > div { padding: 2px 2px !important; }
-      .kkm-stepper-row > div > div:first-child { font-size: 1rem !important; line-height: 1 !important; }
-      /* ボタン群は必ず見える：マージンと内側パディングを縮小 */
-      .kkm-practice-buttons { margin-top: 0.375rem !important; gap: 0.25rem !important; }
-      .kkm-practice-buttons > button { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; font-size: 0.8125rem !important; }
-      .kkm-practice-board > button.kkm-cta-btn { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; margin-top: 0.25rem !important; font-size: 0.8125rem !important; }
-    }
-
-    /* ── 高さ ≤ 700px ── */
-    @media (max-height: 700px) {
-      .kkm-daily-wrap { display: none !important; }
-      .kkm-progress-row { display: none !important; }
-      .kkm-practice-board { padding: 0.375rem !important; }
-      .kkm-stepper-row > div > div:nth-child(2) { font-size: 9px !important; }
-      .kkm-app-root > nav h1 { font-size: 0.875rem !important; }
-    }
-
-    /* ── 高さ ≤ 580px（小型 Chromebook、横置き低解像度タブレット）── */
-    @media (max-height: 580px) {
-      .kkm-stepper-row { display: none !important; }
-      .kkm-app-root > footer { display: none !important; }
-      .kkm-practice-board .kkm-board-header { display: none !important; }
-      .kkm-app-root main > .kkm-main-pad { padding: 0.25rem !important; gap: 0.25rem !important; }
-    }
-
-    /* ── 究極の安全網：それでも収まらない極小画面では縦スクロール許可 ── */
-    @media (max-height: 460px) {
-      .kkm-app-root {
-        height: auto !important;
-        min-height: 100vh;
-        min-height: 100dvh;
-        overflow-y: auto !important;
-      }
-      .kkm-app-root > main { overflow: visible !important; }
-      .kkm-app-root .kkm-main-pad { overflow: visible !important; }
-      .kkm-square-fit { width: min(60vh, 90vw); height: min(60vh, 90vw); }
-    }
-  </style>
+  <!-- ===== 実行コード（すべて 自分のフォルダの中） =====
+       defer なので 読みこみは 並行、実行は この順番。
+         vendor/react.js       React 18 + ReactDOM 18（npm で版を固定して とりこみ）
+         data/kanjivg-kana.js  かきじゅんデータ（KanjiVG・176文字）
+         studyLog.js           全アプリ共通の 学習ログ（保存だけ・送信しない）
+         studySession.js       このアプリ固有の 学習ログ組み立て
+         js/app.js             App 本体（src/App.jsx をビルドしたもの）
+         js/boot.js            Service Worker の登録と 更新のおしらせ
+       どれも CDN を 使わないので、学校の フィルタリングで 止まることがない。 -->
+  <script defer src="./vendor/react.js"></script>
+  <script defer src="./data/kanjivg-kana.js"></script>
+  <script defer src="./studyLog.js"></script>
+  <script defer src="./studySession.js"></script>
+  <script defer src="./js/app.js"></script>
+  <script defer src="./js/boot.js"></script>
 </head>
 <body>
-  <!-- ローディング表示（Babel変換中の数百ms） -->
+  <!-- ローディング表示（js/app.js を 読んでいる あいだ） -->
   <div id="root">
-    <div style="height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;color:#b34328;font-weight:600;font-size:1.125rem;letter-spacing:.08em;">
-      よみこみちゅう…
-    </div>
+    <div class="kkm-loading">よみこみちゅう…</div>
   </div>
-
-  <!-- App.jsx を Babel で変換しながら読み込み -->
-  <script type="text/babel" data-type="module" data-presets="react-classic" src="./App.jsx"></script>
-
-  <!-- ===== Service Worker 登録（オフライン対応 & インストール） ===== -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').then(function (reg) {
-          // 新しい版が見つかったら待機中の SW をすぐ有効化する。
-          // ページの強制リロードはしない（お絵かき中の中断や初回二重読込を避けるため）。
-          // 新しい内容は次にアプリを開いたときに自然に反映される。
-          reg.addEventListener('updatefound', function () {
-            var nw = reg.installing;
-            if (!nw) return;
-            nw.addEventListener('statechange', function () {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                nw.postMessage && nw.postMessage('SKIP_WAITING');
-              }
-            });
-          });
-        }).catch(function () { /* SW 非対応でもアプリは動く */ });
-      });
-    }
-    // ※ beforeinstallprompt / appinstalled の監視は <head> の
-    //   window.__kkmInstall で行っている（取りこぼし防止のため）。
-  </script>
-
-  <!-- ===== PWA：アプリの「背番号（id）」があっているか自己点検 =====
-       gigayama.github.io には多数のアプリが同居していて、ブラウザは
-       manifest の id / scope でアプリを見わけている。リポジトリをコピーして
-       別アプリを作ったときに id を書きかえ忘れると、Chromebook では
-       「このアプリのページが、別のアプリのウィンドウで開いてしまう」
-       という取りちがえが起きる。気づけるように、ここで確認して
-       開発者ツールのコンソールに警告を出す（動作そのものは止めない）。 -->
-  <script>
-    window.addEventListener('load', function () {
-      try {
-        fetch('./manifest.webmanifest', { cache: 'no-store' })
-          .then(function (r) { return r.json(); })
-          .then(function (m) {
-            var here = new URL('./', location.href).pathname; // 例：/KANA_Master/
-            var problems = [];
-            ['id', 'scope', 'start_url'].forEach(function (k) {
-              if (!m[k]) { problems.push(k + ' が未設定です'); return; }
-              var p = new URL(m[k], location.href).pathname;
-              if (p.indexOf(here) !== 0) {
-                problems.push(k + ' = "' + m[k] + '" が このフォルダ（' + here + '）の外を指しています');
-              }
-            });
-            if (problems.length) {
-              console.warn(
-                '[PWA] manifest.webmanifest の設定が このアプリの場所と合っていません。\n' +
-                'このままだと、インストールしたアプリが 同じサイトの別アプリと 取りちがえられることがあります。\n' +
-                '- ' + problems.join('\n- ') + '\n' +
-                'manifest.webmanifest の id / scope / start_url を "' + here + '" から始まる値に直してください。'
-              );
-            }
-          })
-          .catch(function () { /* 点検できなくてもアプリは動きます */ });
-      } catch (e) { /* 同上 */ }
-    });
-  </script>
 </body>
 </html>
