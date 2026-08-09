@@ -1519,8 +1519,11 @@ function srsIsWeak(rec) { return !!rec && (rec.ng || 0) >= 1 && (rec.box || 0) <
    「なにを どこまで やれば おわりか」が 見えないと、子どもは 自分から
    はじめられない。毎日 おなじ 3 つ、5 分で おわる 量にする。
    ────────────────────────────────────────────────────────────── */
+/* `start` を もつ めあては、画面を ひらいた とたんに その コースが はじまる。
+   「ふくしゅう」は たまっている もんだいを やるための ボタンなので、
+   コースを えらばせず そのまま 出題に 入る（一手で はじめられるように する）。 */
 const MISSIONS = [
-  { key: 'review',  goal: 6, title: 'ふくしゅう',       sub: 'まえに やった もんだい',   view: 'sound',   tone: 'midori', icon: 'check' },
+  { key: 'review',  goal: 6, title: 'ふくしゅう',       sub: 'まえに やった もんだい',   view: 'sound',   start: 'mix', tone: 'midori', icon: 'check' },
   { key: 'write',   goal: 2, title: 'もじを かく',       sub: 'あたらしい じ を 1つ',     view: 'write',   tone: 'ai',     icon: 'pen' },
   { key: 'special', goal: 6, title: 'とくべつな おと',   sub: 'っ ゃゅょ ん のばす',      view: 'special', tone: 'shu',    icon: 'brush' },
 ];
@@ -7561,7 +7564,8 @@ const SOUND_COURSES = [
   { key:'opposite',title:'はんたいの ことば', sub:'おおきい ⇔ ちいさい',              tone:'ai',     icon:'rotate'},
   { key:'mix',     title:'ぜんぶ まぜて',    sub:'ふくしゅうも いっしょに',          tone:'shu',    icon:'check' },
 ];
-function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMission, voiceOn }) {
+function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMission, voiceOn,
+                     initialCourse, onConsumeInitial }) {
   const [running, setRunning] = useState(null);   // { key, title, tone, questions }
   const dueCount = useMemo(() => countDue(skill, ''), [skill]);
 
@@ -7599,6 +7603,19 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
     playPickup();
     setRunning({ ...course, questions: qs });
   }
+
+  /* ホームの「ふくしゅう」から とんできたときは、コースを えらぶ画面を
+     はさまずに そのまま 出題に 入る。1年生には「押したのに もう1かい
+     えらばされる」のが いちばんの つまずきなので、一手で はじめさせる。
+     見出しは 押した ボタンと おなじ ことばに そろえる（出題の 中身と
+     学習ログの 単元は 'mix' のまま＝`review-mixed`）。 */
+  useEffect(() => {
+    if (!initialCourse) return;
+    onConsumeInitial && onConsumeInitial();
+    const course = SOUND_COURSES.find(c => c.key === initialCourse);
+    if (course) start(course.key === 'mix' ? { ...course, title: 'ふくしゅう' } : course);
+    // eslint-disable-next-line
+  }, [initialCourse]);
 
   if (running) {
     return (
@@ -8204,7 +8221,7 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
             <NextUpButton tone={nextMission.tone} eyebrow="つぎは これ"
               title={nextMission.title} sub={nextMission.sub}
               icon={React.createElement(ICONS[nextMission.icon] || IconMaru, { size: 34 })}
-              onClick={() => onGo(nextMission.view)}/>
+              onClick={() => onGo(nextMission.view, nextMission.start)}/>
           ) : (
             <NextUpButton tone="shu" eyebrow="きょうの めあては たっせい"
               title="ことばを あつめよう" sub="あつめた ことばで しりとりも できるよ"
@@ -8224,7 +8241,7 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
               const cleared = now >= m.goal;
               const Icon = ICONS[m.icon] || IconMaru;
               return (
-                <button key={m.key} onClick={() => onGo(m.view)}
+                <button key={m.key} onClick={() => onGo(m.view, m.start)}
                   className={`kkm-btn kkm-lift kkm-sheet rounded-xl p-3.5 text-left flex items-center gap-3 border-l-4 min-h-[84px] ${t.leftRule} ${
                     cleared ? 'bg-shu-50/60' : ''
                   }`}>
@@ -8405,6 +8422,8 @@ function App() {
   // ホームから「この もじを かこう」と とんでくるときの うけわたし
   const [requestedChar, setRequestedChar] = useState(null);
   const [requestedUnit, setRequestedUnit] = useState(null);
+  // ホームの「ふくしゅう」から「この コースを すぐ はじめて」と とんでくるとき
+  const [requestedCourse, setRequestedCourse] = useState(null);
   const [dayDonePopup, setDayDonePopup] = useState(false);
   const dayDoneRef = useRef(null);
 
@@ -8600,6 +8619,7 @@ function App() {
   const goTo = useCallback((v, payload) => {
     if (v === 'write' && payload) setRequestedChar(payload);
     if (v === 'special' && payload) setRequestedUnit(payload);
+    if (v === 'sound') setRequestedCourse(payload || null);
     setView(v);
   }, []);
 
@@ -8670,7 +8690,8 @@ function App() {
         {view === 'sound' && (
           <SoundView kanaMode={kanaMode} setKanaMode={setKanaMode}
             progress={progress} skill={skill} answerSkill={answerSkill}
-            bumpMission={bumpMission} voiceOn={voiceOn}/>
+            bumpMission={bumpMission} voiceOn={voiceOn}
+            initialCourse={requestedCourse} onConsumeInitial={() => setRequestedCourse(null)}/>
         )}
         {view === 'special' && (
           <SpecialView skill={skill} answerSkill={answerSkill}
