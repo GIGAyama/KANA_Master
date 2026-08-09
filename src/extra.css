@@ -657,17 +657,28 @@ button, canvas, [role="button"], .kkm-no-select {
   .kkm-app-root main > .kkm-main-pad { padding: 0.375rem !important; gap: 0.375rem !important; }
   .kkm-practice-board { padding: 0.5rem !important; }
   .kkm-practice-board .kkm-board-header { margin-bottom: 0.25rem !important; }
-  /* マスコットは飾り要素なので最初に隠す */
-  .kkm-practice-mascot { display: none !important; }
-  /* ステッパーは まるを 小さくし、ことばの 行を つめる
+  /* 見出しは 1 行に たたんであるので、まるだけ 小さくして つめる
      （文字そのものは 小さくしない。読めなくなっては 意味がない） */
-  .kkm-stepper-row { margin-bottom: 0.25rem !important; }
   .kkm-stepper-row li { width: 28px !important; height: 28px !important; }
-  .kkm-stepper-row > div { margin-top: 0.125rem !important; }
-  /* ボタン群は必ず見える：マージンと内側パディングを縮小 */
-  .kkm-practice-buttons { margin-top: 0.375rem !important; gap: 0.25rem !important; }
-  .kkm-practice-buttons > button { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; font-size: 0.8125rem !important; }
-  .kkm-practice-board > button.kkm-cta-btn { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; margin-top: 0.25rem !important; font-size: 0.8125rem !important; }
+  /* ボタン群は必ず見える：マージンと内側パディングを縮小。
+     文字は 16px までしか 下げない（13px まで 落とすと、せまい画面の
+     子ほど 読めない ボタンを 押すことに なる）。
+
+     ⚠️ .kkm-primary / .kkm-solid / min-h-[…] は **たかさを 直に きめている**
+        ので、padding だけ つめても ちぢまない。かならず min-height も
+        いっしょに 上書きすること。ここを 忘れると、画面の たかさが
+        足りない 端末で かきとりの マスだけが つぶれる。
+        （当たり判定は .kkm-btn::before が 52px を 確保するので、
+          見た目を つめても 指で 押せる 大きさは のこる。） */
+  .kkm-practice-buttons { margin-top: 0.375rem !important; gap: 0.375rem !important; }
+  .kkm-practice-buttons > button {
+    padding-top: 0.375rem !important; padding-bottom: 0.375rem !important;
+    min-height: 48px !important; font-size: 1rem !important;
+  }
+  .kkm-practice-board > button.kkm-cta-btn {
+    padding-top: 0.375rem !important; padding-bottom: 0.375rem !important;
+    margin-top: 0.25rem !important; min-height: 54px !important; font-size: 1.0625rem !important;
+  }
 }
 
 /* ── 高さ ≤ 700px ── */
@@ -676,15 +687,49 @@ button, canvas, [role="button"], .kkm-no-select {
   .kkm-progress-row { display: none !important; }
   .kkm-practice-board { padding: 0.375rem !important; }
   .kkm-app-root > nav h1 { font-size: 1rem !important; }
+  /* ヘッダー・下タブ・ボタンを もう ひとまわり つめて、
+     けずった ぶんは ぜんぶ かきとりの マスに まわす。 */
+  .kkm-app-root > nav .kkm-btn { height: 44px !important; min-height: 44px !important; width: 44px; min-width: 44px; }
+  .kkm-bottom-nav button { min-height: 48px !important; }
+  .kkm-practice-buttons > button { min-height: 44px !important; }
+  .kkm-practice-board > button.kkm-cta-btn { min-height: 48px !important; }
+  .kkm-practice-board .kkm-board-header { margin-bottom: 0.125rem !important; }
 }
 
 /* ── 高さ ≤ 580px（小型 Chromebook、横置き低解像度タブレット）── */
 @media (max-height: 580px) {
+  /* ここまで せまいと 見出しの まるも おしい。消すのは すすみぐあい
+     （ステップの まる）だけにして、「いま なにを するか」の ひとことは のこす。 */
   .kkm-stepper-row { display: none !important; }
   .kkm-app-root > footer { display: none !important; }
-  .kkm-practice-board .kkm-board-header { display: none !important; }
   .kkm-app-root main > .kkm-main-pad { padding: 0.25rem !important; gap: 0.25rem !important; }
+  .kkm-bottom-nav button { min-height: 42px !important; }
+  .kkm-bottom-nav svg { width: 20px !important; height: 20px !important; }
+  /* 「もじを えらぶ」バーも つめる（マスの ほうが 大事） */
+  .kkm-main-pad > .shrink-0 > .kkm-solid { min-height: 44px !important; }
+  .kkm-main-pad > .shrink-0 > .w-14 { width: 44px !important; height: 44px !important; }
+  /* たすけての 3 ボタンは、たかさが おしいので よこ 1 列に もどす */
+  .kkm-practice-buttons > button { flex-direction: row !important; }
+  /* 見出しの 1 行も つめる（消しはしない。なにを するかが わからなくなる） */
+  .kkm-board-header { margin-bottom: 0.125rem !important; }
+  .kkm-board-header img { width: 24px !important; height: 24px !important; }
+  .kkm-board-header span { font-size: 1rem !important; }
+  .kkm-practice-board > button.kkm-cta-btn { min-height: 44px !important; }
 }
+
+/* ── たかさ ≤ 580px で よこ幅も せまい（＝小さなスマホ）とき ──
+   たすけての 3 ボタンは 絵だけに する。ならびも 色も 場所も かえないので
+   どれが どれかは わかるし、よみあげ用の 名まえ（aria-label）は のこる。 */
+@media (max-height: 580px) and (max-width: 639px) {
+  .kkm-practice-buttons > button { font-size: 0 !important; gap: 0 !important; }
+  .kkm-practice-buttons > button svg { width: 26px !important; height: 26px !important; }
+}
+
+/* ⚠️ 「よこ置きの ときは 下タブを やめて 上のタブに する」は やらないこと。
+   たかさは 48px かせげるが、上のタブは 1024px 以上の よこ幅を あてこんだ
+   ならびなので、800px では アプリ名・タブ・右のボタンが かさなって 読めなくなる。
+   （実際に 800×480 で かさなった。）かせげるのは 10px たらずで、
+   わりに 合わない。下タブは どの たかさでも 下タブの ままにする。 */
 
 /* ── 究極の安全網：それでも収まらない極小画面では縦スクロール許可 ── */
 @media (max-height: 460px) {

@@ -3148,7 +3148,7 @@ function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceO
 
       {/* 中央：ビュー切替（教科書のインデックスのように、朱の下線でいまの場所を示す）。
           ひろい画面でも 押しやすいよう、字も 当たり判定も 大きくとる。 */}
-      <div className="hidden lg:flex items-end gap-1 self-stretch shrink-0 -mb-1.5 md:-mb-2">
+      <div className="kkm-header-tabs hidden lg:flex items-end gap-1 self-stretch shrink-0 -mb-1.5 md:-mb-2">
         {VIEW_TABS.map(t => {
           const on = view === t.key;
           return (
@@ -3222,7 +3222,7 @@ function Footer() {
    えらんだ ところは 朱色の 札に して ひとめで わかるようにする。 */
 function ModeTabsMobile({ view, setView }) {
   return (
-    <div className="lg:hidden flex items-stretch gap-1 bg-white border-t-2 border-shu-600 px-1 md:px-3 pt-1 pb-0.5 relative z-10">
+    <div className="kkm-bottom-nav lg:hidden flex items-stretch gap-1 bg-white border-t-2 border-shu-600 px-1 md:px-3 pt-1 pb-0.5 relative z-10">
       {VIEW_TABS.map(t => {
         const on = view === t.key;
         return (
@@ -3457,10 +3457,12 @@ const TOLERANCE = 0.22; // 始点・終点の許容範囲（大きいほど優�
       行（<StageStepper>）だけが 言う。ここは 声かけに 徹する。 */
 function stageMascotMessage(char, stage, so) {
   if (!char) return '';
-  if (stage === 0) return 'まず かきじゅんを みよう';
-  if (stage === 1) return 'ゆっくりで だいじょうぶ';
-  if (stage === 2) return 'じぶんの ちからで かいて みよう';
-  if (stage === 3) return 'あと ひといき！';
+  // 見出しの 1 行に おさまる 長さ（10 字ぐらいまで）に そろえる。
+  // 長いと せまい画面で 2 行に なり、そのぶん かきとりの マスが 小さくなる。
+  if (stage === 0) return 'かきじゅんを みよう';
+  if (stage === 1) return 'なぞって かこう';
+  if (stage === 2) return 'じぶんで かこう';
+  if (stage === 3) return 'じぶんで かこう';
   return '花丸！ よく できました';
 }
 
@@ -3966,7 +3968,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
     // 画数チェック（絶対条件）：違うときは採点せず、かきじゅんからやり直し
     if (userStrokes.length !== ps.length) {
       playBuzzer();
-      setMascotMsg(`かくすうが ちがうよ！（${userStrokes.length}かく → ${ps.length}かく だよ）`);
+      setMascotMsg(`かくすうが ちがうよ（${userStrokes.length}→${ps.length}かく）`);
       setMascotMood('sad');
       if (voiceOn) setTimeout(() => speakText('かくすうが ちがいます。もういちど かきじゅんから みてみよう', voiceOn), 150);
       onMistakeStreakReset && onMistakeStreakReset(ch);
@@ -4064,30 +4066,42 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
   }, [paths, currentStroke, isCleared, stage]);
 
   return (
-    <div className="kkm-sheet rounded-xl p-2.5 md:p-3 flex flex-col h-full min-h-0 kkm-practice-board">
-      {/* いま なにを するのか。この 1 行が 画面の 見出し。
-          「なぞる」のか「じぶんで かく」のかで 色を かえる（緑／藤）。 */}
-      <div className="flex justify-between items-center mb-2 shrink-0 gap-2 kkm-board-header">
-        <span className={`text-lg font-semibold px-3 py-1.5 rounded-lg truncate border-2 ${
-          isTraceMode ? 'text-midori-700 bg-midori-50 border-midori-300' : 'text-fuji-700 bg-fuji-50 border-fuji-300'
-        }`}>
-          {char ? (isTraceMode ? `「${char}」を なぞろう` : `「${char}」を じぶんで かこう`) : 'もじを えらんでください'}
-        </span>
-        {char && (
-          <span className="text-base font-semibold text-sumi-600 bg-washi-100 border border-sumi-200 px-2.5 py-1.5 rounded-lg shrink-0 tabular-nums">
-            {practiceCount[char] || 0} かい
-          </span>
-        )}
-      </div>
+    <div className="kkm-sheet rounded-xl p-2 md:p-3 flex flex-col h-full min-h-0 kkm-practice-board">
+      {/* ── 見出しは 1 行にまとめる ────────────────────────────────
+          もとは「いま なにを するか」「ステップ」「マスコットの ひとこと」を
+          たて 3 段に ならべていた。字を 大きくした ぶん この 3 段だけで
+          187px を つかい、**いちばん 大事な かきとりの マスが 小さく**なった。
 
-      {/* 学習ステップ（いま どのだんかいか） */}
+          言っている ことは どれも 近いので、1 行に たたむ。
+            えんぴつせんせい の ひとこと … いま なにを するか（＋ 声かけ）
+            ●─●─○─○ と 「あと n かい」  … どこまで きたか
+          ひろい画面では 1 行、せまい画面では 2 行に 折りかえす（flex-wrap）。 */}
       {char && (
-        <StageStepper stage={stage} stageObj={stageObj}/>
+        <div className="flex items-center gap-2 flex-wrap mb-2 shrink-0 kkm-board-header">
+          {/* basis を きめておく（flex-1 だけだと、せまい画面で 折りかえさずに
+              つぶれて、ひとことが まるごと 消えてしまう）。
+              ひろい画面では ステップと よこに ならび、せまい画面では 下に 折れる。 */}
+          <div className={`flex items-center gap-2 grow basis-[10rem] min-w-0 rounded-lg border-2 pr-2.5 ${
+            isTraceMode ? 'bg-midori-50 border-midori-300' : 'bg-fuji-50 border-fuji-300'
+          }`}>
+            <span className="shrink-0 pl-1.5 py-0.5"><MascotFace size={34} mood={mascotMood}/></span>
+            {/* 長い ひとこと（「かくすうが ちがうよ」など）は 2 行までは 折りかえす。
+                truncate（1 行で 切る）に すると、だいじな しらせが 読めなくなる。 */}
+            <span key={mascotMsg}
+              className={`kkm-fade-in text-base sm:text-lg font-semibold leading-snug line-clamp-2 ${
+                isTraceMode ? 'text-midori-700' : 'text-fuji-700'
+              }`}>
+              <Furi>{mascotMsg}</Furi>
+            </span>
+          </div>
+          <StageStepper stage={stage} stageObj={stageObj}/>
+        </div>
       )}
-
-      {char && (
-        <div className="mb-1.5 shrink-0 kkm-practice-mascot">
-          <Mascot message={mascotMsg} mood={mascotMood} size="small"/>
+      {!char && (
+        <div className="mb-2 shrink-0 kkm-board-header">
+          <span className="text-lg font-semibold px-3 py-1.5 rounded-lg border-2 text-sumi-600 bg-washi-100 border-sumi-300">
+            もじを えらんでください
+          </span>
         </div>
       )}
 
@@ -4171,17 +4185,17 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       <div className="flex gap-2 mt-2.5 shrink-0 kkm-practice-buttons">
         <button onClick={restart} disabled={!char}
           aria-label="ここまでの れんしゅうを やりなおす"
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-sumi-600 border-2 border-sumi-300 hover:border-sumi-400 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 min-h-[56px]">
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-sumi-600 border-2 border-sumi-300 hover:border-sumi-400 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 min-h-[56px]">
           <IconRotate size={22}/> やりなおし
         </button>
         <button onClick={() => char && speakText(char, voiceOn)} disabled={!char || !voiceOn}
           aria-label={char ? `${char} を よみあげる`: 'もじを よみあげる'}
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-midori-700 border-2 border-midori-300 hover:bg-midori-50 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 min-h-[56px]">
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-midori-700 border-2 border-midori-300 hover:bg-midori-50 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 min-h-[56px]">
           <IconVolume size={22}/> よんで
         </button>
         <button onClick={() => paths && paths.length > 0 && setShowAnime(true)} disabled={!char || !paths || paths.length === 0}
           aria-label="かきじゅんを みる"
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-ai-700 border-2 border-ai-300 hover:bg-ai-50 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 min-h-[56px]">
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-ai-700 border-2 border-ai-300 hover:bg-ai-50 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 min-h-[56px]">
           <IconPlay size={22}/> かきじゅん
         </button>
       </div>
@@ -4238,12 +4252,18 @@ function StageStepper({ stage, stageObj }) {
     { idx: 3, label: 'じぶんで かく', left: FREE_REQUIRED - Math.min(stageObj?.freeStreak || 0, FREE_REQUIRED) },
     { idx: 4, label: 'ことばに つかう' },
   ];
-  // いま とりくんで いる だんかい（ぜんぶ おわっていれば 四）
+  // いま とりくんで いる だんかい（ぜんぶ おわっていれば 4）
   const cur = steps.find(s => stage < s.idx) || steps[steps.length - 1];
   const done = stage >= 4;
+  /* よこ 1 列に おさめる。かきとりの マスの たかさを けずらないことが
+     いちばん だいじなので、ここは たてに つみあげない。 */
   return (
-    <div className="mb-2 shrink-0 kkm-stepper-row" aria-label="がくしゅうの ステップ">
-      <ol className="flex items-center gap-1.5">
+    <div className="flex items-center gap-2 shrink-0 kkm-stepper-row" aria-label="がくしゅうの ステップ">
+      {/* まるの ならびは スマホでは 出さない。
+         せまい画面で これを 出すと 見出しが 2 行に 折れ、そのぶん
+         かきとりの マスが 小さくなる。1年生が 見て うごくのは
+         「あと n かい」の ほうなので、そちらを のこす。 */}
+      <ol className="hidden sm:flex items-center gap-1">
         {steps.map((s, i) => {
           const info = STAGE_INFO[s.idx];
           const cleared = stage >= s.idx;
@@ -4251,35 +4271,29 @@ function StageStepper({ stage, stageObj }) {
           return (
             <React.Fragment key={s.idx}>
               <li aria-current={active ? 'step' : undefined}
-                className={`shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${
+                className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${
                   cleared ? 'bg-shu-600 border-shu-700 text-white'
                   : active ? 'bg-white border-shu-500 text-shu-700 kkm-pulse-ring'
                   : 'bg-washi-100 border-sumi-200 text-sumi-600'
                 }`}>
                 {cleared
-                  ? <IconCheck size={20}/>
-                  : <span className="kkm-glyph text-lg leading-none">{info.num}</span>}
+                  ? <IconCheck size={18}/>
+                  : <span className="kkm-glyph text-base leading-none">{info.num}</span>}
               </li>
               {i < steps.length - 1 && (
                 <span aria-hidden="true"
-                  className={`flex-1 h-[3px] rounded-full transition-colors duration-300 ${stage > s.idx ? 'bg-shu-400' : 'bg-sumi-200'}`}/>
+                  className={`w-2 h-[3px] rounded-full transition-colors duration-300 ${stage > s.idx ? 'bg-shu-400' : 'bg-sumi-200'}`}/>
               )}
             </React.Fragment>
           );
         })}
       </ol>
-      {/* ことばは 1 つだけ。「あと なんかい」が 言えるなら それを 言う。
-          （見出しが すでに「なにを するか」を 言っているので、
-            ここで もう いちど くり返さない） */}
-      <div className="mt-1.5 text-center text-lg font-semibold text-sumi-700 leading-tight">
+      <div className="text-lg font-semibold text-sumi-700 leading-tight whitespace-nowrap">
         {done
-          ? <span className="text-shu-700"><Furi>花丸！ かんぺきに なったよ</Furi></span>
+          ? <span className="text-shu-700"><Furi>花丸！</Furi></span>
           : cur.left > 0
             ? <>あと <span className="text-2xl tabular-nums text-shu-700">{cur.left}</span> かい</>
-            : <>
-                <span className="kkm-glyph text-shu-700">{STAGE_INFO[cur.idx].num}</span>
-                {' '}{cur.label}
-              </>}
+            : <span className="text-shu-700">{cur.label}</span>}
       </div>
     </div>
   );
@@ -5932,7 +5946,7 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
 
   // ── たて向き：練習キャンバスを大きく、表はドロワー ──
   return (
-    <div className="flex-1 flex flex-col p-2 min-h-0 overflow-hidden gap-2 kkm-main-pad">
+    <div className="flex-1 flex flex-col p-1.5 min-h-0 overflow-hidden gap-1.5 kkm-main-pad">
       {/* もじをえらぶバー（現在の文字＋表を開くボタン） */}
       <div className="shrink-0 flex items-center gap-2">
         <button onClick={() => setTableOpen(true)}
