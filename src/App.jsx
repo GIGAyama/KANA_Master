@@ -1487,11 +1487,22 @@ function currentTier(mim, skill) {
 // ステージごとの 出題の あつさ
 /* `sizeHint`：えらぶ ボタンに「ちいさい／おおきい」と 書きそえるか。
    これは 足場なので、手あつい ステージだけ。1st で 出すと
-   「っ と つ、どっち？」の こたえを そのまま 教えて しまう。 */
+   「っ と つ、どっち？」の こたえを そのまま 教えて しまう。
+
+   `words`（つかう ことばの かず）は ステージが 上がるほど しぼる。
+   これは README §2 の ねらいどおり。ただし 3rd を 2 語に すると
+   「つづけて おなじ ことばを 出さない」と かならず A-B-A-B に
+   なって しまうので 3 語に する。3 語 × 4 かたち＝12 とおり あるので
+   4 もんの あいだ 組みあわせは 一度も かさならない。
+
+   `formats`（つかう もんだいの かたち）は §17.9 の 台帳の かぎ。 */
 function tierPlan(tier) {
-  if (tier >= 3) return { count: 4, words: 2, maxChoices: 2, dots: true,  rhythm: true,  sizeHint: true  };
-  if (tier === 2) return { count: 5, words: 4, maxChoices: 2, dots: true,  rhythm: false, sizeHint: true  };
-  return              { count: 6, words: 12, maxChoices: 3, dots: false, rhythm: false, sizeHint: false };
+  if (tier >= 3) return { count: 4, words: 3,  maxChoices: 2, dots: true,  rhythm: true,  sizeHint: true,
+                          formats: ['spell', 'fill', 'count'] };
+  if (tier === 2) return { count: 5, words: 5,  maxChoices: 2, dots: true,  rhythm: false, sizeHint: true,
+                          formats: ['spell', 'fill', 'count'] };
+  return              { count: 6, words: 12, maxChoices: 3, dots: false, rhythm: false, sizeHint: false,
+                          formats: ['spell', 'fill', 'count'] };
 }
 // ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
 const MIM_CHECK_INTERVAL_DAYS = 14;
@@ -7474,47 +7485,152 @@ function makeOppositeQuestion(word) {
   };
 }
 
+/* ══════════════════════════════════════════════════════════════
+   17.9. とくべつな おとの 出題（かたちの 台帳）
+
+   もとは かたちが 3 つ しか なく、`makers[i % 3](unit, pool[i % 語数])`
+   の 総当たりで 出していた。これだと **ことばを しぼると もんだいも
+   1 対 1 で しぼられる**。3rd ステージは 2 語 × 3 かたち＝じっさいには
+   4 もん 中 2 語しか 出ず、「また おなじ もんだい」に なっていた。
+
+   ねらい（README §2）は 「ことばを しぼって くりかえす」ことで、
+   **おなじ もんだいを くりかえす ことでは ない**。
+   そこで かたちを 台帳に して、ことばと 課題を きりはなす。
+     ・1 セットの 中で おなじ（ことば × かたち）は 出さない
+     ・つづけて おなじ ことばを 出さない
+     ・つかえない かたち（音声が ない 端末の 聞きとりなど）は
+       **えらぶ 前に** 外す ＝ 出題数が へらない
+
+   `chance` は「まぐれで あたる 見こみ」。tier だけを 見て 正答率を
+   ならべると 手あつい 指導の 児童ほど よく 見える 逆転が 起きるので
+   （§18.9）、じっさいに 出した かたちの まざりを 学習ログに のこす。
+   ══════════════════════════════════════════════════════════════ */
+const SPECIAL_FORMATS = {
+  spell: {
+    // ことばぜんたいの 見わけ。まちがい選択肢は 人が 書いた `bad`。
+    fits: (unit, w) => (w.bad || []).length > 0,
+    make: (unit, w, p) => makeSpellingQuestion(unit, w, p.maxChoices),
+    chance: (q) => 1 / Math.max(2, q.choices.length),
+  },
+  fill: {
+    // マスの 中の 1 字。ちいさい字の 有無・いちを 見る。
+    fits: () => true,
+    make: (unit, w, p) => makeFillQuestion(unit, w, p.maxChoices + 1),
+    chance: (q) => 1 / Math.max(2, q.choices.length),
+  },
+  count: {
+    // 拍の 分解。いちばん 土台に なる 課題（README §2）。
+    fits: () => true,
+    // 1st は 1..6 のまま のこす（いちばん むずかしい 形）。手あつい ステージだけ しぼる。
+    make: (unit, w, p) => makeCountQuestion(unit, w, p.maxChoices >= 3 ? 6 : 4),
+    chance: (q) => 1 / (q.countChoices || COUNT_CHOICES).length,
+  },
+  joshi: {
+    // くっつきの ことばは 文でしか れんしゅうに ならないので、この単元 せんよう。
+    fits: (unit, s) => !!s.s,
+    make: (unit, s) => makeJoshiQuestion(unit, s),
+    chance: (q) => 1 / Math.max(2, q.choices.length),
+  },
+};
+
+// { spell:2, fill:2, count:1 } のように かぞえる（ログ用）
+function countBy(list, keyFn) {
+  const out = {};
+  for (const x of list) { const k = keyFn(x); if (k) out[k] = (out[k] || 0) + 1; }
+  return out;
+}
+// じっさいに 画面に ならんだ えらぶ かず（ログ用）
+function actualChoiceCount(q) {
+  if (q.kind === 'count') return (q.countChoices || COUNT_CHOICES).length;
+  return (q.choices || []).length;
+}
+// この 1 セットの「まぐれで あたる 見こみ」の へいきん
+function meanChance(qs) {
+  const vals = qs.map(q => {
+    const f = SPECIAL_FORMATS[q.format];
+    if (f && f.chance) { try { return f.chance(q); } catch (e) {} }
+    return 1 / Math.max(2, actualChoiceCount(q));
+  });
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+}
+
 /* ある ユニットの もんだいを つくる（ふくしゅう ゆうせん）。
 
    plan は MIM の ステージ（層）から きまる 指導の あつさ。
      count      … 何もん 出すか
      words      … 何この ことばを つかうか（少ないほど くりかえす）
      maxChoices … えらぶ かず（少ないほど やさしい）
+     formats    … つかう もんだいの かたち
    ステージが 上がる（＝手あつくする）ほど、あつかう ことばを しぼって
-   おなじ ものを くりかえす。これが MIM の 2nd・3rd ステージの 考えかた。 */
-function buildSpecialQuestions(unitKey, n, skill, plan) {
+   おなじ ものを くりかえす。これが MIM の 2nd・3rd ステージの 考えかた。
+   ただし **くりかえすのは ことばで、もんだいでは ない**（上の 台帳）。 */
+function buildSpecialQuestions(unitKey, n, skill, plan, opts = {}) {
   const unit = SPECIAL_UNIT_MAP[unitKey];
   if (!unit) return [];
   const p = plan || tierPlan(1);
   const count = n || p.count;
-  if (unit.sentences) {
-    const sorted = shuffled(unit.sentences).sort((a, b) => {
-      const da = srsIsDue(skill?.[srsIdSpecial(unit.key, a.s)]) ? 0 : 1;
-      const db = srsIsDue(skill?.[srsIdSpecial(unit.key, b.s)]) ? 0 : 1;
-      return da - db;
-    });
-    const pool = sorted.slice(0, Math.max(2, Math.min(sorted.length, p.words)));
-    const out = [];
-    for (let i = 0; out.length < count; i++) out.push(makeJoshiQuestion(unit, pool[i % pool.length]));
-    return out;
-  }
-  const sorted = shuffled(unit.words).sort((a, b) => {
-    const da = srsIsDue(skill?.[srsIdSpecial(unit.key, a.w)]) ? 0 : 1;
-    const db = srsIsDue(skill?.[srsIdSpecial(unit.key, b.w)]) ? 0 : 1;
+
+  // ことばの 単元と 文の 単元（くっつきの ことば）を おなじ しくみで あつかう
+  const isSentence = !!(unit.sentences && unit.sentences.length);
+  const items = isSentence ? unit.sentences : unit.words;
+  if (!items || items.length === 0) return [];
+  const keyOf = (x) => (isSentence ? x.s : x.w);
+
+  // つかえる かたちを **さきに** きめる（あとから 落とすと 出題数が へる）
+  const wanted = isSentence ? ['joshi'] : (p.formats || ['spell', 'fill', 'count']);
+  const formats = wanted.filter(k => {
+    const f = SPECIAL_FORMATS[k];
+    return f && (!f.usable || f.usable(unit, opts));
+  });
+  if (formats.length === 0) return [];
+
+  // ふくしゅうの きげんが きた ものを 先に（これまでどおり）
+  const sorted = shuffled(items).sort((a, b) => {
+    const da = srsIsDue(skill?.[srsIdSpecial(unit.key, keyOf(a))]) ? 0 : 1;
+    const db = srsIsDue(skill?.[srsIdSpecial(unit.key, keyOf(b))]) ? 0 : 1;
     return da - db;
   });
-  const pool = sorted.slice(0, Math.max(2, Math.min(sorted.length, p.words)));
-  const makers = [
-    (u, w) => makeSpellingQuestion(u, w, p.maxChoices),
-    (u, w) => makeFillQuestion(u, w, p.maxChoices + 1),
-    // かずの もんだいは 1st では 1..6 のまま（いちばん むずかしい 形を のこす）。
-    // 手あつい ステージだけ 4 つに しぼる。
-    (u, w) => makeCountQuestion(u, w, p.maxChoices >= 3 ? 6 : 4),
-  ];
+  /* つかう ことばの かず。ステージで しぼる（`p.words`）が、
+     **かたちが 1 つしか ない 単元では ことばが そのまま もんだいの かず**に
+     なるので、`count ÷ かたちの かず` を 下まわらせない。
+     くっつきの ことば（かたちは 文の 1 つだけ）で 3 語 4 もんに すると、
+     かならず どれかの 文が 2 回 出て しまう。 */
+  const need = Math.ceil(count / formats.length);
+  const poolSize = Math.max(2, need, Math.min(sorted.length, p.words));
+  const pool = sorted.slice(0, Math.min(sorted.length, poolSize));
+
+  const used = new Set();          // 'ことば|かたち' … 1 セットに 1 回まで
   const out = [];
-  for (let i = 0; out.length < count && i < pool.length * 4; i++) {
-    const q = makers[i % makers.length](unit, pool[i % pool.length]);
-    if (q) out.push(q);
+  let prevKey = null;
+  const limit = pool.length * formats.length * 2 + 8;   // 空まわりの とめ木
+  for (let guard = 0; out.length < count && guard < limit; guard++) {
+    // ① つづけて おなじ ことばに ならないよう えらぶ（1 語しか ないときは のぞく）
+    const cands = pool.filter(x => keyOf(x) !== prevKey || pool.length === 1);
+    // ② まだ 出していない 組みあわせが のこっている ことばを ゆうせん
+    const remain = (x) => formats.filter(f => !used.has(keyOf(x) + '|' + f)).length;
+    const best = Math.max(...cands.map(remain));
+    if (best === 0) { used.clear(); prevKey = null; continue; }   // ぜんぶ 出しきったら やりなおす
+    const item = shuffled(cands.filter(x => remain(x) === best))[0];
+    /* ③ その ことばで まだ 出していない かたちから 1 つ。
+       ここで まったくの ランダムに すると、5 もん ぜんぶ「かきかたは
+       どっち？」に なる セットが ふつうに 出る。1 セットの 中で
+       見わけ・マス・拍 が そろうよう、**まだ 少ない かたちを 先に** とる。
+       （拍の 分解は すべての 土台なので、セットから 消えては こまる） */
+    const usedCount = countBy(out, q => q.format);
+    const fs = shuffled(formats.filter(f => !used.has(keyOf(item) + '|' + f)
+      && SPECIAL_FORMATS[f].fits(unit, item, p)))
+      .sort((a, b) => (usedCount[a] || 0) - (usedCount[b] || 0));
+    let q = null, chosen = null;
+    for (const f of fs) {
+      q = SPECIAL_FORMATS[f].make(unit, item, p, opts);
+      if (q) { chosen = f; break; }
+      used.add(keyOf(item) + '|' + f);        // つくれない 組みあわせは 二度と ためさない
+    }
+    if (!q) { formats.forEach(f => used.add(keyOf(item) + '|' + f)); continue; }
+    q.format = chosen;
+    used.add(keyOf(item) + '|' + chosen);
+    out.push(q);
+    prevKey = keyOf(item);
   }
   return out.slice(0, count);
 }
@@ -7898,10 +8014,18 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
     // **`ext.tier` を かならず 記録する**（§3.10.3）。えらぶ かずが 3→2 に へれば
     // あてずっぽうの 正答率が 33%→50% に 上がるため、tier を 見ずに 正答率を
     // ならべると **手あつい 指導を うけている 児童ほど 成績が よく 見える** 逆転が 起きる。
+    // …ところが **tier だけでは 足りない**。えらぶ かずは じっさいには
+    // ことばの `bad` の かずでも かわるし、もんだいの かたちが まざれば
+    // 1 セットの まぐれ率は tier から 引けなく なる。じっさいに 出した
+    // 中身（かたちの まざり・えらぶ かず・まぐれの 見こみ）を そえておく。
     const meta = KANA_STUDY && KANA_STUDY.specialUnitOf(key);
     if (STUDY && meta) {
       STUDY.begin({ ...meta, count: qs.length,
-        ext: { ability: 'special', unitKey: key, tier, ...studySkillExt(skill) } });
+        ext: { ability: 'special', unitKey: key, tier,
+               formats: countBy(qs, q => q.format),
+               choiceN: qs.map(actualChoiceCount),
+               chance: Math.round(meanChance(qs) * 1000) / 1000,
+               ...studySkillExt(skill) } });
     }
     playPickup();
     setRunning({ key, questions: qs });
