@@ -608,6 +608,24 @@ button, canvas, [role="button"], .kkm-no-select {
 .kkm-app-bg > nav,
 .kkm-app-bg > main,
 .kkm-app-bg > footer { position: relative; }
+
+/* ⚠️ <main> は 下タブより 前に 置くこと。
+
+   上の 1 行で <main> は「かさなりの ひとまとまり（stacking context）」に
+   なる。すると **その中の position:fixed も、そのまとまりの 中でしか
+   前に 出られない**。下タブ（.kkm-bottom-nav）は <main> の あとに ある
+   きょうだいで おなじ z-index なので、あとに 書いたほうが 勝ち、
+   <main> の 中の モーダルは z-[300] を つけても 下タブに かくれる。
+
+   じっさいに、もじ表の ボトムシートの 下の ほうと、「ことばを つくる」
+   の「ずかんに ついか」ボタンが 下タブの うしろに 入って 押せなかった。
+   （420×860 の スマホの 大きさで さいげんした。）
+
+   <main> と 下タブは ばしょが かさならない（<main> は overflow:hidden）ので、
+   ここを 前に 出しても 見た目は かわらない。かわるのは
+   「<main> の 中の モーダルが 画面ぜんたいを おおえるか」だけ。 */
+.kkm-app-bg > main { z-index: 2; }
+
 /* 紙吹雪は必ず画面ぜんたいに固定（id 指定なので順序に左右されない） */
 #confettiCanvas { position: fixed; inset: 0; z-index: 400; }
 
