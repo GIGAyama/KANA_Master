@@ -634,13 +634,28 @@ function dedupeWords(list) {
 const ALL_WORDS = dedupeWords([...WORD_BANK, ...WORD_BANK_KATA]);
 function bankOf(script) { return script === 'katakana' ? WORD_BANK_KATA : WORD_BANK; }
 
-// ことば → さしえ の 早びき表。
-// しりとりで 子どもが じぶんで 書いた ことばに、ことばずかんに あるものなら
-// その さしえを 自動で つけてやるために つかう。
-const PICT_BY_WORD = new Map(ALL_WORDS.map(x => [x.w, x.p]));
+/* ことば → ことばずかん（713語）の データ の 早びき表。
+
+   子どもが じぶんで 書いた ことばが この 表に あれば、さしえ（p）と
+   なかま（g）を **その場で 引いて** つかう。子どもに 入力させたり、
+   べつの 説明文を 書きたしたり しないこと。ことばの もとだねは
+   WORD_BANK / WORD_BANK_KATA の 1 か所の まま にする（§1.1）。
+
+   ※ ほぞんする ときも なかまは 書きこまない。あとで ことばを 足したら
+     むかし あつめた ことばにも あとから なかまが つくようにする。 */
+const WORD_INFO = new Map(ALL_WORDS.map(x => [x.w, x]));
 // ずかんに ない ことばの さしえ。えらばなければ 中立の しるしに なる。
 const DEFAULT_PICT = 'shape';
-function guessPict(text) { return PICT_BY_WORD.get(text) || DEFAULT_PICT; }
+function guessPict(text) {
+  const info = WORD_INFO.get(text);
+  return (info && info.p) || DEFAULT_PICT;
+}
+// なかまの 名まえ（「たべもの」など）。ことばずかんに ない ことばは 空。
+function groupTitleOf(text) {
+  const info = WORD_INFO.get(text);
+  const g = info && WORD_GROUP_MAP[info.g];
+  return g ? g.title : '';
+}
 
 // しりとりで コンピュータが つかう ことば。
 // あいさつ（おはよう・ありがとう）は しりとりの ことばに ならないので のぞく。
@@ -5135,6 +5150,35 @@ function WordTown({ wordCount }) {
 /* ──────────────────────────────────────────────────────────────
    17c. <ShiritoriGame> ── しりとりゲーム
    ────────────────────────────────────────────────────────────── */
+/* いま 書いている ことばが ことばずかんに あるとき、その ことばに ついて
+   すでに アプリが 知っていることを 出す。
+
+   ・なかま（たべもの・どうぶつ など）… 教科書の「なかまの ことば」と 同じ 名まえ
+   ・はんたいの ことば（おおきい ⇄ ちいさい）… 「よむ」で つかっている 表から
+
+   語義（ことばの 意味の 文）は このアプリの データには **ない**。
+   むりに 書きたすと ことばの もとだねが 2 か所に なるので、ここでは
+   すでに ある データを 引くだけに とどめる。 */
+function WordBankHint({ text }) {
+  const title = groupTitleOf(text);
+  const opposite = OPPOSITE_MAP[text];
+  if (!title && !opposite) return null;
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+      {title && (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-ai-50 border border-ai-200 text-ai-700">
+          <IconBook size={13}/>{title}の なかま
+        </span>
+      )}
+      {opposite && (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-fuji-50 border border-fuji-200 text-fuji-700">
+          はんたいは <span className="kkm-glyph text-sm">{opposite}</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
 // しりとりの ことばの さいごの じ（小書きは 大きい じに 読みかえる）。
 // ゲームの 中でも 入力の 画面でも つかうので、部品の 外に 出しておく。
 const SMALL_TO_LARGE = {'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','っ':'つ','ゃ':'や','ゅ':'ゆ','ょ':'よ','ゎ':'わ'};
@@ -5221,6 +5265,9 @@ function ShiritoriWriteSheet({ startChar, progress, usedWords, collectedTexts, v
               <IconPlus size={14}/> あそんだ あとに ずかんへ ついかします
             </p>
           )}
+
+          {/* ことばずかんに ある ことばなら、なかまと はんたいの ことばを 出す */}
+          <WordBankHint text={text}/>
 
           {willMaster.length > 0 && (
             <div className="mb-2 bg-shu-50 border border-shu-300 rounded-md px-3 py-2 text-center text-xs font-semibold text-shu-800">
@@ -5699,7 +5746,11 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-            {collected.slice().reverse().map(w => (
+            {collected.slice().reverse().map(w => {
+              // なかまは ほぞんせず、そのつど ことばずかんから 引く。
+              // あとから ことばずかんが ふえれば、むかし あつめた ことばにも つく。
+              const groupTitle = groupTitleOf(w.text);
+              return (
               <div key={w.id} className="bg-white rounded-lg border-2 border-sumi-200 p-3 flex flex-col items-center gap-1.5 relative group kkm-lift kkm-pop-in">
                 <span className="text-shu-600 group-hover:text-shu-700 transition-colors"><Pict name={pictOf(w)} size={40}/></span>
                 <button onClick={() => speakText(w.text, voiceOn)} disabled={!voiceOn}
@@ -5707,13 +5758,19 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
                   className="kkm-glyph kkm-btn text-2xl text-sumi-800 hover:text-shu-700 disabled:cursor-default">
                   {w.text}
                 </button>
+                {groupTitle && (
+                  <span className="text-[10px] font-semibold text-ai-700 bg-ai-50 border border-ai-200 rounded px-1.5 py-0.5 leading-none">
+                    {groupTitle}
+                  </span>
+                )}
                 <button onClick={() => onDelete(w.id)}
                   aria-label={`${w.text} を けす`}
                   className="kkm-btn absolute top-1 right-1 w-8 h-8 min-w-[32px] min-h-[32px] rounded-md text-sumi-600 opacity-60 md:opacity-0 md:group-hover:opacity-100 hover:bg-shu-50 hover:text-shu-600 flex items-center justify-center">
                   <IconTrash size={14}/>
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -5779,7 +5836,11 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
    ────────────────────────────────────────────────────────────── */
 function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, onSave }) {
   const [text, setText] = useState('');
-  const [pict, setPict] = useState(PICT_CHOICES[0].name);
+  // さしえは「まだ えらんでいない（null）」を もつ。えらんでいない あいだは
+  // ことばずかんから 引いた さしえを つかうので、よく つかう ことばは
+  // なにも しなくても 正しい 絵に なる。
+  const [pickedPict, setPickedPict] = useState(null);
+  const pict = pickedPict || guessPict(text);
   const [kindTab, setKindTab] = useState('seion');
   const table = getKanaTable(kanaMode, kindTab);
   const canSave = text.length >= 1;
@@ -5823,16 +5884,24 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
           )}
         </div>
 
+        {/* ことばずかんに ある ことばなら、なかまと はんたいの ことばを 出す */}
+        <WordBankHint text={text}/>
+
         {/* ② さしえを えらぶ
             えらぶ かずを 16 に しぼり、ぜんぶを ひと目に 出す（スクロール
             させない）。絵の いみを 当てさせないよう、下に ことばを そえる。 */}
         <div className="mb-3">
           <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">
-            なかまを えらぶ<span className="font-medium text-sumi-600">（にている ものを えらべば だいじょうぶ）</span>
+            なかまを えらぶ
+            <span className="font-medium text-sumi-600">
+              {pickedPict || !guessPict(text) || guessPict(text) === DEFAULT_PICT
+                ? '（にている ものを えらべば だいじょうぶ）'
+                : '（ずかんから もってきました。かえても いいです）'}
+            </span>
           </div>
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-0.5">
             {PICT_CHOICES.map(c => (
-              <button key={c.name} onClick={() => setPict(c.name)} aria-pressed={pict === c.name} aria-label={c.label}
+              <button key={c.name} onClick={() => setPickedPict(c.name)} aria-pressed={pict === c.name} aria-label={c.label}
                 className={`kkm-btn rounded-md border flex flex-col items-center justify-center gap-0.5 py-1.5 ${
                   pict === c.name ? 'bg-shu-50 border-shu-500 text-shu-700' : 'bg-white border-sumi-200 text-sumi-600 hover:border-shu-300'
                 }`}>
