@@ -746,21 +746,26 @@ const TONE_DEEP = {
    ・num   … 見出しにつける漢数字（教科書の「一 二 三 四」）
    ・icon  … UI アイコンの名まえ（ICONS のキー）
    ・tone  … TONES のキー */
+/* num は だんかいの 番号。
+   もとは 教科書らしさを ねらって 漢数字（一 二 三 四）を つかっていたが、
+   まるの 中に 1 字だけ 出る ところなので ふりがなを ふれない。
+   まだ 漢字を ならっていない 1年生が 読めないままに なるので、
+   だれでも 読める 算用数字に あらためた。 */
 const STAGE_INFO = [
   { key: 0, num: '',  icon: 'lock',   label: 'みがくぜん',   tone: 'sumi'   },
-  { key: 1, num: '一', icon: 'play',   label: 'かきじゅん',   tone: 'ai'     },
-  { key: 2, num: '二', icon: 'brush',  label: 'なぞりがき',   tone: 'midori' },
-  { key: 3, num: '三', icon: 'pen',    label: 'じぶんでかく', tone: 'fuji'   },
-  { key: 4, num: '四', icon: 'maru',   label: 'かんぺき',     tone: 'shu'    },
+  { key: 1, num: '1', icon: 'play',   label: 'かきじゅん',   tone: 'ai'     },
+  { key: 2, num: '2', icon: 'brush',  label: 'なぞりがき',   tone: 'midori' },
+  { key: 3, num: '3', icon: 'pen',    label: 'じぶんでかく', tone: 'fuji'   },
+  { key: 4, num: '4', icon: 'maru',   label: 'かんぺき',     tone: 'shu'    },
 ];
 
 /* ステップを ひとつ 上がった ときの ことば。
    採点の 画面（<ScorePopup>）と おしらせ（<StageUpPopup>）の 両方で
    おなじ 文を つかうため、ここに 一元化する。 */
 const STAGE_UP_TEXT = {
-  2: { num: '二', title: 'なぞり クリア！', sub: 'つぎは じぶんで かいてみよう', tone: 'midori' },
-  3: { num: '三', title: 'じぶんで かく クリア！', sub: 'ことばを 1こ あつめれば 花丸！', tone: 'fuji' },
-  4: { num: '四', title: '花丸！ かんぺき',     sub: 'ほんとうに じぶんの じに なったよ', tone: 'shu' },
+  2: { num: '2', title: 'なぞり クリア！', sub: 'つぎは じぶんで かいてみよう', tone: 'midori' },
+  3: { num: '3', title: 'じぶんで かく クリア！', sub: 'ことばを 1こ あつめれば 花丸！', tone: 'fuji' },
+  4: { num: '4', title: '花丸！ かんぺき',     sub: 'ほんとうに じぶんの じに なったよ', tone: 'shu' },
 };
 
 function newStageObj(stage=0) {
@@ -913,8 +918,8 @@ const SPECIAL_UNITS = [
   },
   {
     key: 'sokuon', title: 'つまる おと', mark: 'っ', tone: 'shu', icon: 'brush',
-    lead: 'ちいさい っ', rule: '「っ」は ちいさく 書いて、いちど とまる おと。マスは ちゃんと 1 つ つかうよ。',
-    tips: ['きって → き・っ・て（3つ）', 'ちいさい っ は みぎしたに 小さく', 'こえに 出さないけれど、たしかに ある おと'],
+    lead: 'ちいさい っ', rule: '「っ」は ちいさく かいて、いちど とまる おと。マスは ちゃんと 1 つ つかうよ。',
+    tips: ['きって → き・っ・て（3つ）', 'ちいさい っ は みぎしたに ちいさく', 'こえに ださないけれど、たしかに ある おと'],
     words: [
       { w:'きって',   p:'tool',   bad:['きて','きつて'] },
       { w:'がっこう', p:'school', bad:['がこう','がつこう'] },
@@ -943,7 +948,7 @@ const SPECIAL_UNITS = [
   },
   {
     key: 'youon', title: 'ねじれる おと', mark: 'ゃゅょ', tone: 'fuji', icon: 'pencil',
-    lead: 'ちいさい ゃ ゅ ょ', rule: '「きゃ」は 2 もじで、おとは 1 つ。ちいさい ゃゅょ は 小さく 書くよ。',
+    lead: 'ちいさい ゃ ゅ ょ', rule: '「きゃ」は 2 もじで、おとは 1 つ。ちいさい ゃゅょ は ちいさく かくよ。',
     tips: ['きゃ・きゅ・きょ は てを 1 かい たたく', 'ちいさい ゃ と おおきい や は べつの もの', 'でんしゃ → で・ん・しゃ（3つ）'],
     words: [
       { w:'でんしゃ',   p:'train',  bad:['でんしや'] },
@@ -1007,7 +1012,7 @@ const SPECIAL_UNITS = [
   },
   {
     key: 'joshi', title: 'くっつきの ことば', mark: 'はへを', tone: 'sumi', icon: 'book',
-    lead: 'は・へ・を', rule: 'ことばと ことばを くっつける「は・へ・を」は、「わ・え・お」と 読むよ。',
+    lead: 'は・へ・を', rule: 'ことばと ことばを くっつける「は・へ・を」は、「わ・え・お」と よむよ。',
     tips: ['わたしは → 「わ」と よむけど「は」と かく', 'がっこうへ → 「え」と よむけど「へ」と かく', 'ほんを → 「お」と よむけど「を」と かく'],
     // くっつきの ことばは 文で おぼえる（? のところを えらぶ）
     sentences: [
@@ -1258,11 +1263,11 @@ function moraKinds(word) {
   });
 }
 const MORA_KIND_INFO = {
-  plain:   { label: 'たたく',   hand: 'clap', hint: '手を 1 かい たたく' },
+  plain:   { label: 'たたく',   hand: 'clap', hint: 'てを 1 かい たたく' },
   hatsuon: { label: 'たたく',   hand: 'clap', hint: '「ん」も 1 かい たたく' },
   youon:   { label: 'まとめて', hand: 'clap', hint: '2 もじ まとめて 1 かい' },
-  sokuon:  { label: 'にぎる',   hand: 'fist', hint: 'グーに にぎって 音を出さない' },
-  chouon:  { label: 'ひっぱる', hand: 'pull', hint: '手を よこに ひっぱって のばす' },
+  sokuon:  { label: 'にぎる',   hand: 'fist', hint: 'グーに にぎって おとを ださない' },
+  chouon:  { label: 'ひっぱる', hand: 'pull', hint: 'てを よこに ひっぱって のばす' },
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -1386,10 +1391,10 @@ const MIM_TIER_INFO = {
        desc:'みんなと おなじ すすみかたで だいじょうぶ。',
        teacher:'通常の量で進めます。ヒントは出さず、まちがえたぶんだけ復習に回します。' },
   2: { key:2, name:'2nd ステージ', short:'すこし ていねい', tone:'ai',
-       desc:'ドットを つねに 出して、えらぶ かずを へらすよ。',
+       desc:'ドットを つねに だして、えらぶ かずを へらすよ。',
        teacher:'語数をしぼり、ドット（視覚化）を常時表示、選択肢を2つに減らします。' },
   3: { key:3, name:'3rd ステージ', short:'とても ていねい', tone:'shu',
-       desc:'まず リズムを 見てから、ゆっくり といて いこう。',
+       desc:'まず リズムを みてから、ゆっくり といて いこう。',
        teacher:'語数をさらにしぼり、毎問ドット＋動作化（リズム）を先に見せてから解答させます。' },
 };
 // ちからだめし 1 かいぶんの 点数から ステージを きめる
@@ -2072,7 +2077,7 @@ function adviceFor(key, raw) {
     case 'rooms':     return ok ? 'マスを もうちょっと ひろく つかおう' : 'すみずみまで つかえる ように しよう';
     case 'crossings': return ok ? 'せんの かさなる ところを ていねいに' : 'せんを ちゃんと かさねて かこう';
     case 'balance':   return ok ? 'まんなかに かくと きれいだよ' : 'マスの まんなかに おおきく かこう';
-    case 'shape':     return ok ? 'お手本の せんに もうすこし ちかづけよう' : 'お手本を よく みて、せんの かたちを まねしよう';
+    case 'shape':     return ok ? 'おてほんの せんに もうすこし ちかづけよう' : 'おてほんを よく みて、せんの かたちを まねしよう';
   }
   return '';
 }
@@ -2865,10 +2870,36 @@ function hanamaruPath(n, rm, rp, cx = 50, cy = 50) {
   for (let i = 0; i < n; i++) d += ` A${rp} ${rp} 0 1 1 ${notch(i)}`;
   return d + ' Z';
 }
-// ちいさく出すときは 花びらを へらして線を太くする。
-// 花びらが 8 枚のままだと 15px くらいでは つぶれて 歯車のように見えてしまう。
-const HANAMARU_LARGE = { d: hanamaruPath(8, 31, 13), w: 5.5, r: 15 };
-const HANAMARU_SMALL = { d: hanamaruPath(5, 27, 18), w: 7,   r: 11 };
+/* 花丸の まんなかの「うずまき」。
+
+   先生が 赤ペンで 花丸を 書くときは、まんなかから ぐるぐると 外へ
+   まわしていく。まるを 1 つ 置くより、この うずのほうが
+   「先生が その場で 書いてくれた」感じが 出る。
+
+   アルキメデスの うず（まわった ぶんだけ 半径が のびる）を 点で ひろって、
+   1 本の 線に する。線どうしが くっつくと ただの 円ばんに 見えるので、
+   1 まわりぶんの 半径の のび（(rEnd-rStart)/turns）は、かならず
+   線の太さより じゅうぶん 大きく しておくこと。 */
+function spiralPath(turns, rStart, rEnd, cx = 50, cy = 50, samples = 144, phase = -Math.PI * 0.6) {
+  const total = turns * Math.PI * 2;
+  const pts = [];
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const a = phase + t * total;
+    const r = rStart + (rEnd - rStart) * t;
+    pts.push(`${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`);
+  }
+  return 'M' + pts[0] + 'L' + pts.slice(1).join('L');
+}
+
+/* 花びらは 8 まい。谷（花びらと 花びらの あいだ）を ふかくとって、
+   ひとつひとつが まるく ふくらんで 見えるようにする。
+
+   ちいさく出すときは 花びらを へらして線を太くする。
+   花びらが 8 枚のままだと 15px くらいでは つぶれて 歯車のように見えてしまう。
+   おなじ りゆうで、うずまきも ちいさいときは まき数を へらす。 */
+const HANAMARU_LARGE = { d: hanamaruPath(8, 30, 15.5), w: 5.2, s: spiralPath(2.0, 3.5, 24.5), tilt: -16 };
+const HANAMARU_SMALL = { d: hanamaruPath(5, 27, 18),   w: 7,   s: spiralPath(1.0, 5, 14),     tilt: -16 };
 
 function Hanamaru({ size = 24, className = '', draw = false, duration = 0.9, color = 'currentColor' }) {
   const s = size < 24 ? HANAMARU_SMALL : HANAMARU_LARGE;
@@ -2882,8 +2913,11 @@ function Hanamaru({ size = 24, className = '', draw = false, duration = 0.9, col
          fill="none" stroke={color} strokeWidth={s.w} strokeLinecap="round" strokeLinejoin="round"
          className={className} aria-hidden="true" focusable="false">
       <path d={s.d} className={draw ? 'kkm-draw' : undefined} style={drawStyle}/>
-      <circle cx="50" cy="50" r={s.r} className={draw ? 'kkm-draw' : undefined}
-              style={draw ? { '--kkm-dash': Math.ceil(2 * Math.PI * s.r) + 4, '--kkm-draw-dur': `${duration * 0.6}s`, '--kkm-draw-delay': `${duration * 0.75}s` } : undefined}/>
+      {/* まんなかの うずまき。すこし かたむけて、手で 書いた 感じを 出す。
+          描く演出のときは 花びらの あとから、まんなか → そとへ のびていく。 */}
+      <path d={s.s} transform={`rotate(${s.tilt} 50 50)`}
+            className={draw ? 'kkm-draw' : undefined}
+            style={draw ? { '--kkm-dash': Math.ceil(getPathLength(s.s)) + 8, '--kkm-draw-dur': `${duration * 0.8}s`, '--kkm-draw-delay': `${duration * 0.6}s` } : undefined}/>
     </svg>
   );
 }
@@ -2928,6 +2962,38 @@ function CorrectFx({ seed, size = 132 }) {
       </span>
     </div>
   );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   5.6. <Furi> ── ふりがな
+
+   1年生は 漢字を まだ 読めない。だから 子どもに 見せる ところでは
+   **漢字を つかわない**のが 原則で、どうしても 漢字で 見せたい ことばだけ
+   ふりがなを つける。
+
+   いまの ところ 例外は「花丸」ひとつだけ。これは 先生が 赤ペンで
+   書いてくれる しるしの 名まえで、学校で 耳から 覚える ことばなので、
+   字は 漢字のまま 見せて 読みだけ そえる。
+
+   読みは **この表 1 か所** だけで きめる。ふやすときは ここに 足すこと。
+   （大人むけの まとめ＝<GuardianPanel> は 大人の ことばで 書くので
+     ここを 通さない。）
+
+   ※ rt に 色を 決めうちしない（`src/extra.css`）。朱色の ボタンの上に
+      のった ときに 読めなくなるため。検査でも 見張っている。 */
+const FURIGANA = { '花丸': 'はなまる' };
+const FURI_RE = new RegExp('(' + Object.keys(FURIGANA).join('|') + ')', 'g');
+function Furi({ children }) {
+  if (typeof children !== 'string') return children || null;
+  if (children.indexOf('花丸') < 0) return children;      // ほとんどの 文は そのまま
+  return children.split(FURI_RE).map((part, i) =>
+    FURIGANA[part]
+      ? <ruby key={i}>{part}<rt>{FURIGANA[part]}</rt></ruby>
+      : <React.Fragment key={i}>{part}</React.Fragment>);
+}
+/* 読みあげ・aria-label むけ。ふりがなを ふれない ところでは かなに ひらく。 */
+function toKana(s) {
+  return typeof s === 'string' ? s.replace(FURI_RE, (m) => FURIGANA[m] || m) : s;
 }
 
 /* 名まえから UI アイコンを引く（STAGE_INFO などの設定から使う） */
@@ -2986,7 +3052,7 @@ function Mascot({ message, mood = 'happy', size = 'normal' }) {
           {/* ふきだしの しっぽ */}
           <span aria-hidden="true"
             className="absolute left-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 bg-white border-l border-b border-shu-200"/>
-          <span className="relative text-[11px] md:text-sm font-semibold text-sumi-700 leading-snug">{message}</span>
+          <span className="relative text-[11px] md:text-sm font-semibold text-sumi-700 leading-snug"><Furi>{message}</Furi></span>
         </div>
       )}
     </div>
@@ -3231,14 +3297,18 @@ function StageMark({ stage, className = '' }) {
   );
 }
 
-/* 五十音表の 行（ぎょう）の見出し。「あ行」「か行」のように、
-   教科書とおなじ かたまりで もじを つかめるようにする。 */
+/* 五十音表の 行（ぎょう）の見出し。「あぎょう」「かぎょう」のように、
+   教科書とおなじ かたまりで もじを つかめるようにする。
+
+   もとは「あ行」と 漢字で 出していたが、「行」は 2年生で ならう字で、
+   36px の 見出しには ふりがなも 入らない。かなだけで 出せるよう、
+   もじ（あ）と よみ（ぎょう）を 上下 2 だんに 分けて かえす。 */
 function rowLabelOf(rowChars) {
   const filled = rowChars.filter(Boolean);
-  if (filled.length === 0) return '';
+  if (filled.length === 0) return null;
   const leader = filled[0];
-  if (filled.length === 1 && (leader === 'ん' || leader === 'ン')) return leader;
-  return leader + '行';
+  if (filled.length === 1 && (leader === 'ん' || leader === 'ン')) return { head: leader, tail: '' };
+  return { head: leader, tail: 'ぎょう' };
 }
 
 function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, currentChar, onSelect, onSequence, onRandom }) {
@@ -3302,12 +3372,22 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
         <div className="max-w-md mx-auto flex flex-col gap-1.5">
           {rows.map((row, r) => (
             <div key={r} className="flex items-center gap-1.5">
-              {showRowLabels && (
-                <div aria-hidden="true"
-                  className="shrink-0 w-9 text-sm font-semibold text-sumi-600 text-center leading-none select-none whitespace-nowrap">
-                  {rowLabelOf(row)}
-                </div>
-              )}
+              {showRowLabels && (() => {
+                const rl = rowLabelOf(row);
+                if (!rl) return <div aria-hidden="true" className="shrink-0 w-11"/>;
+                return (
+                  <div aria-hidden="true"
+                    className="shrink-0 w-11 text-center leading-none select-none text-sumi-600">
+                    <div className="kkm-glyph text-lg">{rl.head}</div>
+                    {/* 「ぎょう」は 読むための ものではなく、行の 目じるし。
+                        こども スケールの 底上げを かけると 44px の 列で
+                        1 文字ずつ 折れてしまうので、ここだけ 大きさを 直に きめる。 */}
+                    {rl.tail && (
+                      <div className="font-semibold mt-0.5 whitespace-nowrap" style={{ fontSize: 12 }}>{rl.tail}</div>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex-1 grid grid-cols-5 gap-1.5">
                 {row.map((char, i) => {
                   if (!char) return <div key={i} className="aspect-square"/>;
@@ -4072,7 +4152,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       {char && stage === 3 && (
         <button onClick={onGoToWords}
           className="kkm-cta-btn kkm-btn kkm-ripple mt-2 py-2.5 px-3 rounded-lg bg-shu-50 text-shu-800 font-semibold text-base border-2 border-shu-300 flex items-center justify-center gap-2 shrink-0 min-h-[52px]">
-          <Hanamaru size={22}/> ことばを 1こ あつめて 花丸に
+          <Hanamaru size={22}/> ことばを 1こ あつめて <Furi>花丸</Furi>に
           <IconArrow size={20}/>
         </button>
       )}
@@ -4082,7 +4162,7 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       {char && stage >= 4 && onNextChar && (
         <button onClick={onNextChar} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
           className="kkm-cta-btn kkm-btn kkm-ripple kkm-solid mt-2 px-3 bg-shu-600 text-white font-semibold text-lg border-2 border-shu-700 flex items-center justify-center gap-2 shrink-0">
-          花丸！ つぎの もじへ <IconArrow size={22}/>
+          <Furi>花丸</Furi>！ つぎの もじへ <IconArrow size={22}/>
         </button>
       )}
 
@@ -4162,7 +4242,7 @@ function StageStepper({ stage, stageObj }) {
   const cur = steps.find(s => stage < s.idx) || steps[steps.length - 1];
   const done = stage >= 4;
   return (
-    <div className="mb-2 shrink-0 kkm-stepper-row" aria-label="学習の ステップ">
+    <div className="mb-2 shrink-0 kkm-stepper-row" aria-label="がくしゅうの ステップ">
       <ol className="flex items-center gap-1.5">
         {steps.map((s, i) => {
           const info = STAGE_INFO[s.idx];
@@ -4193,7 +4273,7 @@ function StageStepper({ stage, stageObj }) {
             ここで もう いちど くり返さない） */}
       <div className="mt-1.5 text-center text-lg font-semibold text-sumi-700 leading-tight">
         {done
-          ? <span className="text-shu-700">花丸！ かんぺきに なったよ</span>
+          ? <span className="text-shu-700"><Furi>花丸！ かんぺきに なったよ</Furi></span>
           : cur.left > 0
             ? <>あと <span className="text-2xl tabular-nums text-shu-700">{cur.left}</span> かい</>
             : <>
@@ -4249,8 +4329,8 @@ function StageUpPopup({ info, onClose, onGoToWords, onNextChar }) {
             {info.to >= 4 ? <Hanamaru size={38} color="#fff" draw/> : <span className="kkm-glyph text-3xl leading-none">{m.num}</span>}
           </span>
           <div className="text-left">
-            <div className={`text-2xl font-semibold leading-tight ${t.text}`}>{m.title}</div>
-            <div className="text-base font-medium text-sumi-600 mt-1">{m.sub}</div>
+            <div className={`text-2xl font-semibold leading-tight ${t.text}`}><Furi>{m.title}</Furi></div>
+            <div className="text-base font-medium text-sumi-600 mt-1"><Furi>{m.sub}</Furi></div>
           </div>
         </div>
         <button onClick={() => run(main.onClick)} autoFocus
@@ -4680,7 +4760,7 @@ function ScorePopup({ result, char, stageUp, actions = [], onClose }) {
             <span className={`kkm-stamp shrink-0 w-11 h-11 rounded-lg border-2 text-white flex items-center justify-center ${TONES[clear.tone].solid}`}>
               {stageUp.to >= 4 ? <Hanamaru size={26} color="#fff" draw/> : <span className="kkm-glyph text-xl leading-none">{clear.num}</span>}
             </span>
-            <span className="text-lg font-semibold">{clear.title}</span>
+            <span className="text-lg font-semibold"><Furi>{clear.title}</Furi></span>
           </div>
         )}
 
@@ -4744,7 +4824,7 @@ function ScorePopup({ result, char, stageUp, actions = [], onClose }) {
                     <div className="inline-flex items-center gap-1.5 text-[11px] md:text-xs font-semibold text-shu-700 bg-shu-50 border border-shu-300 rounded-md px-2 py-1">
                       <Hanamaru size={13}/> なおすところ なし
                     </div>
-                    <div className="text-sm md:text-lg font-semibold text-sumi-800 mt-1.5 leading-snug">ぜんぶ お手本どおり！</div>
+                    <div className="text-sm md:text-lg font-semibold text-sumi-800 mt-1.5 leading-snug">ぜんぶ おてほんどおり！</div>
                   </div>
                 )}
               </div>
@@ -4763,8 +4843,8 @@ function ScorePopup({ result, char, stageUp, actions = [], onClose }) {
                       : `py-2.5 rounded-lg text-base bg-white border-2 border-sumi-300 text-sumi-700 min-h-[52px]`
                   }`}>
                   {a.icon}
-                  <span>{a.label}</span>
-                  {a.sub && <span className={`text-sm font-semibold ${i === 0 ? 'opacity-90' : 'text-sumi-600'}`}>{a.sub}</span>}
+                  <span><Furi>{a.label}</Furi></span>
+                  {a.sub && <span className={`text-sm font-semibold ${i === 0 ? 'opacity-90' : 'text-sumi-600'}`}><Furi>{a.sub}</Furi></span>}
                 </button>
               ))}
             </div>
@@ -4827,7 +4907,7 @@ function WordMasterPopup({ info, onClose }) {
     }`} onClick={onClose}>
       <div className="bg-white px-6 md:px-9 py-5 md:py-6 rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-shu-600 max-w-md mx-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
-          <div className="text-[11px] md:text-sm font-semibold text-shu-700 mb-2">ことばに つかって 花丸に なりました</div>
+          <div className="text-[11px] md:text-sm font-semibold text-shu-700 mb-2">ことばに つかって <Furi>花丸</Furi>に なりました</div>
           {/* ことばが ながいと 花丸が いくつも つくので、おりかえして ならべる */}
           <div className="flex flex-wrap justify-center gap-5 my-4">
             {info.chars.map((c, i) => (
@@ -5385,7 +5465,7 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
       {almostChars.length > 0 && (
         <div className="bg-fuji-50 border border-fuji-200 rounded-md p-2.5 mb-3 shrink-0">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-fuji-700 mb-1.5">
-            <IconPen size={14}/> この じを ことばに つかうと 花丸に なります
+            <IconPen size={14}/> この じを ことばに つかうと <Furi>花丸</Furi>に なります
           </div>
           <div className="flex flex-wrap gap-1.5">
             {almostChars.map(c => (
@@ -5509,7 +5589,7 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
         {willMaster.length > 0 && (
           <div className="mb-3 bg-shu-50 border border-shu-300 rounded-md px-3 py-2 text-center text-xs md:text-sm font-semibold text-shu-800 kkm-pop-in">
             <span className="inline-flex items-center gap-1.5">
-              <Hanamaru size={16}/> この ことばで <span className="text-base tabular-nums">{willMaster.length}</span>この じが 花丸に なります
+              <Hanamaru size={16}/> この ことばで <span className="text-base tabular-nums">{willMaster.length}</span>この じが <Furi>花丸</Furi>に なります
             </span>
             <div className="mt-1.5 flex justify-center gap-1.5">
               {willMaster.map(c => (
@@ -5545,7 +5625,7 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
               const willPromote = stage === 3;
               return (
                 <button key={i} disabled={!ok} onClick={() => addChar(c)}
-                  aria-label={`${c}${willPromote ? '（つかうと 花丸に なります）' : ''}`}
+                  aria-label={`${c}${willPromote ? '（つかうと はなまるに なります）' : ''}`}
                   className={`kkm-glyph kkm-btn relative aspect-square rounded-md text-xl md:text-2xl border ${
                     ok
                       ? (willPromote
@@ -5659,9 +5739,13 @@ function InstallGuideModal({ platform, onClose }) {
         className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-midori-600 p-5 max-w-md w-full max-h-[85vh] overflow-y-auto flex flex-col gap-3 kkm-pop-in"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2">
-          <span className="text-midori-700"><IconDownload size={22}/></span>
-          <h2 className="text-base font-semibold text-sumi-800 flex-1">{guide.title}</h2>
+          <span className="text-midori-700"><IconDownload size={24}/></span>
+          <h2 className="text-lg font-semibold text-sumi-800 flex-1">{guide.title}</h2>
         </div>
+        {/* この手順は 端末の メニューの ことばを そのまま 引くので、漢字を
+            かなに ひらけない（ちがう ことばに すると 見つけられなくなる）。
+            そこで「大人が 読む ところ」だと はっきり 断っておく。 */}
+        <p className="text-sm font-semibold text-sumi-600">おうちの方・先生へ</p>
         <ol className="flex flex-col gap-2 mt-1">
           {guide.steps.map((s, i) => (
             <li key={i} className="flex gap-2.5 items-start bg-washi-100 rounded-md p-3 border border-sumi-200">
@@ -6113,7 +6197,7 @@ function ChunkQuestion({ chunk, onDone }) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="text-xs md:text-sm font-semibold text-sumi-600">3 つの ことばに 線で わけよう</div>
+      <div className="text-xs md:text-sm font-semibold text-sumi-600">3 つの ことばに せんで わけよう</div>
       <div className="flex items-center flex-wrap justify-center">
         {chars.map((c, i) => (
           <React.Fragment key={i}>
@@ -6130,7 +6214,7 @@ function ChunkQuestion({ chunk, onDone }) {
           </React.Fragment>
         ))}
       </div>
-      <div className="text-[11px] font-medium text-sumi-600">もじの あいだを タップすると 線が ひけるよ</div>
+      <div className="text-[11px] font-medium text-sumi-600">もじの あいだを タップすると せんが ひけるよ</div>
     </div>
   );
 }
@@ -6270,12 +6354,12 @@ function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked, tier = 1 }) {
             <MascotFace size={48} mood="cheer"/>
             <div className="text-sm md:text-base font-semibold text-sumi-800 leading-snug">
               1 ぷんずつ、2 かい。<br/>
-              どれだけ はやく ただしい ことばを 見つけられるか ためしてみよう。
+              どれだけ はやく ただしい ことばを みつけられるか ためしてみよう。
             </div>
           </div>
           <ol className="flex flex-col gap-2">
             {[
-              { n:'１', t:'えに あう ことば さがし', s:'えを見て、ただしい かきかたを えらぶ（1ぷん）' },
+              { n:'１', t:'えに あう ことば さがし', s:'えを みて、ただしい かきかたを えらぶ（1ぷん）' },
               { n:'２', t:'3 つの ことば さがし',   s:'つながった もじを 3 つの ことばに わける（1ぷん）' },
             ].map(x => (
               <li key={x.n} className="kkm-sheet rounded-lg p-3 flex items-center gap-3">
@@ -6438,13 +6522,23 @@ function KanaCell({ char, size = 56, state = 'plain', onClick, ariaLabel }) {
         <span className="absolute top-1/2 left-1 right-1 border-t border-dashed border-sumi-200"/>
         <span className="absolute left-1/2 top-1 bottom-1 border-l border-dashed border-sumi-200"/>
       </span>
+      {/* ちいさい字（っ ゃ ゅ ょ）の めじるし。
+
+          もとは かどに 漢字で「小」と 出していた。1年生には 読めないうえに、
+          9px では ふりがなも ふれない。かなで「ちいさい」と 書く手も あるが、
+          マスの 中で 字と かさなって しまう。
+
+          そこで **ことばを つかわずに** 見せる。1年生の ノートと おなじ、
+          マスを 4 つに わった 右下の へやを 朱色の 点線で かこむ。
+          「ちいさい じは この へやに 書く」が 形で わかる。
+          字より さきに 置いて、字の うしろに 敷く。 */}
+      {isSmallKana(char) && (
+        <span aria-hidden="true"
+          className="absolute right-[8%] bottom-[8%] w-[42%] h-[42%] rounded-[3px] border-2 border-dashed border-shu-300 pointer-events-none"/>
+      )}
       {char
         ? <span className="kkm-glyph relative leading-none" style={{ fontSize: size * 0.62 }}>{char}</span>
         : <span className="relative leading-none font-semibold" style={{ fontSize: size * 0.4 }}>?</span>}
-      {isSmallKana(char) && (
-        <span aria-hidden="true"
-          className="absolute right-1 bottom-1 text-[9px] font-semibold text-shu-500 leading-none">小</span>
-      )}
     </Tag>
   );
 }
@@ -6746,7 +6840,7 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
           {perfect ? 'ぜんもん せいかい！' : `${questions.length}もん ちゅう ${okCount}もん せいかい`}
         </div>
         <Mascot mood={perfect ? 'wow' : 'cheer'}
-          message={perfect ? 'かんぺき！ すごいね' : wrongs.length > 0 ? 'まちがえた ところは あした もういちど 出るよ' : 'よく がんばりました'}/>
+          message={perfect ? 'かんぺき！ すごいね' : wrongs.length > 0 ? 'まちがえた ところは あした もういちど でるよ' : 'よく がんばりました'}/>
         {wrongs.length > 0 && (
           <div className="w-full max-w-md rounded-xl border-2 border-shu-300 bg-shu-50 p-3">
             <div className="text-base font-semibold text-shu-700 mb-2">もういちど みておこう</div>
@@ -6870,7 +6964,7 @@ function makeWordCharQuestion(char) {
   const w = list[Math.floor(Math.random() * list.length)];
   return makeCellQuestion(w, 0, char, conf,
     'ことばの はじめ', 'あいた マスに はいる もじは どれ？',
-    conf.length > 0 ? `「${char}」と「${conf[0]}」は にているね。よく 見くらべよう` : `${w.w} の はじめは「${char}」`,
+    conf.length > 0 ? `「${char}」と「${conf[0]}」は にているね。よく みくらべよう` : `${w.w} の はじめは「${char}」`,
     srsIdRead(char));
 }
 /* ③ にたもの さがし：ことばの まんなかで 見わける */
@@ -7134,7 +7228,7 @@ function buildReviewQuestions(n, progress, skill, kanaMode) {
 const SOUND_COURSES = [
   { key:'head',    title:'あたまの おと',   sub:'この もじから はじまる ことばは？', tone:'ai',     icon:'star'  },
   { key:'inword',  title:'ことばの なかの もじ', sub:'あいた マスに はいる もじは？', tone:'midori', icon:'book'  },
-  { key:'confuse', title:'にた もじ さがし', sub:'ぬ と め、シ と ツ を 見わける',   tone:'fuji',   icon:'pencil'},
+  { key:'confuse', title:'にた もじ さがし', sub:'ぬ と め、シ と ツ を みわける',   tone:'fuji',   icon:'pencil'},
   { key:'group',   title:'なかまの ことば',  sub:'たべもの・どうぶつ・いろ で わける', tone:'midori', icon:'grid'  },
   { key:'opposite',title:'はんたいの ことば', sub:'おおきい ⇔ ちいさい',              tone:'ai',     icon:'rotate'},
   { key:'mix',     title:'ぜんぶ まぜて',    sub:'ふくしゅうも いっしょに',          tone:'shu',    icon:'check' },
@@ -7336,7 +7430,7 @@ function UnitLesson({ unit, onStart, onBack, onWrite, voiceOn, tier = 1 }) {
                  手の うごきで 体に 入れる（動作化）。 */}
           {sample && (
             <div className="kkm-sheet kkm-stagger rounded-xl p-3 flex flex-col items-center gap-3" style={{ '--kkm-i': 1 }}>
-              <div className="text-base font-semibold text-sumi-700">おとを ● で 見て、手で たしかめよう</div>
+              <div className="text-base font-semibold text-sumi-700">おとを ● で みて、てで たしかめよう</div>
               <RhythmPlayer word={sample.w} cellSize={52} voiceOn={voiceOn}/>
             </div>
           )}
@@ -7354,7 +7448,7 @@ function UnitLesson({ unit, onStart, onBack, onWrite, voiceOn, tier = 1 }) {
               </ul>
               <div className="text-base font-medium text-sumi-600 leading-snug px-1">
                 マスは 1 もじに 1 つ。ちいさい じも かならず 1 マス つかうよ。<br/>
-                小さい ○ の ところは、口を とじて 音を 出さない ところ。
+                ちいさい ○ の ところは、くちを とじて おとを ださない ところ。
               </div>
               <RhythmLegend/>
             </Disclosure>
@@ -7543,8 +7637,10 @@ function StampCalendar({ log }) {
         </span>
       </div>
       <div className="grid grid-cols-7 gap-1 max-w-[19rem] mx-auto">
-        {['日','月','火','水','木','金','土'].map(w => (
-          <div key={w} className="text-center text-[9px] font-semibold text-sumi-600">{w}</div>
+        {/* ようびは かなで 出す。「日月火水木金土」は 1年生では
+            まだ 読めない ことが 多く、ここは ふりがなを ふる すきまも ない。 */}
+        {['にち','げつ','か','すい','もく','きん','ど'].map(w => (
+          <div key={w} className="text-center text-[11px] font-semibold text-sumi-600">{w}</div>
         ))}
         {cells.map((d, i) => {
           if (!d) return <div key={i}/>;

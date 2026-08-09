@@ -140,6 +140,21 @@ input[type="range"]::-moz-range-thumb {
   }
   :focus-visible { outline: 3px solid Highlight; }
 }
+/* ふりがな（<Furi> が 出す <ruby>）。
+   ⚠️ 色は ぜったいに 決めうちしない。朱色の ボタンの上に のった ときに
+      読めなくなる。親の 色を そのまま つぐこと（検査 RT_COLOR で 見張っている）。 */
+ruby { ruby-position: over; }
+rt {
+  color: inherit;
+  font-size: 0.55em;
+  font-weight: 600;
+  letter-spacing: 0;
+  /* ふりがなの ぶんだけ 行が せり上がって レイアウトが はねないように、
+     行の たかさは 本文がわで きめる。 */
+  line-height: 1.1;
+  user-select: none;
+}
+
 /* 「学習する文字そのもの」を出すところ（もじ表・ことば・お手本など）。
    UD デジタル教科書体は太さが 1 種類しかないため、font-black などで
    太字を指定するとブラウザが線を太らせる合成ボールドになり、
