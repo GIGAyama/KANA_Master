@@ -1107,6 +1107,32 @@ function specialCellsOf(word, unitKey) {
   return idx.length > 0 ? idx : [Math.max(0, cells.length - 1)];
 }
 
+/* 穴に する マスを えらぶ。
+   1 つだけ 抜くと、のこりの 字が こたえを ほとんど 決めて しまう
+   （「が□こう」の 穴は 見なくても っ）。2 つ 抜くと、まぐれで そろう
+   見こみが 1/3 → 1/9 に なり、ことばを 頭から 組みたてる 必要が 出る。
+
+   1 つめは かならず **その単元の おと**（`specialCellsOf`）。
+   2 つめは その となりを 先に とる（となりが 決まらないと 拗音・長音は
+   きまらない：「ちょ」の ょ は ち が 見えて はじめて えらべる）。 */
+function specialBlanksFor(word, unitKey, n = 1) {
+  const cells = splitCells(word);
+  const main = specialCellsOf(word, unitKey);
+  const out = [main[0]];
+  if (n > 1) {
+    const rest = [];
+    // となり（うしろ → まえ）→ その単元の 2 つめ → のこり
+    for (const d of [1, -1]) { const i = main[0] + d; if (i >= 0 && i < cells.length) rest.push(i); }
+    main.slice(1).forEach(i => rest.push(i));
+    cells.forEach((c, i) => rest.push(i));
+    for (const i of rest) {
+      if (out.length >= n) break;
+      if (!out.includes(i)) out.push(i);
+    }
+  }
+  return out.sort((a, b) => a - b);
+}
+
 // 穴に入れる まちがい候補（にた形・にた おと）をつくる。
 const KANA_SMALL_BIG = {
   'ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ','ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お',
@@ -1127,20 +1153,49 @@ const KANA_HANDAKU_PAIR = { 'ば':'ぱ','び':'ぴ','ぶ':'ぷ','べ':'ぺ','ぼ
   'バ':'パ','ビ':'ピ','ブ':'プ','ベ':'ペ','ボ':'ポ','パ':'バ','ピ':'ビ','プ':'ブ','ペ':'ベ','ポ':'ボ' };
 const CHOUON_SWAP = { 'う':'お','お':'う','あ':'わ','え':'い','い':'え','ー':'ー' };
 
-function cellChoicesFor(correct, unitKey) {
+/* ことばの「よくある まちがい」から、その マスに 入る まちがい字を とりだす。
+   きって／きつて なら 2 マスめが っ／つ。ここは **人が 書いた 教材**（§1.6）
+   なので、きまりから 組みたてた 候補より ずっと よい。
+   マスの かずが ちがう まちがい（きて＝字が 足りない）は マスに 入らないので のぞく。 */
+function cellDistractorsFromBad(wordObj, idx) {
+  if (!wordObj || !wordObj.bad) return [];
+  const cells = splitCells(wordObj.w);
+  const out = [];
+  for (const b of wordObj.bad) {
+    const bc = splitCells(b);
+    if (bc.length !== cells.length) continue;
+    let diff = 0;
+    for (let i = 0; i < cells.length; i++) if (bc[i] !== cells[i]) diff++;
+    if (diff === 1 && bc[idx] !== cells[idx] && !out.includes(bc[idx])) out.push(bc[idx]);
+  }
+  return out;
+}
+
+/* 穴に 入れる 候補を つくる。
+   ならびは ①その ことばの まちがい（あれば）②大小の 相手 ③単元の きまり。
+
+   もとは 足りないぶんを `'あいうえおつやゆよんー'` から 順に つめていたので、
+   「らっぱ」の 穴に **あ** が ならぶような、1年生が ぜったい 書かない
+   候補が 出ていた。まちがい候補が「ありえない」と、子どもは 中身を 見ずに
+   のこりから えらべて しまう。**足りなければ へらす**（つめない）。 */
+function cellChoicesFor(correct, unitKey, wordObj, idx) {
   const out = [correct];
-  const push = (c) => { if (c && !out.includes(c)) out.push(c); };
+  const push = (c) => { if (c && c !== correct && !out.includes(c)) out.push(c); };
+  cellDistractorsFromBad(wordObj, idx).forEach(push);
   if (isSmallKana(correct)) {
     push(KANA_SMALL_BIG[correct]);            // ちいさい字が正解 → おおきい字を まちがい候補に
   } else {
-    const small = Object.keys(KANA_SMALL_BIG).find(k => KANA_SMALL_BIG[k] === correct);
-    push(small);                              // おおきい字が正解 → ちいさい字を まちがい候補に
+    /* おおきい字が正解 → ちいさい字を まちがい候補に。
+       ただし **つ・やゆよ だけ**。1年生が まちがえて ちいさく 書くのは
+       つまる おとと ねじれる おとで、「ちょう」を「ちょぅ」、
+       「おとうさん」を「おとぅさん」と 書く子は いない。
+       ありえない ふだを ならべると、中身を 見ずに のこりから えらべて しまう。 */
+    const small = KANA_SMALL_BIG_REV[correct];
+    if (small && (isSokuon(small) || isYouonSmall(small))) push(small);
   }
   if (unitKey === 'dakuten') { push(KANA_DAKU_PLAIN[correct]); push(KANA_HANDAKU_PAIR[correct]); }
-  if (unitKey === 'chouon')  { push(CHOUON_SWAP[correct]); push('ー'); }
+  if (unitKey === 'chouon')  { push(CHOUON_SWAP[correct]); push(CHOUON_MARK); }
   if (unitKey === 'hatsuon') { push('ん'); push('つ'); }
-  const filler = 'あいうえおつやゆよんー';
-  for (let i = 0; out.length < 3 && i < filler.length; i++) push(filler[i]);
   return out.slice(0, 4);
 }
 
@@ -1497,11 +1552,11 @@ function currentTier(mim, skill) {
 
    `formats`（つかう もんだいの かたち）は §17.9 の 台帳の かぎ。 */
 function tierPlan(tier) {
-  if (tier >= 3) return { count: 4, words: 3,  maxChoices: 2, dots: true,  rhythm: true,  sizeHint: true,
+  if (tier >= 3) return { count: 4, words: 3,  maxChoices: 2, blanks: 1, dots: true,  rhythm: true,  sizeHint: true,
                           formats: ['spell', 'fill', 'count'] };
-  if (tier === 2) return { count: 5, words: 5,  maxChoices: 2, dots: true,  rhythm: false, sizeHint: true,
+  if (tier === 2) return { count: 5, words: 5,  maxChoices: 2, blanks: 2, dots: true,  rhythm: false, sizeHint: true,
                           formats: ['spell', 'fill', 'count'] };
-  return              { count: 6, words: 12, maxChoices: 3, dots: false, rhythm: false, sizeHint: false,
+  return              { count: 6, words: 12, maxChoices: 3, blanks: 2, dots: false, rhythm: false, sizeHint: false,
                           formats: ['spell', 'fill', 'count'] };
 }
 // ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
@@ -7393,14 +7448,29 @@ function makeSpellingQuestion(unit, wordObj, maxChoices = 3) {
   };
 }
 /* ⑤ とくべつな おと：マスに いれよう */
-function makeFillQuestion(unit, wordObj, maxChoices = 4) {
-  const idx = specialCellsOf(wordObj.w, unit.key).slice(0, 1);
+function makeFillQuestion(unit, wordObj, maxChoices = 4, blanks = 1) {
   const cells = splitCells(wordObj.w);
+  // マスが 2 つしか ない ことば（ぱん・ぞう）で 2 つ 抜くと 手がかりが
+  // 残らない。ことばの 長さに 合わせて 穴の かずを おさえる。
+  const want = Math.max(1, Math.min(blanks, cells.length - 1));
+  const idx = specialBlanksFor(wordObj.w, unit.key, want);
   const correct = cells[idx[0]];
-  const choices = cellChoicesFor(correct, unit.key).slice(0, Math.max(2, maxChoices));
+  /* えらぶ ふだは 穴ごとに 分けず、ぜんぶの 穴で 1 まとまりに する。
+     どのマスに どれが 入るかを じぶんで きめる ことに 意味が あるので、
+     穴ごとに ふだを 分けたら ただの 2 かいの 3択に なって しまう。 */
+  const pool = [];
+  idx.forEach(i => cellChoicesFor(cells[i], unit.key, wordObj, i).forEach(c => {
+    if (!pool.includes(c)) pool.push(c);
+  }));
+  // こたえの 字は かならず のこす。まちがい候補だけを けずる。
+  const answers = idx.map(i => cells[i]);
+  const limit = Math.max(answers.length + 1, Math.max(2, maxChoices));
+  const choices = pool.filter(c => answers.includes(c))
+    .concat(pool.filter(c => !answers.includes(c))).slice(0, limit);
   return {
     uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'cells',
-    lead: unit.title, ask: 'あいた マスに はいる もじは どれ？',
+    lead: unit.title,
+    ask: idx.length > 1 ? 'あいた マスを うめよう' : 'あいた マスに はいる もじは どれ？',
     pict: wordObj.p, word: wordObj.w, blanks: idx,
     choices: shuffled(choices).map(c => ({ value: c, label: c })),
     answer: correct, answerText: wordObj.w, answerSay: wordObj.w,
@@ -7515,8 +7585,9 @@ const SPECIAL_FORMATS = {
   fill: {
     // マスの 中の 1 字。ちいさい字の 有無・いちを 見る。
     fits: () => true,
-    make: (unit, w, p) => makeFillQuestion(unit, w, p.maxChoices + 1),
-    chance: (q) => 1 / Math.max(2, q.choices.length),
+    make: (unit, w, p) => makeFillQuestion(unit, w, p.maxChoices + 1, p.blanks || 1),
+    // 穴が 2 つ なら、ふだの ならびから 2 つ えらぶ ことに なる（1/n × 1/n）
+    chance: (q) => Math.pow(1 / Math.max(2, q.choices.length), (q.blanks || [0]).length),
   },
   count: {
     // 拍の 分解。いちばん 土台に なる 課題（README §2）。
