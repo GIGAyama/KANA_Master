@@ -1068,6 +1068,30 @@ const SPECIAL_UNITS = [
 const SPECIAL_UNIT_MAP = {};
 SPECIAL_UNITS.forEach(u => { SPECIAL_UNIT_MAP[u.key] = u; });
 
+/* くっつきの ことばの こたえあわせ。
+   もとは `unit.tips[0]` を そのまま 出していたので、「を」の もんだいでも
+   「へ」の もんだいでも かならず「わたしは →『わ』と よむけど…」と
+   出ていた。**といた もんだいと 合わない こたえあわせ**は、1年生には
+   ただの ノイズに なる。じょしごとに 言いきる。 */
+const JOSHI_WHY = {
+  'は': '「わ」と よむけど「は」と かくよ（くっつきの ことば）',
+  'へ': '「え」と よむけど「へ」と かくよ（くっつきの ことば）',
+  'を': '「お」と よむけど「を」と かくよ（くっつきの ことば）',
+};
+
+/* こたえあわせの ひとこと。
+   もとは 単元の `rule` を そのまま 出していたので、単元の 中の もんだいは
+   ぜんぶ おなじ 文が 出ていた（「また おなじ もんだいだ」と 感じる もと）。
+   ことばごとに 拍と マスを 言えば、そのことば の こたえあわせに なる。
+   数は かならず §1.5 の `splitMora` / `splitCells` から とる（ただ 1 か所）。
+   長音の「お で のばす」ような **ことばごとの わけ** は `wordObj.why` に
+   手で 書いておく（あれば そちらを 先に 出す）。 */
+function whyFor(unit, wordObj) {
+  if (wordObj && wordObj.why) return wordObj.why;
+  const m = splitMora(wordObj.w), c = splitCells(wordObj.w);
+  return `${m.join('・')} で おとは ${m.length}つ・マスは ${c.length}つ`;
+}
+
 // ことばの なかで「とくべつな おと」に あたる マスを 見つける。
 // ここが 出題の 穴（ブランク）に なる。
 function specialCellsOf(word, unitKey) {
@@ -1118,6 +1142,24 @@ function cellChoicesFor(correct, unitKey) {
   const filler = 'あいうえおつやゆよんー';
   for (let i = 0; out.length < 3 && i < filler.length; i++) push(filler[i]);
   return out.slice(0, 4);
+}
+
+/* 「おとは いくつ？」の えらぶ かず。
+   もとは いつでも 1..6 の 6 つ ならべていたので、手あつい ステージ
+   （えらぶ かずを へらす はずの ところ）でも まぐれ 1/6 のままだった。
+
+   まちがい候補の 主役は **マスの かず**（`splitCells`）。
+   「きって」を 3 つでは なく 3 マスぶん…ではなく、「がっこう」を
+   4 と こたえて しまう＝マスを かぞえて しまう のが、この単元が
+   まさに 教えている まちがい。まぐれで 消さずに、正面から 出す。 */
+function countChoicesFor(word, maxChoices) {
+  const mora = moraCount(word);
+  const cells = splitCells(word).length;
+  if (!(maxChoices > 0) || maxChoices >= 6) return COUNT_CHOICES;
+  const set = [mora, cells, mora - 1, mora + 1, cells + 1].filter(n => n >= 1 && n <= 8);
+  const uniq = Array.from(new Set(set)).sort((a, b) => a - b);
+  // かならず こたえを ふくむ（絞りこみで 落ちないように）
+  return uniq.includes(mora) ? uniq.slice(0, 4) : [mora, ...uniq].slice(0, 4).sort((a, b) => a - b);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1443,10 +1485,13 @@ function currentTier(mim, skill) {
   return 3;
 }
 // ステージごとの 出題の あつさ
+/* `sizeHint`：えらぶ ボタンに「ちいさい／おおきい」と 書きそえるか。
+   これは 足場なので、手あつい ステージだけ。1st で 出すと
+   「っ と つ、どっち？」の こたえを そのまま 教えて しまう。 */
 function tierPlan(tier) {
-  if (tier >= 3) return { count: 4, words: 2, maxChoices: 2, dots: true,  rhythm: true  };
-  if (tier === 2) return { count: 5, words: 4, maxChoices: 2, dots: true,  rhythm: false };
-  return              { count: 6, words: 12, maxChoices: 3, dots: false, rhythm: false };
+  if (tier >= 3) return { count: 4, words: 2, maxChoices: 2, dots: true,  rhythm: true,  sizeHint: true  };
+  if (tier === 2) return { count: 5, words: 4, maxChoices: 2, dots: true,  rhythm: false, sizeHint: true  };
+  return              { count: 6, words: 12, maxChoices: 3, dots: false, rhythm: false, sizeHint: false };
 }
 // ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
 const MIM_CHECK_INTERVAL_DAYS = 14;
@@ -6916,6 +6961,8 @@ function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1
      kind 'count'  … おとの かずを こたえる
    ══════════════════════════════════════════════════════════════ */
 const COUNT_CHOICES = [1, 2, 3, 4, 5, 6];
+// えらぶ かずの ならべかた。Tailwind に 拾わせるため、class 名は べた書きする。
+const COUNT_GRID = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' };
 
 function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
   const [filled, setFilled] = useState({});
@@ -6931,9 +6978,14 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
 
   const blanks = q.blanks || [];
   const activeBlank = blanks.find(i => !filled[i]);
-  // 「ちいさい／おおきい」の めやすは、その ちがいが 出題の ポイントに
-  // なっているとき（ちいさい字が えらべる とき）だけ 出す。
-  const showSizeHint = !!(q.choices && q.choices.some(c => isSmallKana(c.label)));
+  /* 「ちいさい／おおきい」の めやす。
+     ちいさい字が えらべる ときだけ 出す … のは いいのだが、これを
+     つねに 出すと **大小が といの ものずばりの もんだいでは こたえを
+     教えて しまう**（「っ と つ、どっち？」に「ちいさい」と 書いてある）。
+     手あつい ステージ（2nd・3rd）の 足場としては 要るので、
+     `support.sizeHint` で 出し分ける。1st ステージでは 出さない。 */
+  const showSizeHint = !!support?.sizeHint
+    && !!(q.choices && q.choices.some(c => isSmallKana(c.label)));
 
   function finish(correct, chosen) {
     if (answeredRef.current) return;
@@ -7036,14 +7088,18 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
           字も 大きく する。押した ときは カードが 沈む。 */}
       {!judged && (
         <div className={`shrink-0 w-full max-w-xl grid gap-2.5 ${
-          q.kind === 'count' ? 'grid-cols-3 md:grid-cols-6'
+          /* かずは 6 つ ならべる ときだけ 3×2。しぼった ときは
+             そのまま 1 れつに ならべる（すきまが あくと 押しにくい）。
+             ※ class 名は かならず ここに 書ききる。`grid-cols-${n}` のように
+                組みたてると Tailwind が 拾えず、ならびが こわれる。 */
+          q.kind === 'count' ? (COUNT_GRID[(q.countChoices || COUNT_CHOICES).length] || 'grid-cols-3 md:grid-cols-6')
           : q.choiceLayout === 'word' ? 'grid-cols-2'
           : q.choices.length <= 2 ? 'grid-cols-2'
           : q.choices.length === 3 ? 'grid-cols-3'
           : 'grid-cols-4'
         }`}>
           {q.kind === 'count'
-            ? COUNT_CHOICES.map((n, i) => (
+            ? (q.countChoices || COUNT_CHOICES).map((n, i) => (
                 <button key={n} onClick={() => tapChoice(n)}
                   style={{ '--kkm-i': i, '--kkm-shadow-color': '#ded8cd' }}
                   className="kkm-btn kkm-ripple kkm-solid kkm-stagger aspect-square md:aspect-auto md:py-5 rounded-xl bg-white border-2 border-sumi-300 hover:border-shu-400 text-3xl font-semibold text-sumi-800 tabular-nums">
@@ -7322,7 +7378,7 @@ function makeSpellingQuestion(unit, wordObj, maxChoices = 3) {
     pict: wordObj.p,
     choices: shuffled([wordObj.w, ...bads]).map(w => ({ value: w, label: w })),
     answer: wordObj.w, answerText: wordObj.w, answerSay: wordObj.w,
-    why: unit.rule,
+    why: whyFor(unit, wordObj),
   };
 }
 /* ⑤ とくべつな おと：マスに いれよう */
@@ -7337,17 +7393,18 @@ function makeFillQuestion(unit, wordObj, maxChoices = 4) {
     pict: wordObj.p, word: wordObj.w, blanks: idx,
     choices: shuffled(choices).map(c => ({ value: c, label: c })),
     answer: correct, answerText: wordObj.w, answerSay: wordObj.w,
-    why: unit.rule,
+    why: whyFor(unit, wordObj),
   };
 }
 /* ⑥ とくべつな おと：おとは いくつ？（手を たたく かず） */
-function makeCountQuestion(unit, wordObj) {
+function makeCountQuestion(unit, wordObj, maxChoices = 6) {
   return {
     uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'count',
     lead: 'てを たたこう', ask: 'この ことばの おとは いくつ？',
     pict: wordObj.p, word: wordObj.w,
     answer: moraCount(wordObj.w), answerText: String(moraCount(wordObj.w)), answerSay: wordObj.w,
-    why: `${splitMora(wordObj.w).join('・')} で ${moraCount(wordObj.w)}つ`,
+    countChoices: countChoicesFor(wordObj.w, maxChoices),
+    why: whyFor(unit, wordObj),
   };
 }
 /* ⑦ くっつきの ことば（は・へ・を）は 文で 出す */
@@ -7359,7 +7416,7 @@ function makeJoshiQuestion(unit, sentObj) {
     choices: shuffled(sentObj.c).map(c => ({ value: c, label: c })),
     answer: sentObj.a, answerText: sentObj.a,
     answerSay: sentObj.s.replace('◯', sentObj.a),
-    why: unit.tips[0],
+    why: JOSHI_WHY[sentObj.a] || unit.rule,
   };
 }
 
@@ -7450,7 +7507,9 @@ function buildSpecialQuestions(unitKey, n, skill, plan) {
   const makers = [
     (u, w) => makeSpellingQuestion(u, w, p.maxChoices),
     (u, w) => makeFillQuestion(u, w, p.maxChoices + 1),
-    makeCountQuestion,
+    // かずの もんだいは 1st では 1..6 のまま（いちばん むずかしい 形を のこす）。
+    // 手あつい ステージだけ 4 つに しぼる。
+    (u, w) => makeCountQuestion(u, w, p.maxChoices >= 3 ? 6 : 4),
   ];
   const out = [];
   for (let i = 0; out.length < count && i < pool.length * 4; i++) {
@@ -7854,7 +7913,7 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
       <div className="flex-1 min-h-0 flex flex-col p-2 md:p-4 kkm-main-pad">
         <div className="kkm-sheet rounded-lg p-2 md:p-3 flex-1 min-h-0 flex flex-col">
           <QuizRunner title={unit.title} tone={unit.tone} questions={running.questions} voiceOn={voiceOn}
-            support={{ dots: plan.dots, rhythm: plan.rhythm }}
+            support={{ dots: plan.dots, rhythm: plan.rhythm, sizeHint: plan.sizeHint }}
             onAnswered={(q, ok, ms, chosen) => {
               answerSkill(q.id, ok); bumpMission('special');
               STUDY && STUDY.item({ q: q.id, ok, firstTry: ok, tries: 1, ms,
