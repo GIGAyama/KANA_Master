@@ -1078,6 +1078,10 @@ const JOSHI_WHY = {
   'へ': '「え」と よむけど「へ」と かくよ（くっつきの ことば）',
   'を': '「お」と よむけど「を」と かくよ（くっつきの ことば）',
 };
+/* 手あつい ステージで 出す はやみ表（かき → よみ）。
+   3 つ ぜんぶを ならべる ことが だいじ。こたえの 1 つだけを 見せると
+   「どれを えらぶか」を 教えて しまう。 */
+const JOSHI_PAIRS = [['は', 'わ'], ['へ', 'え'], ['を', 'お']];
 
 /* こたえあわせの ひとこと。
    もとは 単元の `rule` を そのまま 出していたので、単元の 中の もんだいは
@@ -1335,8 +1339,15 @@ function headWordCharsOf(script) {
    ④ 3 つの ステージ（層）で 指導を かえる
       ちからだめしの 結果から、その子に 合う あつさの 指導を 出す。
         1st … みんなと同じ量。ヒントなし
-        2nd … 量をしぼり、ドットを つねに出す。2 たくにする
-        3rd … さらにしぼり、まず 動作化を 見せてから といてもらう
+        2nd … 量をしぼり、ドットを つねに出す。2 たくにする。
+              こたえた あとに 動作化で たしかめる
+        3rd … さらにしぼり、**まず 動作化を 見せてから** といてもらう
+
+      ※ ③ の「まず 見せてから」は、ながく **書いてあるだけ** だった。
+        じっさいの コードは こたえた あとにしか リズムを 出しておらず、
+        児童むけの せつめい・先生むけの せつめい・この 節 の 3 か所が
+        そろって 実装と くいちがっていた。`tierPlan().rhythm` を
+        'before' / 'after' / 'none' に して 文言に 合わせた（§18.6）。
 
    ※ ステージの さかいめ（点数）は このアプリ独自の めやすで、
      MIM の正式な標準得点では ありません。あくまで
@@ -1511,8 +1522,8 @@ const MIM_TIER_INFO = {
        desc:'みんなと おなじ すすみかたで だいじょうぶ。',
        teacher:'通常の量で進めます。ヒントは出さず、まちがえたぶんだけ復習に回します。' },
   2: { key:2, name:'2nd ステージ', short:'すこし ていねい', tone:'ai',
-       desc:'ドットを つねに だして、えらぶ かずを へらすよ。',
-       teacher:'語数をしぼり、ドット（視覚化）を常時表示、選択肢を2つに減らします。' },
+       desc:'ドットを つねに だして、といた あとに リズムで たしかめるよ。',
+       teacher:'語数をしぼり、ドット（視覚化）を常時表示、選択肢を2つに減らし、解答後に動作化（リズム）で確認させます。' },
   3: { key:3, name:'3rd ステージ', short:'とても ていねい', tone:'shu',
        desc:'まず リズムを みてから、ゆっくり といて いこう。',
        teacher:'語数をさらにしぼり、毎問ドット＋動作化（リズム）を先に見せてから解答させます。' },
@@ -1551,12 +1562,17 @@ function currentTier(mim, skill) {
    4 もんの あいだ 組みあわせは 一度も かさならない。
 
    `formats`（つかう もんだいの かたち）は §17.9 の 台帳の かぎ。 */
+/* `rhythm`：動作化（リズム）を いつ 見せるか。
+     'before' … こたえる まえ（3rd ステージ。MIM_TIER_INFO と §1.86 の
+                「まず 動作化を 見せてから といてもらう」は これ）
+     'after'  … こたえた あと（もう いちど 体に 入れてから つぎへ）
+     'none'   … 出さない */
 function tierPlan(tier) {
-  if (tier >= 3) return { count: 4, words: 3,  maxChoices: 2, blanks: 1, dots: true,  rhythm: true,  sizeHint: true,
+  if (tier >= 3) return { count: 4, words: 3,  maxChoices: 2, blanks: 1, dots: true,  rhythm: 'before', sizeHint: true,
                           formats: ['spell', 'fill', 'count'] };
-  if (tier === 2) return { count: 5, words: 5,  maxChoices: 2, blanks: 2, dots: true,  rhythm: false, sizeHint: true,
+  if (tier === 2) return { count: 5, words: 5,  maxChoices: 2, blanks: 2, dots: true,  rhythm: 'after',  sizeHint: true,
                           formats: ['spell', 'fill', 'count'] };
-  return              { count: 6, words: 12, maxChoices: 3, blanks: 2, dots: false, rhythm: false, sizeHint: false,
+  return              { count: 6, words: 12, maxChoices: 3, blanks: 2, dots: false, rhythm: 'none',   sizeHint: false,
                           formats: ['spell', 'fill', 'count'] };
 }
 // ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
@@ -6497,7 +6513,7 @@ function MimDots({ word, cellSize = 52, gap = 6, activeMora = -1, className = ''
    ・ふつうの おと … たたく（音が 鳴る）
    ・つまる おと   … にぎる（音を 鳴らさない）← ここが いちばん 大事
    ・のばす おと   … よこに ひっぱる */
-function RhythmPlayer({ word, cellSize = 46, autoPlay = false, voiceOn = true, compact = false }) {
+function RhythmPlayer({ word, cellSize = 46, autoPlay = false, voiceOn = true, compact = false, onDone, showCells = true }) {
   const [active, setActive] = useState(-1);
   const [playing, setPlaying] = useState(false);
   const timersRef = useRef([]);
@@ -6525,8 +6541,10 @@ function RhythmPlayer({ word, cellSize = 46, autoPlay = false, voiceOn = true, c
     timersRef.current.push(setTimeout(() => {
       setActive(-1); setPlaying(false);
       if (voiceOn) speakText(word, voiceOn);
+      // 「まず リズムを 見せてから といてもらう」ときに、見おわりを 知らせる
+      onDone && onDone();
     }, moras.length * step + 250));
-  }, [moras, kinds, word, voiceOn, clearTimers]);
+  }, [moras, kinds, word, voiceOn, clearTimers, onDone]);
 
   useEffect(() => {
     setActive(-1); setPlaying(false); clearTimers();
@@ -6540,9 +6558,16 @@ function RhythmPlayer({ word, cellSize = 46, autoPlay = false, voiceOn = true, c
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="inline-flex flex-col items-center gap-1">
-        <div className="flex" style={{ gap: 6 }}>
-          {splitCells(word).map((c, i) => <KanaCell key={i} char={c} size={cellSize}/>)}
-        </div>
+        {/* `showCells` を false に すると 字を ふせて リズムだけ 見せる。
+            「ただしい かきかたは どっち？」の まえに 動作化を 出すとき、
+            字を そのまま ならべたら こたえを 見せて しまうため。
+            ドット（拍）と 手の うごきは そのまま 出す — 拍の かずは
+            2nd・3rd では もともと つねに 見えている ので 新たな 手がかりでは ない。 */}
+        {showCells && (
+          <div className="flex" style={{ gap: 6 }}>
+            {splitCells(word).map((c, i) => <KanaCell key={i} char={c} size={cellSize}/>)}
+          </div>
+        )}
         <MimDots word={word} cellSize={cellSize} gap={6} activeMora={active}/>
       </div>
 
@@ -7034,8 +7059,31 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
   const [filled, setFilled] = useState({});
   const [judged, setJudged] = useState(null);   // { correct, chosen }
   const answeredRef = useRef(false);
+  /* MIM の 動作化を「こたえる まえ」に 見せる ステージ（3rd）で、
+     リズムを 見おわったかどうか。見おわるまで えらぶ ふだを 出さない。 */
+  const [rhythmSeen, setRhythmSeen] = useState(false);
 
-  useEffect(() => { setFilled({}); setJudged(null); answeredRef.current = false; }, [q.uid]);
+  useEffect(() => { setFilled({}); setJudged(null); answeredRef.current = false; setRhythmSeen(false); }, [q.uid]);
+
+  /* `rhythm` は 'before'（こたえる まえ）／'after'（こたえた あと）／'none'。
+     むかしの true / false も うけとる（true＝'after'）。 */
+  const rhythmMode = support?.rhythm === true ? 'after'
+    : support?.rhythm === false ? 'none'
+    : (support?.rhythm || 'none');
+  /* 動作化に つかう ことば。`q.word`（画面に マスで 出す ことば）とは
+     分けて もつ。「ただしい かきかたは どっち？」の もんだいには
+     `q.word` が ない（あったら こたえが 見えて しまう）が、
+     リズムは その ことばで 見せたい。 */
+  const rhythmWord = q.rhythmWord || q.word;
+  const rhythmFirst = rhythmMode === 'before' && !!rhythmWord && !judged;
+
+  /* もしもの ときの 逃げ道。リズムの 知らせが 来なくても、
+     しばらくしたら かならず ふだを 出す（画面が 止まったままに ならない）。 */
+  useEffect(() => {
+    if (!rhythmFirst || rhythmSeen) return;
+    const t = setTimeout(() => setRhythmSeen(true), 9000);
+    return () => clearTimeout(t);
+  }, [rhythmFirst, rhythmSeen, q.uid]);
 
   // よみあげ（つかえる 端末だけ。なくても もんだいは とける）
   useEffect(() => {
@@ -7140,11 +7188,40 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
             showMora={!!support?.dots || (!!judged && q.kind === 'count')}
             size={splitCells(q.word).length > 5 ? 46 : 64}/>
         )}
-        {/* MIM の 動作化：3rd ステージでは といた あとに かならず
-            リズムで もう いちど 体に 入れてから つぎへ すすむ。 */}
-        {support?.rhythm && judged && q.word && (
+        {/* MIM の 動作化。
+            3rd ステージは **こたえる まえ** に 見せる（`'before'`）。
+            指導の あつさの せつめい（MIM_TIER_INFO・§1.86）が
+            「まず 動作化を 見せてから といてもらう」と 言っているのに、
+            これまでは こたえた あとにしか 出ていなかった。文言に 合わせる。
+            2nd までは これまでどおり こたえあわせの あと（`'after'`）。 */}
+        {rhythmFirst && (
+          <div className="kkm-sheet rounded-lg p-2 md:p-3 kkm-pop-in border-2 border-shu-300">
+            <div className="text-sm font-semibold text-shu-700 text-center mb-1">まず リズムを みてね</div>
+            {/* 字は ふせる。「どっち？」の こたえが 見えて しまうため。 */}
+            <RhythmPlayer word={rhythmWord} cellSize={38} autoPlay voiceOn={voiceOn}
+              showCells={false} onDone={() => setRhythmSeen(true)}/>
+          </div>
+        )}
+        {rhythmMode === 'after' && judged && rhythmWord && (
           <div className="kkm-sheet rounded-lg p-2 md:p-3 kkm-pop-in">
-            <RhythmPlayer word={q.word} cellSize={38} autoPlay voiceOn={voiceOn} compact/>
+            <RhythmPlayer word={rhythmWord} cellSize={38} autoPlay voiceOn={voiceOn} compact/>
+          </div>
+        )}
+        {/* くっつきの ことばは 文の もんだいで `q.word` が ない。
+            ドットも リズムも `q.word` を 見て 出しているので、この単元だけ
+            手あつい ステージでも 足場が 1 つも 付かなかった。
+            この単元の かなめは 拍では なく「よみ と かき の ずれ」なので、
+            そこを ことばで 見せる。 */}
+        {!!support?.dots && q.joshiHint && !judged && (
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            {JOSHI_PAIRS.map(([w, r]) => (
+              <span key={w} className="flex items-center gap-1 px-2 py-1 rounded-md bg-washi-100 border border-sumi-200">
+                <span className="kkm-glyph text-lg leading-none text-shu-700">{w}</span>
+                <span className="text-xs font-semibold text-sumi-500">→</span>
+                <span className="kkm-glyph text-lg leading-none text-sumi-700">{r}</span>
+                <span className="text-[11px] font-semibold text-sumi-600">と よむ</span>
+              </span>
+            ))}
           </div>
         )}
       </div>
@@ -7152,7 +7229,10 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
       {/* こたえの えらびかた。
           指でも まちがえないよう、えらぶ ボタンは 大きく（さいてい 92px）、
           字も 大きく する。押した ときは カードが 沈む。 */}
-      {!judged && (
+      {!judged && rhythmFirst && !rhythmSeen && (
+        <div className="shrink-0 text-base font-semibold text-sumi-600">てを うごかして みよう…</div>
+      )}
+      {!judged && !(rhythmFirst && !rhythmSeen) && (
         <div className={`shrink-0 w-full max-w-xl grid gap-2.5 ${
           /* かずは 6 つ ならべる ときだけ 3×2。しぼった ときは
              そのまま 1 れつに ならべる（すきまが あくと 押しにくい）。
@@ -7248,9 +7328,11 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
     else { setWrongs(w => [...w, questions[idx]]); setCombo(0); }
     onAnswered && onAnswered(questions[idx], correct, Date.now() - askedAtRef.current, chosen);
     const last = idx + 1 >= questions.length;
-    // MIM の 3rd ステージでは、こたえあわせの あとに リズム（動作化）を
-    // 見せるので、つぎへ すすむまでを ゆっくりにする。
-    const wait = support?.rhythm ? (correct ? 4200 : 5200) : (correct ? 1100 : 2200);
+    /* こたえあわせの あとに リズム（動作化）を 見せる ステージ（2nd）では、
+       それを 見おわるまで つぎへ すすまない。3rd は リズムを **まえ**に
+       見せるので、こたえた あとは ふつうの はやさで よい。 */
+    const afterRhythm = support?.rhythm === 'after' || support?.rhythm === true;
+    const wait = afterRhythm ? (correct ? 4200 : 5200) : (correct ? 1100 : 2200);
     setTimeout(() => {
       if (last) { setDone(true); playFanfare(); burstConfetti(); }
       else setIdx(i => i + 1);
@@ -7441,7 +7523,7 @@ function makeSpellingQuestion(unit, wordObj, maxChoices = 3) {
   return {
     uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'choice', choiceLayout: 'word',
     lead: unit.title, ask: 'ただしい かきかたは どっち？',
-    pict: wordObj.p,
+    pict: wordObj.p, rhythmWord: wordObj.w,
     choices: shuffled([wordObj.w, ...bads]).map(w => ({ value: w, label: w })),
     answer: wordObj.w, answerText: wordObj.w, answerSay: wordObj.w,
     why: whyFor(unit, wordObj),
@@ -7471,7 +7553,7 @@ function makeFillQuestion(unit, wordObj, maxChoices = 4, blanks = 1) {
     uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'cells',
     lead: unit.title,
     ask: idx.length > 1 ? 'あいた マスを うめよう' : 'あいた マスに はいる もじは どれ？',
-    pict: wordObj.p, word: wordObj.w, blanks: idx,
+    pict: wordObj.p, word: wordObj.w, rhythmWord: wordObj.w, blanks: idx,
     choices: shuffled(choices).map(c => ({ value: c, label: c })),
     answer: correct, answerText: wordObj.w, answerSay: wordObj.w,
     why: whyFor(unit, wordObj),
@@ -7482,7 +7564,7 @@ function makeCountQuestion(unit, wordObj, maxChoices = 6) {
   return {
     uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'count',
     lead: 'てを たたこう', ask: 'この ことばの おとは いくつ？',
-    pict: wordObj.p, word: wordObj.w,
+    pict: wordObj.p, word: wordObj.w, rhythmWord: wordObj.w,
     answer: moraCount(wordObj.w), answerText: String(moraCount(wordObj.w)), answerSay: wordObj.w,
     countChoices: countChoicesFor(wordObj.w, maxChoices),
     why: whyFor(unit, wordObj),
@@ -7493,7 +7575,7 @@ function makeJoshiQuestion(unit, sentObj) {
   return {
     uid: nextUid(), id: srsIdSpecial(unit.key, sentObj.s), kind: 'choice',
     lead: unit.title, ask: 'あいた ところに はいる もじは？',
-    pict: sentObj.p, sentence: sentObj.s,
+    pict: sentObj.p, sentence: sentObj.s, joshiHint: true,
     choices: shuffled(sentObj.c).map(c => ({ value: c, label: c })),
     answer: sentObj.a, answerText: sentObj.a,
     answerSay: sentObj.s.replace('◯', sentObj.a),
