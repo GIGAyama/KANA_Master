@@ -1543,21 +1543,42 @@ function tierFromScore(total) {
   if (total >= 6)  return 2;
   return 3;
 }
-// いまの ステージ。ちからだめしが まだなら、ふだんの 正答ぐあいから 見る。
-function currentTier(mim, skill) {
-  const last = (mim?.log || [])[(mim?.log || []).length - 1];
-  if (last) return last.tier;
-  // まだ 受けていないときは、とくべつな おとの 成績から おおまかに
+// ふだんの とくべつな おとの あたりぐあい（ちからだめし いがい の めやす）
+function specialRateOf(skill) {
   let ok = 0, ng = 0;
   for (const id in (skill || {})) {
     if (id.indexOf('s:') !== 0) continue;
     ok += skill[id].ok || 0; ng += skill[id].ng || 0;
   }
-  if (ok + ng < 10) return 1;              // データが すくないうちは ふつう
-  const rate = ok / (ok + ng);
-  if (rate >= 0.8) return 1;
-  if (rate >= 0.55) return 2;
-  return 3;
+  return { n: ok + ng, rate: ok + ng > 0 ? ok / (ok + ng) : 0 };
+}
+/* いまの ステージ。
+
+   もとは ちからだめしを 1 かい 受けると、**つぎの ちからだめし（2 しゅうかん後）
+   まで 指導の あつさが 一切 変わらなかった**。README は「MIM の いちばんの
+   核心は、アセスメントと 指導が つながっていること」と 書いているのに、
+   のびても つまずいても 14 日 そのままに なる。
+
+   ちからだめしの けっかを 土台に して、ふだんの あたりぐあいが
+   はっきり ずれている ときだけ **1 だん だけ** ずらす。
+   毎日 ゆれると 先生が 見て わからなく なるので、
+   ・20 もん いじょう こたえている ことを 条件に する
+   ・さかいめは これまでと おなじ 0.8 / 0.55
+   ・ずらすのは ±1 まで（ちからだめしの けっかを 大きくは こえない）
+   ちからだめしの きろく（mim.log）そのものは さわらない。 */
+function currentTier(mim, skill) {
+  const last = (mim?.log || [])[(mim?.log || []).length - 1];
+  const { n, rate } = specialRateOf(skill);
+  if (!last) {
+    // まだ 受けていないときは、とくべつな おとの 成績から おおまかに
+    if (n < 10) return 1;                  // データが すくないうちは ふつう
+    if (rate >= 0.8) return 1;
+    if (rate >= 0.55) return 2;
+    return 3;
+  }
+  if (n < 20) return last.tier;            // 見きわめるには まだ 少ない
+  const shift = rate >= 0.8 ? -1 : rate < 0.55 ? 1 : 0;
+  return Math.max(1, Math.min(3, last.tier + shift));
 }
 // ステージごとの 出題の あつさ
 /* `sizeHint`：えらぶ ボタンに「ちいさい／おおきい」と 書きそえるか。
@@ -1661,9 +1682,18 @@ const MISSIONS = [
   { key: 'special', goal: 6, title: 'とくべつな おと',   sub: 'っ ゃゅょ ん のばす',      view: 'special', tone: 'shu',    icon: 'brush' },
 ];
 function emptyDayRecord() { return { review: 0, write: 0, special: 0, words: 0, check: 0, done: false }; }
-function isDayComplete(rec) {
+/* きょうの めあての 数。
+   「とくべつな おと」は **1 セットぶん**が めあて なので、ステージで
+   出題数が かわる ぶん（6 / 5 / 4）を そのまま めあてに する。
+   6 で 決めうちに していると、手あつい 指導を うけている 子ほど
+   リングを 閉じるのに 2 セット やらされる ことに なっていた。 */
+function missionGoal(m, tier) {
+  if (m.key === 'special') return tierPlan(tier).count;
+  return m.goal;
+}
+function isDayComplete(rec, tier = 1) {
   if (!rec) return false;
-  return MISSIONS.every(m => (rec[m.key] || 0) >= m.goal);
+  return MISSIONS.every(m => (rec[m.key] || 0) >= missionGoal(m, tier));
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -2774,15 +2804,19 @@ function useSkill() {
 }
 
 // きょう どれだけ やったか（はんこカレンダーと きょうの めあて に つかう）
-function useDayLog() {
+function useDayLog(tier = 1) {
   const [log, setLog] = useLocalStorage(KEY_DAYLOG, {});
   const today = todayKey();
+  // めあての 数は ステージで かわる（`missionGoal`）ので、いまの ステージを
+  // 見て はんこを 押す。setLog の 中から 読めるよう ref に 置いておく。
+  const tierRef = useRef(tier);
+  useEffect(() => { tierRef.current = tier; }, [tier]);
   const bump = useCallback((key, n = 1) => {
     setLog(prev => {
       const k = todayKey();
       const cur = prev[k] || emptyDayRecord();
       const next = { ...cur, [key]: (cur[key] || 0) + n };
-      next.done = isDayComplete(next);
+      next.done = isDayComplete(next, tierRef.current);
       // 4 か月より前の きろくは 捨てる（保存容量を まもる）
       const out = { ...prev, [k]: next };
       const keys = Object.keys(out).sort();
@@ -9007,7 +9041,7 @@ function NextUpButton({ tone = 'shu', eyebrow, title, sub, icon, onClick, glyph 
 }
 
 function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, setKanaMode, onGo, words, mim, tier }) {
-  const allDone = isDayComplete(todayRec);
+  const allDone = isDayComplete(todayRec, tier);
   const nextChar = useMemo(() => {
     const order = learnOrderOf(kanaMode);
     return order.find(c => getStage(progress, c) < 2) || order.find(c => getStage(progress, c) < 4) || order[0];
@@ -9031,7 +9065,7 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
      → ③ぜんぶ おわったら ことばあつめ。
      ならべて えらばせるのでは なく、**アプリの ほうが 決める**。 */
   const mimDue = mimCheckDue(mim);
-  const nextMission = MISSIONS.find(m => (todayRec[m.key] || 0) < m.goal);
+  const nextMission = MISSIONS.find(m => (todayRec[m.key] || 0) < missionGoal(m, tier));
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 kkm-main-pad">
@@ -9076,9 +9110,11 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-3">
             {MISSIONS.map(m => {
               const t = TONES[m.tone];
-              const now = Math.min(todayRec[m.key] || 0, m.goal);
-              const pct = Math.round((now / m.goal) * 100);
-              const cleared = now >= m.goal;
+              // めあての 数は ステージで かわる（とくべつは 6 / 5 / 4）
+              const goal = missionGoal(m, tier);
+              const now = Math.min(todayRec[m.key] || 0, goal);
+              const pct = Math.round((now / goal) * 100);
+              const cleared = now >= goal;
               const Icon = ICONS[m.icon] || IconMaru;
               return (
                 <button key={m.key} onClick={() => onGo(m.view)}
@@ -9095,7 +9131,7 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
                     <span className="block text-base font-semibold text-sumi-700 mt-1">
                       {cleared
                         ? 'できた！'
-                        : <>のこり <span className="text-xl tabular-nums text-shu-700">{m.goal - now}</span> かい</>}
+                        : <>のこり <span className="text-xl tabular-nums text-shu-700">{goal - now}</span> かい</>}
                     </span>
                   </span>
                 </button>
@@ -9255,10 +9291,11 @@ function App() {
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   // あたらしい学習モデルの 2 本柱：ふくしゅうの はこ（SRS）と きょうの きろく
   const { skill, answerSkill } = useSkill();
-  const { log: dayLog, todayRec, bumpMission } = useDayLog();
-  // MIM：ちからだめしの きろくと、そこから きまる 指導の ステージ（層）
+  // MIM：ちからだめしの きろくと、そこから きまる 指導の ステージ（層）。
+  // めあての 数が ステージで かわる ので、きょうの きろくより 先に きめる。
   const [mim, setMim] = useLocalStorage(KEY_MIM, { log: [] });
   const tier = useMemo(() => currentTier(mim, skill), [mim, skill]);
+  const { log: dayLog, todayRec, bumpMission } = useDayLog(tier);
   // ホームから「この もじを かこう」と とんでくるときの うけわたし
   const [requestedChar, setRequestedChar] = useState(null);
   const [requestedUnit, setRequestedUnit] = useState(null);
@@ -9318,13 +9355,13 @@ function App() {
   // きょうの めあてを ぜんぶ おわらせた しゅんかんに はんこを おす
   useEffect(() => {
     const key = todayKey();
-    if (dayDoneRef.current === null) { dayDoneRef.current = isDayComplete(todayRec) ? key : ''; return; }
-    if (isDayComplete(todayRec) && dayDoneRef.current !== key) {
+    if (dayDoneRef.current === null) { dayDoneRef.current = isDayComplete(todayRec, tier) ? key : ''; return; }
+    if (isDayComplete(todayRec, tier) && dayDoneRef.current !== key) {
       dayDoneRef.current = key;
       playFanfare(); burstConfetti(); hapticTriumph();
       setDayDonePopup(true);
     }
-  }, [todayRec]);
+  }, [todayRec, tier]);
 
   const bumpCount = useCallback((char) => {
     setPracticeCount(prev => ({ ...prev, [char]: (prev[char] || 0) + 1 }));
