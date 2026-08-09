@@ -634,6 +634,14 @@ function dedupeWords(list) {
 const ALL_WORDS = dedupeWords([...WORD_BANK, ...WORD_BANK_KATA]);
 function bankOf(script) { return script === 'katakana' ? WORD_BANK_KATA : WORD_BANK; }
 
+// ことば → さしえ の 早びき表。
+// しりとりで 子どもが じぶんで 書いた ことばに、ことばずかんに あるものなら
+// その さしえを 自動で つけてやるために つかう。
+const PICT_BY_WORD = new Map(ALL_WORDS.map(x => [x.w, x.p]));
+// ずかんに ない ことばの さしえ。えらばなければ 中立の しるしに なる。
+const DEFAULT_PICT = 'shape';
+function guessPict(text) { return PICT_BY_WORD.get(text) || DEFAULT_PICT; }
+
 // しりとりで コンピュータが つかう ことば。
 // あいさつ（おはよう・ありがとう）は しりとりの ことばに ならないので のぞく。
 const SHIRITORI_CPU_WORDS = WORD_BANK.filter(x => x.w.length >= 2 && x.g !== 'aisatsu');
@@ -5127,19 +5135,183 @@ function WordTown({ wordCount }) {
 /* ──────────────────────────────────────────────────────────────
    17c. <ShiritoriGame> ── しりとりゲーム
    ────────────────────────────────────────────────────────────── */
-function ShiritoriGame({ words, voiceOn }) {
-  const SMALL_TO_LARGE = {'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','っ':'つ','ゃ':'や','ゅ':'ゆ','ょ':'よ','ゎ':'わ'};
-  function getLastChar(word) {
-    if (!word || word.length === 0) return '';
-    const last = word[word.length - 1];
-    return SMALL_TO_LARGE[last] || last;
-  }
+// しりとりの ことばの さいごの じ（小書きは 大きい じに 読みかえる）。
+// ゲームの 中でも 入力の 画面でも つかうので、部品の 外に 出しておく。
+const SMALL_TO_LARGE = {'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','っ':'つ','ゃ':'や','ゅ':'ゆ','ょ':'よ','ゎ':'わ'};
+function getLastChar(word) {
+  if (!word || word.length === 0) return '';
+  const last = word[word.length - 1];
+  return SMALL_TO_LARGE[last] || last;
+}
 
+/* しりとりの とちゅうで じぶんで ことばを 書く 画面。
+
+   ずかんに ある ことばしか つかえないと、ひらがなを ぜんぶ おぼえるまで
+   しりとりが 成りたたない。そこで ここで 好きな ことばを 書けるようにして、
+   ゲームが おわったら ずかんへ うつす（＝あそびが そのまま ことばあつめに なる）。 */
+function ShiritoriWriteSheet({ startChar, progress, usedWords, collectedTexts, voiceOn, onCancel, onSubmit }) {
+  const MAX_LEN = 8;
+  const [rest, setRest] = useState('');
+  const [kindTab, setKindTab] = useState('seion');
+  const [pickedPict, setPickedPict] = useState(null);
+  const dialogRef = useModal(onCancel);
+  const table = getKanaTable('hiragana', kindTab);
+
+  const text = startChar + rest;
+  const pict = pickedPict || guessPict(text);
+  const already = usedWords.has(text);
+  const endsWithN = getLastChar(text) === 'ん';
+  const canSubmit = text.length >= 2 && !already;
+  // この ことばで 花丸に なる もじ（ずかんに 入れる ときに 上がる）
+  const willMaster = useMemo(
+    () => Array.from(new Set(text.split(''))).filter(c => getStage(progress, c) === 3),
+    [text, progress]);
+
+  function addChar(c) { if (text.length < MAX_LEN) { setRest(r => r + c); speakText(c, voiceOn); } }
+  function backspace() { setRest(r => r.slice(0, -1)); }
+  const handleSubmit = useDebouncedAction(() => { if (canSubmit) onSubmit({ text, pict }); }, 400);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-sumi-900/40 backdrop-blur-sm p-3 kkm-fade-in" onClick={onCancel}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="じぶんで ことばを かく"
+        className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-shu-600 max-w-lg w-full max-h-[92vh] flex flex-col kkm-pop-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center px-4 md:px-5 pt-4 pb-3 shrink-0">
+          <h3 className="kkm-heading-rule font-semibold text-base text-sumi-800">
+            「{startChar}」から はじまる ことば
+          </h3>
+          <button onClick={onCancel} aria-label="とじる"
+            className="kkm-btn w-11 h-11 rounded-md bg-sumi-50 hover:bg-sumi-100 border border-sumi-200 text-sumi-600 flex items-center justify-center min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
+        </div>
+
+        <div className="px-4 md:px-5 overflow-y-auto flex-1 min-h-0">
+          {/* ① いま かいている ことば。さいしょの じは けせない（ルールを まもる） */}
+          <div className="bg-washi-100 rounded-md border border-sumi-200 p-3 mb-2 flex items-center gap-3 min-h-[76px]">
+            <span className="text-shu-600 shrink-0"><Pict name={pict} size={38}/></span>
+            <span className="kkm-glyph flex-1 text-2xl md:text-3xl text-sumi-800 break-all min-w-0">
+              <span className="text-shu-700">{startChar}</span>{rest}
+              {rest.length === 0 && <span className="text-sumi-600 text-lg">　…つづきを かこう</span>}
+            </span>
+            <button onClick={() => speakText(text, voiceOn)} disabled={!voiceOn}
+              aria-label="いまの ことばを よみあげる"
+              className="kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-white border border-ai-300 text-ai-700 flex items-center justify-center disabled:opacity-40">
+              <IconVolume size={19}/>
+            </button>
+            <button onClick={backspace} disabled={rest.length === 0}
+              aria-label="さいごの じを けす"
+              className="kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-white border border-shu-300 text-shu-600 flex items-center justify-center disabled:opacity-40">
+              <IconX size={19}/>
+            </button>
+          </div>
+
+          {/* ② いま つたえるべき ことは 1 つだけ にする */}
+          {already ? (
+            <p className="mb-2 text-xs font-semibold text-shu-700 bg-shu-50 border border-shu-200 rounded-md px-3 py-2">
+              その ことばは もう つかいました
+            </p>
+          ) : endsWithN ? (
+            <p className="mb-2 text-xs font-semibold text-shu-700 bg-shu-50 border border-shu-200 rounded-md px-3 py-2">
+              「ん」で おわると まけに なります
+            </p>
+          ) : collectedTexts.has(text) ? (
+            <p className="mb-2 text-xs font-semibold text-sumi-600 bg-washi-100 border border-sumi-200 rounded-md px-3 py-2">
+              ずかんに ある ことばです
+            </p>
+          ) : text.length >= 2 && (
+            <p className="mb-2 text-xs font-semibold text-midori-700 bg-midori-50 border border-midori-200 rounded-md px-3 py-2 flex items-center gap-1.5">
+              <IconPlus size={14}/> あそんだ あとに ずかんへ ついかします
+            </p>
+          )}
+
+          {willMaster.length > 0 && (
+            <div className="mb-2 bg-shu-50 border border-shu-300 rounded-md px-3 py-2 text-center text-xs font-semibold text-shu-800">
+              <span className="inline-flex items-center gap-1.5">
+                <Hanamaru size={16}/> この ことばで <span className="text-base tabular-nums">{willMaster.length}</span>この じが <Furi>花丸</Furi>に なります
+              </span>
+            </div>
+          )}
+
+          {/* ③ もじを えらぶ。まだ かいていない じも つかえる。 */}
+          <div className="mb-3">
+            <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">
+              もじを えらぶ<span className="font-medium text-sumi-600">（まだ かいて いない じも つかえます）</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1 mb-1.5">
+              {KANA_KINDS.map(k => (
+                <button key={k.key} onClick={() => setKindTab(k.key)} aria-pressed={kindTab === k.key} title={k.label}
+                  className={`kkm-btn py-1.5 rounded-md font-semibold text-[10px] md:text-xs border ${
+                    kindTab === k.key
+                      ? 'bg-shu-50 text-shu-700 border-shu-400'
+                      : 'bg-white text-sumi-600 border-sumi-200 hover:bg-washi-100'
+                  }`}>
+                  <span className="block md:hidden">{k.short}</span>
+                  <span className="hidden md:block truncate px-0.5">{k.mid}</span>
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1.5 bg-washi-100 p-2 rounded-md border border-sumi-200">
+              {table.map((c, i) => {
+                if (!c) return <div key={i} className="aspect-square"/>;
+                const stage = getStage(progress, c);
+                const willPromote = stage === 3;
+                return (
+                  <button key={i} onClick={() => addChar(c)} disabled={text.length >= MAX_LEN}
+                    aria-label={`${c}${willPromote ? '（つかうと はなまるに なります）' : ''}`}
+                    className={`kkm-glyph kkm-btn relative aspect-square rounded-md text-xl md:text-2xl border disabled:opacity-40 ${
+                      willPromote
+                        ? 'bg-fuji-50 border-fuji-400 text-fuji-700 hover:bg-fuji-100'
+                        : 'bg-white border-sumi-300 text-sumi-700 hover:border-shu-300'
+                    }`}>
+                    {c}
+                    {stage > 0 && <StageMark stage={stage} className="absolute -top-1 -right-1 leading-none"/>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ④ なかまの さしえ。えらばなければ ことばずかんから 自動で つく。 */}
+          <div className="mb-3">
+            <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">
+              なかまを えらぶ<span className="font-medium text-sumi-600">（えらばなくても いいです）</span>
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-0.5">
+              {PICT_CHOICES.map(c => (
+                <button key={c.name} onClick={() => setPickedPict(c.name)} aria-pressed={pict === c.name} aria-label={c.label}
+                  className={`kkm-btn rounded-md border flex flex-col items-center justify-center gap-0.5 py-1.5 ${
+                    pict === c.name ? 'bg-shu-50 border-shu-500 text-shu-700' : 'bg-white border-sumi-200 text-sumi-600 hover:border-shu-300'
+                  }`}>
+                  <Pict name={c.name} size={22}/>
+                  <span className="text-[9px] font-semibold leading-none">{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 px-4 md:px-5 pt-3 pb-4 border-t border-sumi-200 bg-white rounded-b-lg shrink-0">
+          <button onClick={onCancel}
+            className="kkm-btn flex-1 py-2.5 rounded-md font-semibold text-sm bg-white text-sumi-600 border border-sumi-300 min-h-[44px]">やめる</button>
+          <button disabled={!canSubmit} onClick={handleSubmit}
+            className="kkm-btn kkm-ripple flex-[2] py-2.5 rounded-md font-semibold text-base bg-shu-600 text-white border border-shu-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-h-[44px]">
+            <IconCheck size={18}/> これに する
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShiritoriGame({ words, progress, onAddMany, voiceOn }) {
   const [gameState, setGameState] = useState('idle');
   const [chain, setChain] = useState([]);
   const [usedWords, setUsedWords] = useState(new Set());
   const [currentChar, setCurrentChar] = useState(null);
   const [thinking, setThinking] = useState(false);
+  const [writeOpen, setWriteOpen] = useState(false);
+  // ゲームの 中で じぶんで 書いた「ずかんに ない ことば」。
+  // とちゅうで 入れると 演出が じゃまに なるので、おわるまで ためておく。
+  const [freshWords, setFreshWords] = useState([]);
+  const [savedWords, setSavedWords] = useState([]);
   const [bestChain, setBestChain] = useState(() => {
     try {
       const n = parseInt(localStorage.getItem(KEY_SIRI_BEST) || '0', 10);
@@ -5157,11 +5329,30 @@ function ShiritoriGame({ words, voiceOn }) {
   useEffect(() => clearCpuTimer, []);
 
   const hiraganaWords = words.filter(w => w.kanaMode === 'hiragana');
+  // ずかんに ある ことば（かなの しゅるいは 問わない）。おなじ ことばを
+  // 二重に ためないための 照合に つかう。
+  const collectedTexts = useMemo(() => new Set(words.map(w => w.text)), [words]);
 
   function updateBest(len) {
     if (len > bestChain) {
       setBestChain(len);
       safeLocalStorageSet(KEY_SIRI_BEST, String(len));
+    }
+  }
+
+  /* ゲームの おわり。ここで はじめて、じぶんで 書いた ことばを ずかんへ うつす。
+     かち・まけ・こうさん の どの みちからも かならず ここを 通す。 */
+  function finish(result, chainLen, freshList) {
+    clearCpuTimer();
+    updateBest(chainLen);
+    setThinking(false);
+    setWriteOpen(false);
+    setGameState(result);
+    const list = (freshList || []).filter(w => !collectedTexts.has(w.text));
+    setSavedWords(list);
+    setFreshWords([]);
+    if (list.length > 0 && onAddMany) {
+      onAddMany(list.map(w => ({ text: w.text, pict: w.pict, kanaMode: 'hiragana' })));
     }
   }
 
@@ -5184,24 +5375,32 @@ function ShiritoriGame({ words, voiceOn }) {
     setCurrentChar(lastChar);
     setGameState('playing');
     setThinking(false);
+    setWriteOpen(false);
+    setFreshWords([]);
+    setSavedWords([]);
     speakText(start.w, voiceOn);
   }
 
-  function playerPlay(wordObj) {
+  /* こたえる。entry は ずかんの ことばでも、じぶんで 書いた ことばでも よい。
+       { text, pict, isNew }   isNew … ずかんに まだ ない ことば */
+  function playerPlay(entry) {
     if (gameState !== 'playing' || thinking) return;
 
-    const newUsed = new Set([...usedWords, wordObj.text]);
-    const lastChar = getLastChar(wordObj.text);
-    const newChain = [...chain, { word: wordObj.text, pict: pictOf(wordObj), isPlayer: true }];
+    const newUsed = new Set([...usedWords, entry.text]);
+    const lastChar = getLastChar(entry.text);
+    const newChain = [...chain, { word: entry.text, pict: entry.pict, isPlayer: true, isNew: entry.isNew }];
+    // finish() には この場で 作った ものを わたす。state は まだ 古いまま。
+    const newFresh = entry.isNew ? [...freshWords, { text: entry.text, pict: entry.pict }] : freshWords;
 
     setChain(newChain);
     setUsedWords(newUsed);
-    speakText(wordObj.text, voiceOn);
+    setFreshWords(newFresh);
+    setWriteOpen(false);
+    speakText(entry.text, voiceOn);
 
     if (lastChar === 'ん') {
-      updateBest(newChain.length);
-      setGameState('lost');
       hapticErr();
+      finish('lost', newChain.length, newFresh);
       return;
     }
     hapticOk();
@@ -5212,9 +5411,7 @@ function ShiritoriGame({ words, voiceOn }) {
       cpuTimerRef.current = 0;
       const available = SHIRITORI_CPU_WORDS.filter(w => w.w[0] === lastChar && !newUsed.has(w.w));
       if (available.length === 0) {
-        updateBest(newChain.length);
-        setGameState('won');
-        setThinking(false);
+        finish('won', newChain.length, newFresh);
         playFanfare();
         burstConfetti();
         return;
@@ -5230,8 +5427,7 @@ function ShiritoriGame({ words, voiceOn }) {
       setThinking(false);
 
       if (compLastChar === 'ん') {
-        updateBest(newChain2.length);
-        setGameState('won');
+        finish('won', newChain2.length, newFresh);
         playFanfare();
         burstConfetti();
         return;
@@ -5241,10 +5437,7 @@ function ShiritoriGame({ words, voiceOn }) {
   }
 
   function forfeit() {
-    clearCpuTimer();
-    updateBest(chain.length);
-    setGameState('lost');
-    setThinking(false);
+    finish('lost', chain.length, freshWords);
   }
 
   useEffect(() => {
@@ -5268,6 +5461,37 @@ function ShiritoriGame({ words, voiceOn }) {
     </div>
   );
 
+  // ゲームの あとに ずかんへ 入った ことばの おしらせ。
+  // ⚠️ 部品（<Foo/>）に せず、JSX を かえす ただの 関数に する。
+  //    render の 中で 部品を 作ると 毎回 別の 型に なり、押している ボタンが
+  //    作りなおされて フォーカスが はずれる。
+  const savedNotice = () => savedWords.length === 0 ? null : (
+    <div className="bg-midori-50 border border-midori-300 rounded-md p-3 w-full max-w-xs">
+      <p className="text-xs font-semibold text-midori-700 mb-2 flex items-center justify-center gap-1.5">
+        <IconPlus size={14}/> ずかんに <span className="text-base tabular-nums">{savedWords.length}</span>こ ついかしました
+      </p>
+      <div className="flex flex-wrap gap-1 justify-center">
+        {savedWords.map(w => (
+          <span key={w.text} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white border border-midori-300 text-midori-700">
+            <Pict name={w.pict} size={13}/>{w.text}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+
+  // 「じぶんで かく」への 入口。ずかんに ことばが なくても あそべる。
+  const writeButton = (big) => (
+    <button onClick={() => setWriteOpen(true)}
+      className={`kkm-btn kkm-ripple rounded-md font-semibold border flex items-center justify-center gap-1.5 ${
+        big
+          ? 'w-full px-4 py-3 text-base bg-shu-600 text-white border-shu-700'
+          : 'px-4 py-2.5 text-sm bg-white text-shu-700 border-shu-400 min-h-[44px]'
+      }`}>
+      <IconPen size={18}/> じぶんで ことばを かく
+    </button>
+  );
+
   return (
     <div className="flex-1 p-2 md:p-4 min-h-0 overflow-hidden flex flex-col gap-3">
       <div className="kkm-sheet rounded-lg p-3 md:p-4 flex flex-col h-full overflow-hidden gap-3">
@@ -5278,19 +5502,13 @@ function ShiritoriGame({ words, voiceOn }) {
           </span>
         )}>しりとり</SectionTitle>
 
-        {gameState === 'idle' && hiraganaWords.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-4">
-            <MascotFace size={56} mood="sad"/>
-            <p className="font-semibold text-sumi-700 text-sm md:text-base">ひらがなの ことばが まだ ありません</p>
-            <p className="text-xs text-sumi-600 leading-relaxed">「ことばずかん」で ことばを あつめてから<br/>あそんでください</p>
-            <div className="flex items-center gap-2 bg-washi-100 border border-sumi-200 rounded-md p-2.5 text-[11px] text-sumi-600 font-semibold">
-              <IconBulb size={15}/> ことばが おおいほど しりとりに つよくなります
-            </div>
-          </div>
-        )}
-
-        {gameState === 'idle' && hiraganaWords.length > 0 && (
-          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center gap-4 text-center px-2 py-2">
+        {/* ⚠️ スクロールする はこの 中で justify-center を つかうと、はみ出した
+            ぶんの **上がわが スクロールで 出せなくなる**（scrollTop を 負に
+            できない）。中に min-h-full の はこを 1 まい 入れて、みじかい ときは
+            まんなか、ながい ときは 上から ならぶようにする。 */}
+        {gameState === 'idle' && (
+          <div className="flex-1 overflow-y-auto">
+          <div className="min-h-full flex flex-col items-center justify-center gap-4 text-center px-2 py-2">
             <MascotFace size={56} mood="cheer"/>
             <p className="font-semibold text-sumi-800 text-base">コンピュータと しりとりを しましょう</p>
             {/* あそびかた：番号つきで じゅんに 読める形にする */}
@@ -5298,7 +5516,7 @@ function ShiritoriGame({ words, voiceOn }) {
               <li className="kkm-heading-rule text-xs font-semibold text-sumi-800 !border-l-shu-600 mb-1">あそびかた</li>
               {[
                 'コンピュータが さいしょの ことばを いいます',
-                'その さいごの もじから はじまる「あつめた ことば」を えらびます',
+                'その さいごの もじから はじまる ことばを こたえます',
                 '「ん」で おわったら まけです',
                 'コンピュータが こたえられなくなったら かちです',
               ].map((t, i) => (
@@ -5310,11 +5528,16 @@ function ShiritoriGame({ words, voiceOn }) {
             </ol>
             <div className="bg-white border border-sumi-200 rounded-md p-3 text-sm font-semibold text-sumi-700 max-w-xs w-full">
               あなたの てふだ：<span className="text-shu-700 text-base tabular-nums">{hiraganaWords.length}</span>この ことば
+              <div className="mt-1.5 flex items-start gap-1.5 text-[11px] font-medium text-sumi-600 text-left">
+                <span className="text-midori-700 shrink-0 mt-0.5"><IconBulb size={14}/></span>
+                <span>てふだに ない ことばも じぶんで かけます。<br/>あそんだ あと、ずかんに ついかされます。</span>
+              </div>
             </div>
             <button onClick={startGame}
               className="kkm-btn kkm-ripple px-10 py-3 rounded-md font-semibold text-lg bg-shu-600 text-white border border-shu-700 flex items-center gap-2">
               <IconPlay size={18}/> はじめる
             </button>
+          </div>
           </div>
         )}
 
@@ -5356,20 +5579,27 @@ function ShiritoriGame({ words, voiceOn }) {
                   </span>
                 </div>
                 {playableWords.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 justify-center max-h-[26vh] overflow-y-auto p-0.5">
-                    {playableWords.map(w => (
-                      <button key={w.id} onClick={() => playerPlay(w)}
-                        aria-label={`${w.text} を こたえる`}
-                        className="kkm-btn kkm-ripple flex items-center gap-1.5 px-3.5 py-2 rounded-md font-semibold bg-white border border-sumi-300 text-sumi-800 hover:border-shu-400 hover:text-shu-700 min-h-[44px]">
-                        <Pict name={pictOf(w)} size={20}/>
-                        <span className="kkm-glyph text-base">{w.text}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="flex flex-wrap gap-2 justify-center max-h-[22vh] overflow-y-auto p-0.5">
+                      {playableWords.map(w => (
+                        <button key={w.id} onClick={() => playerPlay({ text: w.text, pict: pictOf(w), isNew: false })}
+                          aria-label={`${w.text} を こたえる`}
+                          className="kkm-btn kkm-ripple flex items-center gap-1.5 px-3.5 py-2 rounded-md font-semibold bg-white border border-sumi-300 text-sumi-800 hover:border-shu-400 hover:text-shu-700 min-h-[44px]">
+                          <Pict name={pictOf(w)} size={20}/>
+                          <span className="kkm-glyph text-base">{w.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-center">{writeButton(false)}</div>
+                  </>
                 ) : (
-                  <div className="bg-shu-50 border border-shu-200 rounded-md p-3 text-center">
-                    <p className="font-semibold text-shu-700 mb-1 text-sm">「{currentChar}」から はじまる ことばが ありません</p>
-                    <p className="text-[11px] text-sumi-600 mb-2">「ことばずかん」で「{currentChar}」から はじまる ことばを あつめましょう</p>
+                  /* てふだに なくても ゆきどまりに しない。
+                     じぶんで 書けば つづけられる（＝ずかんが そだつ）。 */
+                  <div className="bg-washi-100 border border-sumi-200 rounded-md p-3 text-center space-y-2">
+                    <p className="text-[11px] text-sumi-600 font-semibold">
+                      てふだに「{currentChar}」から はじまる ことばが ありません。<br/>じぶんで かいて こたえましょう。
+                    </p>
+                    {writeButton(true)}
                     <button onClick={forfeit}
                       className="kkm-btn px-4 py-2 rounded-md bg-white border border-sumi-300 text-sumi-600 font-semibold text-sm min-h-[40px]">まけを みとめる</button>
                   </div>
@@ -5383,32 +5613,37 @@ function ShiritoriGame({ words, voiceOn }) {
         )}
 
         {gameState === 'won' && (
-          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center gap-3 text-center px-2">
+          <div className="flex-1 overflow-y-auto">
+          <div className="min-h-full flex flex-col items-center justify-center gap-3 text-center px-2 py-2">
             <span className="text-shu-600"><Hanamaru size={92} draw duration={0.7}/></span>
             <p className="font-semibold text-xl text-shu-700">かちました！</p>
             <div className="bg-washi-100 border border-sumi-200 rounded-md p-3 w-full max-w-xs">
               <p className="text-xs text-sumi-600 font-semibold mb-2">つなげた ながさ <span className="text-2xl text-shu-700 tabular-nums">{chain.length}</span>こ</p>
               <ChainSummary/>
             </div>
+            {savedNotice()}
             <button onClick={startGame}
               className="kkm-btn kkm-ripple px-8 py-2.5 rounded-md font-semibold bg-shu-600 text-white border border-shu-700">
               もう いちど あそぶ
             </button>
           </div>
+          </div>
         )}
 
         {gameState === 'lost' && (
-          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center gap-3 text-center px-2">
+          <div className="flex-1 overflow-y-auto">
+          <div className="min-h-full flex flex-col items-center justify-center gap-3 text-center px-2 py-2">
             <MascotFace size={56} mood="sad"/>
             <p className="font-semibold text-lg text-sumi-700">まけちゃった…</p>
             <div className="bg-washi-100 border border-sumi-200 rounded-md p-3 w-full max-w-xs">
               <p className="text-xs text-sumi-600 font-semibold mb-2">つなげた ながさ <span className="text-2xl text-ai-700 tabular-nums">{chain.length}</span>こ</p>
               <ChainSummary/>
             </div>
+            {savedNotice()}
             {hiraganaWords.length < 15 && (
               <div className="flex items-start gap-2 bg-white border border-sumi-200 rounded-md p-2.5 text-[11px] font-semibold text-sumi-600 max-w-xs text-left">
                 <span className="text-yamabuki-700 shrink-0 mt-0.5"><IconBulb size={15}/></span>
-                <span>ことばを もっと あつめると つよくなれます。<br/>
+                <span>じぶんで かいた ことばも てふだに なります。<br/>
                   <span className="text-sumi-600 font-medium tabular-nums">いま {hiraganaWords.length}こ → もくひょう 15こ</span></span>
               </div>
             )}
@@ -5417,8 +5652,16 @@ function ShiritoriGame({ words, voiceOn }) {
               もう いちど あそぶ
             </button>
           </div>
+          </div>
         )}
       </div>
+
+      {writeOpen && currentChar && (
+        <ShiritoriWriteSheet startChar={currentChar} progress={progress}
+          usedWords={usedWords} collectedTexts={collectedTexts} voiceOn={voiceOn}
+          onCancel={() => setWriteOpen(false)}
+          onSubmit={({ text, pict }) => playerPlay({ text, pict, isNew: !collectedTexts.has(text) })}/>
+      )}
     </div>
   );
 }
@@ -5616,7 +5859,7 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
         {/* ③ もじを えらぶ */}
         <div className="mb-3">
           <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-1.5">
-            もじを えらぶ<span className="font-medium text-sumi-600">（じぶんで かける じだけ つかえます）</span>
+            もじを えらぶ<span className="font-medium text-sumi-600">（まだ かいて いない じも つかえます）</span>
           </div>
           <div className="grid grid-cols-4 gap-1 mb-1.5">
             {KANA_KINDS.map(k => (
@@ -5634,18 +5877,20 @@ function WordAddModal({ kanaMode, progress, usableInWords, voiceOn, onCancel, on
           <div className="grid grid-cols-5 gap-1.5 bg-washi-100 p-2 rounded-md border border-sumi-200">
             {table.map((c, i) => {
               if (!c) return <div key={i} className="aspect-square"/>;
+              // まだ かいて いない じも つかえる（つかえないと、ならう前の
+              // ことばが 1 つも つくれない）。かける じは 見た目で わかるようにする。
               const ok = usableInWords.includes(c);
               const stage = getStage(progress, c);
               const willPromote = stage === 3;
               return (
-                <button key={i} disabled={!ok} onClick={() => addChar(c)}
+                <button key={i} onClick={() => addChar(c)}
                   aria-label={`${c}${willPromote ? '（つかうと はなまるに なります）' : ''}`}
                   className={`kkm-glyph kkm-btn relative aspect-square rounded-md text-xl md:text-2xl border ${
-                    ok
-                      ? (willPromote
-                          ? 'bg-fuji-50 border-fuji-400 text-fuji-700 hover:bg-fuji-100'
-                          : 'bg-white border-sumi-300 text-sumi-700 hover:border-shu-300')
-                      : 'bg-sumi-50 border-sumi-200 text-sumi-600 cursor-not-allowed'
+                    willPromote
+                      ? 'bg-fuji-50 border-fuji-400 text-fuji-700 hover:bg-fuji-100'
+                      : ok
+                        ? 'bg-white border-sumi-300 text-sumi-700 hover:border-shu-300'
+                        : 'bg-washi-100 border-sumi-200 text-sumi-600 hover:border-shu-300'
                   }`}>
                   {c}
                   {stage > 0 && <StageMark stage={stage} className="absolute -top-1 -right-1 leading-none"/>}
@@ -8014,7 +8259,7 @@ const COLLECTION_TABS = [
   { key: 'words',     label: 'ことばずかん', Icon: IconBook },
   { key: 'shiritori', label: 'しりとり',     Icon: IconLink },
 ];
-function CollectionView({ kanaMode, setKanaMode, progress, usableInWords, words, onAdd, onDelete, voiceOn }) {
+function CollectionView({ kanaMode, setKanaMode, progress, usableInWords, words, onAdd, onAddMany, onDelete, voiceOn }) {
   const [tab, setTab] = useState('words');
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -8039,7 +8284,7 @@ function CollectionView({ kanaMode, setKanaMode, progress, usableInWords, words,
             words={words} onAdd={onAdd} onDelete={onDelete} voiceOn={voiceOn}/>
         </div>
       ) : (
-        <ShiritoriGame words={words} voiceOn={voiceOn}/>
+        <ShiritoriGame words={words} progress={progress} onAddMany={onAddMany} voiceOn={voiceOn}/>
       )}
     </div>
   );
@@ -8244,12 +8489,19 @@ function App() {
     });
   }, []);
 
-  const addWord = useCallback((w) => {
-    setWords(prev => [...prev, { id: Date.now() + Math.random(), ...w, date: Date.now() }]);
+  // ことばを ずかんに ついかする。
+  // しりとりの あとに「ゲーム中に つかった あたらしい ことば」を まとめて
+  // 入れることが あるので、本体は 配列で うけとる。1 つずつ よぶと 音や
+  // 花丸の おいわいが 何回も かさなって うるさくなる。
+  const addWords = useCallback((list) => {
+    const items = (Array.isArray(list) ? list : [list]).filter(w => w && w.text);
+    if (items.length === 0) return;
+    const stamp = Date.now();
+    setWords(prev => [...prev, ...items.map((w, i) => ({ id: stamp + i + Math.random(), ...w, date: stamp }))]);
     playPickup();
-    bumpMission('words');
+    bumpMission('words', items.length);
     // ことばに使った文字のうち、ステージ3だったものをステージ4へ昇格
-    const chars = Array.from(new Set((w.text || '').split('')));
+    const chars = Array.from(new Set(items.flatMap(w => (w.text || '').split(''))));
     setProgress(prev => {
       const advanced = [];
       const next = { ...prev };
@@ -8264,12 +8516,13 @@ function App() {
         setTimeout(() => {
           playFanfare();
           burstConfetti();
-          setWordCelebration({ chars: advanced, text: w.text });
+          setWordCelebration({ chars: advanced, text: items.map(w => w.text).join('・') });
         }, 50);
       }
       return next;
     });
   }, [setWords, bumpMission]);
+  const addWord = useCallback((w) => addWords([w]), [addWords]);
   const deleteWord = useCallback((id) => {
     setWords(prev => prev.filter(w => w.id !== id));
   }, [setWords]);
@@ -8359,7 +8612,8 @@ function App() {
         {view === 'words' && (
           <CollectionView kanaMode={kanaMode} setKanaMode={setKanaMode}
             progress={progress} usableInWords={usableInWords}
-            words={words} onAdd={addWord} onDelete={deleteWord} voiceOn={voiceOn}/>
+            words={words} onAdd={addWord} onAddMany={addWords}
+            onDelete={deleteWord} voiceOn={voiceOn}/>
         )}
       </main>
 
