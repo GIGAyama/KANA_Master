@@ -1578,11 +1578,11 @@ function currentTier(mim, skill) {
      'none'   … 出さない */
 function tierPlan(tier) {
   if (tier >= 3) return { count: 4, words: 3,  maxChoices: 2, blanks: 1, dots: true,  rhythm: 'before', sizeHint: true,
-                          formats: ['spell', 'fill', 'count', 'listenCount'] };
+                          formats: ['spell', 'fill', 'count', 'listenCount', 'write'] };
   if (tier === 2) return { count: 5, words: 5,  maxChoices: 2, blanks: 2, dots: true,  rhythm: 'after',  sizeHint: true,
-                          formats: ['spell', 'fill', 'count', 'listenCount', 'listenPair'] };
+                          formats: ['spell', 'fill', 'count', 'listenCount', 'listenPair', 'write'] };
   return              { count: 6, words: 12, maxChoices: 3, blanks: 2, dots: false, rhythm: 'none',   sizeHint: false,
-                          formats: ['spell', 'fill', 'count', 'listenCount', 'listenPair'] };
+                          formats: ['spell', 'fill', 'count', 'listenCount', 'listenPair', 'write'] };
 }
 // ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
 const MIM_CHECK_INTERVAL_DAYS = 14;
@@ -1836,12 +1836,32 @@ const KVG_STROKE_W = 7;
 
    データを つくりなおす： npm run kanjivg
    よび出し側は これまでどおり await して よいように、形は そのままにしてある。 */
+/* KanjiVG に 無い 字を ここで 手で 持つ。
+
+   「ー」は かなでは ないので KanjiVG の 176 字に 入っていない。
+   でも のばす おとの 単元で 書かせたい ので、よこ 1 画を 自前で 書く。
+   ざひょうけいは KanjiVG と おなじ 109 × 109。
+
+   ⚠️ 手本が まっすぐな 線 1 本なので、かたちの 採点は ゆるく なる
+      （だいたい よこ線なら 通る）。`scoreSpecialWrite` の がわで
+      「かたむきが よこから ±20 どいない」「ながさが マスの はんぶん
+      いじょう」を 別に 見て おぎなう。ほかの 字ほど 厳しくは できない。
+   ※ data/kanjivg-kana.js は `npm run kanjivg` の 生成物なので
+     そちらに 書いては いけない（つぎの 生成で 消える）。 */
+const EXTRA_KANA_PATHS = { 'ー': ['M 20,54 L 89,54'] };
+
+// 字の かきじゅん（同期）。生成データ → 手で 持つ ぶん の じゅんに 引く。
+function kanaPathsOf(char) {
+  const table = (typeof globalThis !== 'undefined' && globalThis.KANJIVG_KANA) || null;
+  const paths = (table && table[char]) || EXTRA_KANA_PATHS[char];
+  return (paths && paths.length) ? paths : null;
+}
+
 const kanjiPathsCache = {};
 async function fetchKanjiVG(char) {
   if (kanjiPathsCache[char]) return kanjiPathsCache[char];
-  const table = (typeof globalThis !== 'undefined' && globalThis.KANJIVG_KANA) || null;
-  const paths = table && table[char];
-  if (!paths || !paths.length) return null;   // 表に無い文字（呼び出し側が null を見る）
+  const paths = kanaPathsOf(char);
+  if (!paths) return null;                    // 表に無い文字（呼び出し側が null を見る）
   kanjiPathsCache[char] = paths;
   return paths;
 }
@@ -2474,6 +2494,83 @@ function scoreHandwriting(userStrokes, templatePaths) {
   catch (e) { review = null; }
   return { total, breakdown, comment, passed: total >= 60, review };
 }
+
+/* ──────────────────────────────────────────────────────────────
+   3.55. とくべつな おとの 書きとり（かるい 採点）
+
+   `scoreHandwriting`（100点・6観点・60点で合格）は「かく」画面の
+   まとまった れんしゅう用で、ここには つかわない。りゆうは 2 つ。
+
+   ① 合計 60 点で 通るので、**マス いっぱいの「つ」を 書いても 合格しうる**。
+      この単元が 教えているのは まさに その ちがい（ちいさい っ）なので、
+      いちばん 見なければ ならない ところを 見のがす。
+   ② KanjiVG の ちいさい字の 手本は よこは ほぼ まん中に ある。
+      いっぽう `KanaCell` が 画面に 出している 点線の へやは **みぎした**。
+      手本の いちを そのまま 採点に つかうと、**アプリ自身の めじるしに
+      したがって 書いた子が 減点される**。
+
+   そこで 見るのは 3 つだけ。
+     ・かたち   … おたがいの わく に そろえてから くらべる
+                  （＝おおきさ・いち を のぞいた「形」だけ）
+     ・おおきさ … ちいさい字なら マスの 62% いかに おさまっているか
+     ・いち     … ちいさい字なら みぎしたの へやに あるか
+                  （＝`KanaCell` の 点線と おなじ きまり）
+   かきじゅんは 見るが 落とさない（1年生を ここで 止めない）。
+   ────────────────────────────────────────────────────────────── */
+// それぞれの わくに そろえる（おおきさ・いちを 打ち消して かたちだけ 見る）
+function normalizeToBbox(polys) {
+  const b = bboxOfPolys(polys);
+  if (!b) return polys;
+  const w = Math.max(b.x1 - b.x0, 1e-6), h = Math.max(b.y1 - b.y0, 1e-6);
+  const s = Math.max(w, h);                       // よこ・たての ひ は くずさない
+  const ox = (s - w) / 2, oy = (s - h) / 2;
+  return polys.map(poly => poly.map(p => ({ x: (p.x - b.x0 + ox) / s, y: (p.y - b.y0 + oy) / s })));
+}
+
+const SPECIAL_WRITE_SHAPE_PASS = 0.55;   // かたちの 合格ライン
+const SPECIAL_WRITE_SMALL_MAX  = 0.62;   // ちいさい字は マスの これいか
+const SPECIAL_WRITE_ROOM_MIN   = 0.42;   // みぎしたの へやの さかいめ
+
+function scoreSpecialWrite(userStrokes, templatePaths, char) {
+  if (!userStrokes || !userStrokes.length) return { ok: false, reason: 'empty' };
+  if (!templatePaths || !templatePaths.length) return null;
+  const tpl = templatePaths.map(d => sampleSvgPath(d, 24));
+  const usr = userStrokes.map(s => simplifyPoints(s.points || []));
+  if (usr.length !== tpl.length) {
+    return { ok: false, reason: 'strokes', strokes: usr.length, want: tpl.length };
+  }
+  const shape = analyzeShape(normalizeToBbox(usr), normalizeToBbox(tpl)).score;
+  const bb = bboxOfPolys(usr) || { x0: 0, y0: 0, x1: 1, y1: 1 };
+  const w = bb.x1 - bb.x0, h = bb.y1 - bb.y0;
+  const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
+  const small = isSmallKana(char);
+  const sizeOk  = !small || (w <= SPECIAL_WRITE_SMALL_MAX && h <= SPECIAL_WRITE_SMALL_MAX);
+  const placeOk = !small || (cx >= SPECIAL_WRITE_ROOM_MIN && cy >= SPECIAL_WRITE_ROOM_MIN);
+  /* 「ー」だけは 手本が まっすぐな 線 1 本で、かたちの 採点が ゆるい。
+     よこ線に なっているか・みじかすぎないかを ここで 見る。 */
+  let barOk = true;
+  if (char === CHOUON_MARK) {
+    const pts = usr[0] || [];
+    const a = pts[0], b = pts[pts.length - 1];
+    if (!a || !b) barOk = false;
+    else {
+      const deg = Math.abs(Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI);
+      barOk = (deg <= 20 || deg >= 160) && Math.hypot(b.x - a.x, b.y - a.y) >= 0.5;
+    }
+  }
+  const reason = !barOk ? 'bar' : !sizeOk ? 'big' : !placeOk ? 'place'
+    : shape < SPECIAL_WRITE_SHAPE_PASS ? 'shape' : null;
+  return { ok: !reason, reason, shape: Math.round(shape * 100) / 100 };
+}
+// 直しかたを 1年生の ことばで（まちがいの 中身は 学習ログの item.wrong にも なる）
+const SPECIAL_WRITE_ADVICE = {
+  empty:   'まだ かいてないよ。マスの なかに かいてみよう',
+  strokes: 'かくすうが ちがうみたい。「かきじゅんを みる」で たしかめよう',
+  big:     'もう すこし ちいさく、マスの みぎしたに かこう',
+  place:   'マスの みぎしたの へやに かこう',
+  shape:   'かたちを もう いちど。「かきじゅんを みる」で たしかめよう',
+  bar:     'よこに まっすぐ、ながく ひっぱろう',
+};
 
 /* KanjiVG の 1 画をキャンバスに描く。呼ぶまえに ctx を 109 座標系に
    合わせておくこと（線の色・太さも呼び出し側で決める）。
@@ -7026,14 +7123,203 @@ function KanaCell({ char, size = 56, state = 'plain', onClick, ariaLabel }) {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════
+   18.55. <WriteCell> ── マス 1 つぶんの かきとり
+
+   とくべつな おとの もんだいの 中で、**ことばの 中の ただしい マス**に
+   ちいさい っ や ゃゅょ を じっさいに 書かせる。
+   「よんで えらぶ」だけでは、書けるように なったかは わからない。
+
+   ⚠️ `PracticeBoard`（§14）は つかわない・つかえない。
+      あちらは なぞり／自力の きりかえ、かきじゅんの きびしい チェック、
+      合格したら 進みぐあいを 進めて つぎの 字へ 送る… という
+      「かく」画面ぜんたいの しくみを かかえた 750 行の 部品で、
+      もんだい 1 もんの 中に 置くには 大きすぎ、しかも 進みぐあいや
+      日課の かぞえに 二重に ひびく。
+
+   ⚠️ 入力の しょり（ポインタの とらえ・手のひらの ごにゅうりょく よけ・
+      rAF での まとめ描き・DPR）は `PracticeBoard` から **写して** いる。
+      共通の 部品に まとめるのが 本すじだが、それは アプリで いちばん
+      よく つかう 画面の 入力経路を 実機なしで 書きかえる ことに なる。
+      ここでは 写しで 進め、**まとめるのは べつの 変更**で 行う。
+      （直すときは 両方を 直すこと。むこうは §14 の doStart / doMove / doEnd）
+   ══════════════════════════════════════════════════════════════ */
+function WriteCell({ char, size = 96, onStrokes, showGuide = false, resetKey = 0 }) {
+  const canvasRef = useRef(null);
+  const drawingRef = useRef(false);
+  const lastRef = useRef({ x: 0, y: 0 });
+  const curRef = useRef([]);                  // いま 書いている 画の 点（0..1）
+  const strokesRef = useRef([]);              // 書きおわった 画
+  const activeIdRef = useRef(null);
+  const sawPenRef = useRef(false);
+  const pendingRef = useRef([]);
+  const rafRef = useRef(0);
+  const [strokeCount, setStrokeCount] = useState(0);
+  const paths = useMemo(() => kanaPathsOf(char), [char]);
+
+  // 大きさを あわせる（DPR は 2 まで。それ以上は おそくなるだけ）
+  const fit = useCallback(() => {
+    const c = canvasRef.current; if (!c) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const px = Math.round(size * dpr);
+    if (c.width !== px || c.height !== px) { c.width = px; c.height = px; }
+  }, [size]);
+
+  const redraw = useCallback(() => {
+    const c = canvasRef.current; if (!c) return;
+    const ctx = c.getContext('2d'); const s = c.width;
+    ctx.clearRect(0, 0, s, s);
+    // うすい お手本（「かきじゅんを みる」を 押したときだけ）
+    if (showGuide && paths) {
+      ctx.save();
+      ctx.scale(s / 109, s / 109);
+      ctx.strokeStyle = themeColor('--kkm-guide', '#e5ded0');
+      ctx.lineWidth = KVG_STROKE_W; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const d of paths) drawKvgStroke(ctx, d);
+      ctx.restore();
+    }
+    // 書いた 線
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = s * 0.09;
+    ctx.strokeStyle = themeColor('--kkm-sumi', '#2e2a25');
+    for (const st of strokesRef.current) {
+      const pts = st.points || [];
+      if (pts.length < 2) continue;
+      ctx.beginPath(); ctx.moveTo(pts[0].x * s, pts[0].y * s);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x * s, pts[i].y * s);
+      ctx.stroke();
+    }
+  }, [showGuide, paths]);
+
+  useEffect(() => { fit(); redraw(); }, [fit, redraw]);
+  // 「けす」や つぎの もんだいで まっさらに もどす
+  useEffect(() => {
+    strokesRef.current = []; curRef.current = []; setStrokeCount(0);
+    fit(); redraw();
+    // eslint-disable-next-line
+  }, [resetKey, char]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const toXY = (clientX, clientY) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height };
+    };
+    const flush = () => {
+      rafRef.current = 0;
+      const pts = pendingRef.current; pendingRef.current = [];
+      if (!drawingRef.current || pts.length === 0) return;
+      const c = canvasRef.current; if (!c) return;
+      const ctx = c.getContext('2d'); const s = c.width;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.lineWidth = s * 0.09;
+      ctx.strokeStyle = themeColor('--kkm-sumi', '#2e2a25');
+      for (const raw of pts) {
+        const p = toXY(raw.x, raw.y);
+        curRef.current.push(p);
+        ctx.beginPath();
+        ctx.moveTo(lastRef.current.x * s, lastRef.current.y * s);
+        ctx.lineTo(p.x * s, p.y * s);
+        ctx.stroke();
+        lastRef.current = p;
+      }
+    };
+    const schedule = () => { if (!rafRef.current) rafRef.current = requestAnimationFrame(flush); };
+
+    function onDown(e) {
+      if (e.pointerType === 'touch' && sawPenRef.current) return;   // 手のひら よけ
+      if (e.pointerType === 'pen') sawPenRef.current = true;
+      if (activeIdRef.current !== null) return;
+      activeIdRef.current = e.pointerId;
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
+      initAudio();
+      const p = toXY(e.clientX, e.clientY);
+      drawingRef.current = true;
+      lastRef.current = p;
+      curRef.current = [p];
+      hapticTick();
+    }
+    function onMove(e) {
+      if (activeIdRef.current !== e.pointerId) return;
+      const evs = (typeof e.getCoalescedEvents === 'function' && e.getCoalescedEvents().length > 0)
+        ? e.getCoalescedEvents() : [e];
+      for (const ev of evs) pendingRef.current.push({ x: ev.clientX, y: ev.clientY });
+      e.preventDefault();
+      schedule();
+    }
+    function onUp(e) {
+      if (activeIdRef.current !== e.pointerId) return;
+      activeIdRef.current = null;
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+      flush();
+      e.preventDefault();
+      if (!drawingRef.current) return;
+      drawingRef.current = false;
+      // ちょんと さわっただけ（点が みじかすぎる）は 1 画に かぞえない
+      const pts = curRef.current || [];
+      let span = 0;
+      for (let i = 1; i < pts.length; i++) span += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
+      if (pts.length >= 2 && span > 0.02) {
+        strokesRef.current.push({ points: pts });
+        setStrokeCount(n => n + 1);
+        onStrokes && onStrokes(strokesRef.current);
+      }
+      curRef.current = [];
+    }
+    function onCancel(e) {
+      if (activeIdRef.current !== e.pointerId) return;
+      activeIdRef.current = null; pendingRef.current = [];
+      drawingRef.current = false; curRef.current = [];
+    }
+    const block = (e) => { if (drawingRef.current) e.preventDefault(); };
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointercancel', onCancel);
+    canvas.addEventListener('touchmove', block, { passive: false });
+    return () => {
+      canvas.removeEventListener('pointerdown', onDown);
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('pointerup', onUp);
+      canvas.removeEventListener('pointercancel', onCancel);
+      canvas.removeEventListener('touchmove', block);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0; pendingRef.current = [];
+    };
+    // eslint-disable-next-line
+  }, [onStrokes]);
+
+  return (
+    <span className="relative shrink-0 rounded-md border-2 border-dashed border-shu-500 bg-shu-50 kkm-pulse-ring"
+      style={{ width: size, height: size }}>
+      {/* 原稿用紙の 十字と、ちいさい字の へや（KanaCell と おなじ めじるし） */}
+      <span aria-hidden="true" className="absolute inset-0 pointer-events-none">
+        <span className="absolute top-1/2 left-1 right-1 border-t border-dashed border-sumi-200"/>
+        <span className="absolute left-1/2 top-1 bottom-1 border-l border-dashed border-sumi-200"/>
+        {isSmallKana(char) && (
+          <span className="absolute right-[8%] bottom-[8%] w-[42%] h-[42%] rounded-[3px] border-2 border-dashed border-shu-300"/>
+        )}
+      </span>
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded-md"
+        style={{ touchAction: 'none' }}
+        aria-label={`${char} を かく ところ（いま ${strokeCount} かく）`}/>
+    </span>
+  );
+}
+
 /* ことばを マスに ならべて 見せる。あな（blanks）は こたえる ところ。 */
-function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1, judged = null, showMora = false, activeMora = -1, onTapCell }) {
+function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1, judged = null, showMora = false, activeMora = -1, onTapCell, writeAt = -1, writeCell = null }) {
   const cells = splitCells(word);
   const moraNum = splitMora(word).length;
   return (
     <div className="inline-flex flex-col items-center gap-1">
       <div className="flex gap-1.5 flex-wrap justify-center">
         {cells.map((c, i) => {
+          // かきとりの もんだいでは、この マスだけ 書く ところに 入れかえる。
+          // ことばの 中の **ただしい いち** に 書かせたいので、まわりの
+          // マスは そのまま 見せておく。
+          if (i === writeAt && writeCell) return <React.Fragment key={i}>{writeCell}</React.Fragment>;
           const isBlank = blanks.includes(i);
           const put = filled[i];
           let state = 'plain', shown = c;
@@ -7081,8 +7367,18 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
   /* MIM の 動作化を「こたえる まえ」に 見せる ステージ（3rd）で、
      リズムを 見おわったかどうか。見おわるまで えらぶ ふだを 出さない。 */
   const [rhythmSeen, setRhythmSeen] = useState(false);
+  // かきとりの もんだい用
+  const [writeGuide, setWriteGuide] = useState(false);   // お手本を すかして 出しているか
+  const [writeReset, setWriteReset] = useState(0);       // 「けす」を 押した かず
+  const [writeTries, setWriteTries] = useState(0);       // 「できた」を 押した かず
+  const [writeMsg, setWriteMsg] = useState(null);        // 直しかたの ひとこと
+  const writeStrokesRef = useRef([]);
 
-  useEffect(() => { setFilled({}); setJudged(null); answeredRef.current = false; setRhythmSeen(false); }, [q.uid]);
+  useEffect(() => {
+    setFilled({}); setJudged(null); answeredRef.current = false; setRhythmSeen(false);
+    setWriteGuide(false); setWriteReset(0); setWriteTries(0); setWriteMsg(null);
+    writeStrokesRef.current = [];
+  }, [q.uid]);
 
   /* `rhythm` は 'before'（こたえる まえ）／'after'（こたえた あと）／'none'。
      むかしの true / false も うけとる（true＝'after'）。 */
@@ -7159,6 +7455,26 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
       finish(v === q.answer, v);
     }
   }
+  /* かきとりの 判定。
+     えらぶ もんだいと ちがい **やり直しが ある**ので、`tries` と
+     「お手本を 見たか」を 数えて そのまま 学習ログに わたす。
+     ここが この アプリで はじめて `firstTry` が ほんとうの 意味を もつ 場所。
+     3 かい 目は かならず 先へ 進める（1年生を ここで 止めない）。 */
+  function finishWrite() {
+    if (judged) return;
+    const tries = writeTries + 1;
+    setWriteTries(tries);
+    const r = scoreSpecialWrite(writeStrokesRef.current, kanaPathsOf(q.writeChar), q.writeChar);
+    const ok = !!(r && r.ok);
+    if (ok || tries >= 3) {
+      finish(ok, { tries, hint: writeGuide, reason: r && r.reason ? r.reason : undefined });
+      return;
+    }
+    // まだ やり直せる。どこを 直すかを 出して、書いた線は のこす
+    playBuzzer(); hapticErr();
+    setWriteMsg(SPECIAL_WRITE_ADVICE[(r && r.reason) || 'shape'] || SPECIAL_WRITE_ADVICE.shape);
+  }
+
   function undo() {
     if (judged) return;
     const done = blanks.filter(i => filled[i]);
@@ -7225,6 +7541,11 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
             「おと と マスは ちがう」という この単元の かなめの 逆に なる。 */}
         {q.word && !(q.hideWord && listening && !judged) && (
           <WordCells word={q.word} blanks={blanks} filled={filled}
+            writeAt={q.kind === 'write' && !judged ? q.writeAt : -1}
+            writeCell={q.kind === 'write' && !judged
+              ? <WriteCell char={q.writeChar} size={splitCells(q.word).length > 5 ? 46 : 64}
+                  showGuide={writeGuide} resetKey={writeReset} onStrokes={(s) => { writeStrokesRef.current = s; }}/>
+              : null}
             activeBlank={activeBlank === undefined ? -1 : activeBlank}
             judged={judged}
             /* MIM：2nd・3rd ステージでは ドットを つねに 出しておく。
@@ -7276,7 +7597,34 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
       {!judged && rhythmFirst && !rhythmSeen && (
         <div className="shrink-0 text-base font-semibold text-sumi-600">てを うごかして みよう…</div>
       )}
-      {!judged && !(rhythmFirst && !rhythmSeen) && (
+      {/* かきとり：けす／かきじゅんを みる／できた */}
+      {!judged && q.kind === 'write' && (
+        <div className="shrink-0 flex flex-col items-center gap-2 w-full max-w-xl">
+          {writeMsg && (
+            <div className="w-full rounded-lg border-2 border-yamabuki-400 bg-yamabuki-50 px-3 py-2 text-center text-base font-semibold text-yamabuki-700 kkm-pop-in">
+              {writeMsg}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button onClick={() => { setWriteReset(n => n + 1); setWriteMsg(null); writeStrokesRef.current = []; }}
+              className="kkm-btn px-4 py-2.5 rounded-lg bg-white border-2 border-sumi-300 text-base font-semibold text-sumi-600 flex items-center gap-2 min-h-[48px]">
+              <IconRotate size={18}/> けす
+            </button>
+            <button onClick={() => setWriteGuide(g => !g)} aria-pressed={writeGuide}
+              className={`kkm-btn px-4 py-2.5 rounded-lg border-2 text-base font-semibold flex items-center gap-2 min-h-[48px] ${
+                writeGuide ? 'bg-ai-50 border-ai-400 text-ai-700' : 'bg-white border-sumi-300 text-sumi-600'
+              }`}>
+              <IconBulb size={18}/> おてほん
+            </button>
+          </div>
+          <button onClick={finishWrite} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+            className="kkm-btn kkm-ripple kkm-primary w-full max-w-xs px-8 bg-shu-600 text-white font-semibold border-2 border-shu-700">
+            できた！
+          </button>
+        </div>
+      )}
+
+      {!judged && q.kind !== 'write' && !(rhythmFirst && !rhythmSeen) && (
         <div className={`shrink-0 w-full max-w-xl grid gap-2.5 ${
           /* かずは 6 つ ならべる ときだけ 3×2。しぼった ときは
              そのまま 1 れつに ならべる（すきまが あくと 押しにくい）。
@@ -7376,7 +7724,8 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
        それを 見おわるまで つぎへ すすまない。3rd は リズムを **まえ**に
        見せるので、こたえた あとは ふつうの はやさで よい。 */
     const afterRhythm = support?.rhythm === 'after' || support?.rhythm === true;
-    const wait = afterRhythm ? (correct ? 4200 : 5200) : (correct ? 1100 : 2200);
+    const wait = questions[idx].wait
+      ?? (afterRhythm ? (correct ? 4200 : 5200) : (correct ? 1100 : 2200));
     setTimeout(() => {
       if (last) { setDone(true); playFanfare(); burstConfetti(); }
       else setIdx(i => i + 1);
@@ -7665,6 +8014,34 @@ function makeListenPairQuestion(unit, wordObj) {
   };
 }
 
+/* ⑥d とくべつな おと：ことばの 中の ただしい マスに **じっさいに 書く**
+
+   ここまでの かたちは ぜんぶ「よんで えらぶ」だった。えらべる ように
+   なった ことと、書ける ように なった ことは べつ（README §2 の 4 つの ちから）。
+   「が□こう」の □ に ちいさい っ を 書いて はじめて、大きさも いちも
+   じぶんで きめた ことに なる。
+
+   ・書く 字は その単元の おと（`specialCellsOf` の さいしょ）。
+   ・かきじゅんデータの ない 字は 出さない（`fits` で 見る）。 */
+function makeWriteQuestion(unit, wordObj) {
+  const cells = splitCells(wordObj.w);
+  const at = specialCellsOf(wordObj.w, unit.key)[0];
+  const target = cells[at];
+  if (!target || !kanaPathsOf(target)) return null;
+  return {
+    uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'write',
+    lead: 'かいて みよう', ask: `あいた マスに 「${target}」を かこう`,
+    pict: wordObj.p, word: wordObj.w, writeAt: at, writeChar: target,
+    answer: target, answerText: wordObj.w, answerSay: wordObj.w,
+    rhythmWord: wordObj.w,
+    why: isSmallKana(target)
+      ? `ちいさい「${target}」は マスの みぎしたに、ちいさく かくよ`
+      : whyFor(unit, wordObj),
+    // 書く もんだいは こたえあわせを 読む 時間が いる
+    wait: 3600,
+  };
+}
+
 /* ⑦ くっつきの ことば（は・へ・を）は 文で 出す */
 function makeJoshiQuestion(unit, sentObj) {
   return {
@@ -7787,6 +8164,19 @@ const SPECIAL_FORMATS = {
     make: (unit, w) => makeListenPairQuestion(unit, w),
     chance: () => 0.5,
   },
+  write: {
+    // ことばの 中の ただしい マスに じっさいに 書く。えらぶ もんだいと
+    // ちがい、まぐれで あたる ことが ない（chance ≒ 0）。
+    // 1 セットに 1 もんだけ（`buildSpecialQuestions` で かぞえる）。
+    fits: (unit, w) => {
+      const at = specialCellsOf(w.w, unit.key)[0];
+      const c = splitCells(w.w)[at];
+      return !!(c && kanaPathsOf(c));          // かきじゅんデータの ない 字は 出さない
+    },
+    make: (unit, w) => makeWriteQuestion(unit, w),
+    chance: () => 0,
+    max: 1,       // 1 セットに 1 もん。書くのは 時間が かかるので 5 ふんに おさめる
+  },
   joshi: {
     // くっつきの ことばは 文でしか れんしゅうに ならないので、この単元 せんよう。
     fits: (unit, s) => !!s.s,
@@ -7880,6 +8270,7 @@ function buildSpecialQuestions(unitKey, n, skill, plan, opts = {}) {
        （拍の 分解は すべての 土台なので、セットから 消えては こまる） */
     const usedCount = countBy(out, q => q.format);
     const fs = shuffled(formats.filter(f => !used.has(keyOf(item) + '|' + f)
+      && !((SPECIAL_FORMATS[f].max || Infinity) <= (usedCount[f] || 0))   // 1 セットの 上かぎり
       && SPECIAL_FORMATS[f].fits(unit, item, p)))
       .sort((a, b) => (usedCount[a] || 0) - (usedCount[b] || 0));
     let q = null, chosen = null;
@@ -8308,8 +8699,23 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
             support={{ dots: plan.dots, rhythm: plan.rhythm, sizeHint: plan.sizeHint }}
             onAnswered={(q, ok, ms, chosen) => {
               answerSkill(q.id, ok); bumpMission('special');
-              STUDY && STUDY.item({ q: q.id, ok, firstTry: ok, tries: 1, ms,
-                wrong: ok ? undefined : chosen });
+              /* えらぶ もんだいは 1 もん 1 かいなので 初回正答＝正答。
+                 かきとりだけは **やり直しと お手本** が あるので、
+                 `chosen` に そのぶんが 入って くる。ヒントを 見て
+                 合格した 回を 初回正答に すると、支援を 多く うけた
+                 児童ほど 成績が よく 見える 逆転が 起きる（§2.10）ので、
+                 お手本を 見た 回は `firstTry` から 外す。 */
+              const d = (chosen && typeof chosen === 'object' && 'tries' in chosen) ? chosen : null;
+              STUDY && STUDY.item({
+                q: q.id, ok,
+                firstTry: d ? (ok && d.tries === 1 && !d.hint) : ok,
+                tries: d ? d.tries : 1,
+                hint: d ? !!d.hint : undefined,
+                ms,
+                // かきとりの まちがいは「どこを 直すか」（big / place / shape / strokes）。
+                // どの ふだを 押したかより 先生には 役に立つ。
+                wrong: ok ? undefined : (d ? d.reason : chosen),
+              });
             }}
             onFinish={() => { if (STUDY) { STUDY.markCompleted(); STUDY.end('completed'); } }}
             onQuit={() => { STUDY && STUDY.end('aborted'); setRunning(null); setOpenUnit(null); }}/>
