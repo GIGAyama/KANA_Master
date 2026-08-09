@@ -6018,6 +6018,33 @@ function ChunkQuestion({ chunk, onDone }) {
   );
 }
 
+/* テスト①「えに あう ことば さがし」の 1 もん。
+   えを 見て、ただしい かきかたの ことばを えらぶ。
+
+   ならびを ここ（子の コンポーネント）で きめているのは わけが ある。
+   おやの <MimCheckView> は のこり秒を 1 びょうごとに かきかえるので、
+   えらぶ ボタンを おやの 中で つくると **1 びょうごとに ならびが まざり**、
+   ゆびを のばした さきの ことばが 入れかわってしまう。
+   1 もんの あいだ ならびは かえない（ならびを まぜるのは 出だしの 1 かいだけ）。 */
+function SpellQuestion({ item, onAnswer }) {
+  const choices = useMemo(() => shuffled([item.w, ...item.bad]), [item]);
+  return (
+    <>
+      <div className="flex items-center justify-center w-24 h-24 rounded-lg bg-washi-100 border border-sumi-200 text-sumi-700">
+        <Pict name={item.p} size={58}/>
+      </div>
+      <div className="w-full max-w-md grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {choices.map(c => (
+          <button key={c} onClick={() => onAnswer(c)}
+            className="kkm-btn kkm-ripple rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 py-3 px-2 min-h-[56px] flex items-center justify-center">
+            <span className="kkm-glyph text-lg md:text-xl text-sumi-800 leading-none">{c}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked, tier = 1 }) {
   const [phase, setPhase] = useState('intro');   // intro / test1 / rest / test2 / result
   const [left, setLeft] = useState(MIM_TEST_SECONDS);
@@ -6209,7 +6236,6 @@ function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked, tier = 1 }) {
   /* ── テスト中 ── */
   const isT1 = phase === 'test1';
   const item = isT1 ? items1[idx % items1.length] : items2[idx % items2.length];
-  const choices = isT1 ? shuffled([item.w, ...item.bad]) : null;
   return (
     <div className={`flex-1 min-h-0 flex flex-col p-2 md:p-4 transition-colors duration-150 ${
       flash === 'ok' ? 'bg-midori-50' : flash === 'ng' ? 'bg-shu-50' : ''
@@ -6225,19 +6251,7 @@ function MimCheckView({ mim, setMim, voiceOn, onClose, onChecked, tier = 1 }) {
       </div>
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4">
         {isT1 ? (
-          <>
-            <div className="flex items-center justify-center w-24 h-24 rounded-lg bg-washi-100 border border-sumi-200 text-sumi-700">
-              <Pict name={item.p} size={58}/>
-            </div>
-            <div className="w-full max-w-md grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {choices.map((c, i) => (
-                <button key={i} onClick={() => answer1(c, item)}
-                  className="kkm-btn kkm-ripple rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 py-3 px-2 min-h-[56px] flex items-center justify-center">
-                  <span className="kkm-glyph text-lg md:text-xl text-sumi-800 leading-none">{c}</span>
-                </button>
-              ))}
-            </div>
-          </>
+          <SpellQuestion key={idx} item={item} onAnswer={c => answer1(c, item)}/>
         ) : (
           <ChunkQuestion key={idx} chunk={item} onDone={answer2}/>
         )}
