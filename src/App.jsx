@@ -876,6 +876,15 @@ function moraCount(w) { return splitMora(w).length; }
    ・rule   … おぼえかたの ひとこと（これが この単元の すべて）
    ・words  … れんしゅうに つかう ことば
    ・bad    … ことばごとの「よくある まちがい」（1年生が じっさいに 書く形）
+   ・why    … こたえあわせの ひとこと（ふつうは いらない。長音の 例外だけ）
+   ・hear   … 耳で 聞きわける 相手（最小対立ペア）。あると 聞きとりの
+              もんだいが 出る。つけて よいのは **音が ちがう 単元だけ**
+              ＝ 濁音（かぎ／かき）・促音（ねっこ／ねこ）・拗音（きゃく／きく）。
+              のばす おと（おとうさん／おとおさん）と くっつきの ことば
+              （は／わ）は **音が おなじ** なので、耳では ぜったいに
+              きめられない。つけては いけない。
+              さしえ（p）は かならず 相手と ちがう ものに する。音が
+              つかえない 端末では「えに あう ほう」に 化けるため。
    ────────────────────────────────────────────────────────────── */
 
 // ん・っ・ゃゅょ・のばす・てん/まる・は へ を の 6 ユニット。
@@ -885,7 +894,7 @@ const SPECIAL_UNITS = [
     lead: 'にごる おと', rule: 'みぎうえに てんてん「゛」や まる「゜」を つけると、おとが かわるよ。',
     tips: ['か → が（てんてん）', 'は → ば（てんてん）', 'は → ぱ（まる）'],
     words: [
-      { w:'かぎ',   p:'tool',    bad:['かき','がき'] },
+      { w:'かぎ',   p:'tool',    bad:['かき','がき'], hear:[{ w:'かき', p:'fruit' }] },
       { w:'めがね', p:'tool',    bad:['めかね','めがれ'] },
       { w:'ぶどう', p:'fruit',   bad:['ふどう','ぶとう'] },
       { w:'でんわ', p:'tool',    bad:['てんわ','でんは'] },
@@ -950,7 +959,7 @@ const SPECIAL_UNITS = [
       { w:'コップ',   p:'drink',  bad:['コプ','コツプ'] },
       { w:'きっぷ',   p:'train',  bad:['きぷ','きつぷ'] },
       { w:'しっぽ',   p:'cat',    bad:['しぽ','しつぽ'] },
-      { w:'まっち',   p:'light',  bad:['まち','まつち'] },
+      { w:'まっち',   p:'light',  bad:['まち','まつち'], hear:[{ w:'まち', p:'shop' }] },
       { w:'ラッコ',   p:'octopus',bad:['ラコ','ラツコ'] },
       { w:'せっけん', p:'tool',   bad:['せけん','せつけん'] },
       { w:'なっとう', p:'rice',   bad:['なとう','なつとう'] },
@@ -960,7 +969,7 @@ const SPECIAL_UNITS = [
       { w:'ばった',   p:'bug',    bad:['ばた','ばつた'] },
       { w:'ろけっと', p:'plane',  bad:['ろけと','ろけつと'] },
       { w:'いっしょ', p:'person', bad:['いしょ','いつしょ'] },
-      { w:'ねっこ',   p:'tree',   bad:['ねこ','ねつこ'] },
+      { w:'ねっこ',   p:'tree',   bad:['ねこ','ねつこ'], hear:[{ w:'ねこ', p:'cat' }] },
       { w:'とっきゅう', p:'train', bad:['ときゅう','とつきゅう'] },
       { w:'あさって', p:'sun',    bad:['あさて','あさつて'] },
       { w:'にっき',   p:'book',   bad:['にき','につき'] },
@@ -982,7 +991,7 @@ const SPECIAL_UNITS = [
       { w:'きゅうしょく',p:'rice',  bad:['きゆうしょく','きゅうしよく'] },
       { w:'チョコ',     p:'sweet',  bad:['チヨコ','チコ'] },
       { w:'ジュース',   p:'drink',  bad:['ジユース','ジュス'] },
-      { w:'びょういん', p:'house',  bad:['びよういん','びょいん'] },
+      { w:'びょういん', p:'house',  bad:['びよういん','びょいん'], hear:[{ w:'びよういん', p:'shop' }] },
       { w:'しゅくだい', p:'pencil', bad:['しゆくだい','しくだい'] },
       { w:'にんぎょう', p:'person', bad:['にんぎよう','にんぎょ'] },
       { w:'キャベツ',   p:'vegetable', bad:['キヤベツ','キベツ'] },
@@ -994,7 +1003,7 @@ const SPECIAL_UNITS = [
       { w:'しゃしん',   p:'tool',   bad:['しやしん','ししん'] },
       { w:'びょうき',   p:'person', bad:['びようき','びょき'] },
       { w:'ひゃく',     p:'book',   bad:['ひやく','ひく'] },
-      { w:'きゃく',     p:'person', bad:['きやく','きく'] },
+      { w:'きゃく',     p:'person', bad:['きやく','きく'], hear:[{ w:'きく', p:'flower' }] },
       { w:'シャツ',     p:'cloth',  bad:['シヤツ','シツ'] },
       { w:'ジャム',     p:'sweet',  bad:['ジヤム','ジム'] },
     ],
@@ -1569,11 +1578,11 @@ function currentTier(mim, skill) {
      'none'   … 出さない */
 function tierPlan(tier) {
   if (tier >= 3) return { count: 4, words: 3,  maxChoices: 2, blanks: 1, dots: true,  rhythm: 'before', sizeHint: true,
-                          formats: ['spell', 'fill', 'count'] };
+                          formats: ['spell', 'fill', 'count', 'listenCount'] };
   if (tier === 2) return { count: 5, words: 5,  maxChoices: 2, blanks: 2, dots: true,  rhythm: 'after',  sizeHint: true,
-                          formats: ['spell', 'fill', 'count'] };
+                          formats: ['spell', 'fill', 'count', 'listenCount', 'listenPair'] };
   return              { count: 6, words: 12, maxChoices: 3, blanks: 2, dots: false, rhythm: 'none',   sizeHint: false,
-                          formats: ['spell', 'fill', 'count'] };
+                          formats: ['spell', 'fill', 'count', 'listenCount', 'listenPair'] };
 }
 // ちからだめしを すすめる とき（はじめて／2 しゅうかん あいた）
 const MIM_CHECK_INTERVAL_DAYS = 14;
@@ -1719,6 +1728,16 @@ function getJaVoice() {
   if (!voices || voices.length === 0) return null; // 未ロード：キャッシュしない
   cachedJaVoice = voices.find(v => v.lang && v.lang.startsWith('ja')) || null;
   return cachedJaVoice;
+}
+/* この 端末で「耳の もんだい」を 出して よいか。
+   聞きとりの もんだいは 音が ないと **原理的に とけない** ので、
+   出す まえに かならず ここを 見る（§17.9 の `usable`）。
+   声の 一覧は おそく 読みこまれる ことが あるので、まだ 無いときは
+   「無い」と あつかう（安全側）。voiceschanged で つぎの 回から 拾う。 */
+function ttsAvailable() {
+  try {
+    return !!(typeof window !== 'undefined' && window.speechSynthesis && getJaVoice());
+  } catch (e) { return false; }
 }
 // 同じテキストを連打しても無音にならないよう、直前と同じ場合は何もしない。
 // 異なるテキストのときだけ cancel する。
@@ -7085,6 +7104,16 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
     return () => clearTimeout(t);
   }, [rhythmFirst, rhythmSeen, q.uid]);
 
+  /* 耳の もんだいが いま 成りたつか。
+     出題を つくる ときに 音の 有無は 見ている（§17.9 `usable`）が、
+     **もんだいの とちゅうで 音を きる**ことが できる（ヘッダの ボタン）。
+     その ときに とけない札が のこらないよう、ここでも 見て
+     字や えを 出して 別の もんだいに 変える。 */
+  const audioOk = !!voiceOn && ttsAvailable();
+  const listening = !!q.say && audioOk;
+  const lead = listening || !q.leadNoAudio ? q.lead : q.leadNoAudio;
+  const ask  = listening || !q.askNoAudio  ? q.ask  : q.askNoAudio;
+
   // よみあげ（つかえる 端末だけ。なくても もんだいは とける）
   useEffect(() => {
     if (q.say && voiceOn) { const t = setTimeout(() => speakText(q.say, voiceOn), 250); return () => clearTimeout(t); }
@@ -7146,15 +7175,27 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
 
       {/* といかけ。1年生は ここを 読んでから 手が うごく。いちばん 大きく。 */}
       <div className="text-center shrink-0">
-        <div className="text-sm font-semibold text-shu-700">{q.lead}</div>
-        <div className="text-xl md:text-2xl font-semibold text-sumi-800 mt-1 leading-snug">{q.ask}</div>
+        <div className="text-sm font-semibold text-shu-700">{lead}</div>
+        <div className="text-xl md:text-2xl font-semibold text-sumi-800 mt-1 leading-snug">{ask}</div>
       </div>
+
+      {/* もう いちど きく。
+          耳の もんだいなのに **聞きなおす 手だてが 1 つも なかった**。
+          1 かい 聞きのがしたら あてずっぽうに なるので かならず 置く。 */}
+      {listening && q.replay && !judged && (
+        <button onClick={() => speakText(q.replay, voiceOn)}
+          className="kkm-btn kkm-ripple shrink-0 px-5 py-2.5 rounded-full bg-ai-600 text-white border-2 border-ai-700 font-semibold text-base flex items-center gap-2 min-h-[48px]">
+          <IconVolume size={20}/> もう いちど きく
+        </button>
+      )}
 
       {/* もんだいの ほんたい */}
       <div className={`shrink-0 flex flex-col items-center gap-2 ${judged && !judged.correct ? 'kkm-wobble' : ''}`}>
-        {q.pict && (
+        {/* `listenPict` は 音が つかえなく なったときだけ 出す 逃げ道の え。
+            音が 出ている あいだに 出したら こたえが 見えて しまう。 */}
+        {(q.pict || (!listening && q.listenPict)) && (
           <div className="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-xl bg-washi-100 border-2 border-sumi-200 text-sumi-700">
-            <Pict name={q.pict} size={64}/>
+            <Pict name={q.pict || q.listenPict} size={64}/>
           </div>
         )}
         {q.glyph && (
@@ -7179,7 +7220,10 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
             ))}
           </div>
         )}
-        {q.word && (
+        {/* 耳の もんだいでは、こたえるまで 字を ふせる。
+            字が 見えていると 拍では なく **マスを かぞえて** しまい、
+            「おと と マスは ちがう」という この単元の かなめの 逆に なる。 */}
+        {q.word && !(q.hideWord && listening && !judged) && (
           <WordCells word={q.word} blanks={blanks} filled={filled}
             activeBlank={activeBlank === undefined ? -1 : activeBlank}
             judged={judged}
@@ -7570,6 +7614,57 @@ function makeCountQuestion(unit, wordObj, maxChoices = 6) {
     why: whyFor(unit, wordObj),
   };
 }
+/* ⑥b とくべつな おと：きいて、おとの かずを こたえる
+
+   これまで とくべつな おとの もんだいは、**こたえる まえに 一度も
+   ことばを 読みあげて いなかった**（`q.say` を だれも つけていない）。
+   耳で きいた おとを かみに 書く ところが つまずきの 中心（§1.5）
+   なのに、耳を つかう 場めんが 出題に 1 つも 無かった。
+
+   ここは 字を ふせて 音だけ 出す。字が 見えていると 拍では なく
+   **マスを かぞえて** しまい、この単元が 教えたい ことの 逆に なる。 */
+function makeListenCountQuestion(unit, wordObj) {
+  return {
+    ...makeCountQuestion(unit, wordObj, 4), uid: nextUid(),
+    lead: 'よく きいてね', ask: 'きこえた ことばの おとは いくつ？',
+    say: wordObj.w, replay: wordObj.w, hideWord: true,
+    // 音が とちゅうで つかえなく なったら、字を 出して ふつうの 拍の もんだいに もどす
+    leadNoAudio: 'てを たたこう', askNoAudio: 'この ことばの おとは いくつ？',
+  };
+}
+
+/* ⑥c とくべつな おと：きいて、どちらの ことばか えらぶ
+
+   「ねこ」と「ねっこ」を 音で 聞きわける。促音・濁音・拗音は
+   **音が ちがう** ので これが なりたつ。
+   のばす おと（おとうさん／おとおさん）と くっつきの ことば（は／わ）は
+   **音が おなじ** なので、耳では ぜったいに きめられない。
+   この 2 つの 単元には 出さない（`hear` を 持たせない）。 */
+function makeListenPairQuestion(unit, wordObj) {
+  const pair = (wordObj.hear || [])[0];
+  if (!pair) return null;
+  // どちらを 鳴らすかは 毎回 かえる。かたほうに 決めると
+  // 「っ の ほうを えらぶ」を おぼえて しまう。
+  const target = Math.random() < 0.5 ? { w: wordObj.w, p: wordObj.p } : pair;
+  const other  = target.w === wordObj.w ? pair : { w: wordObj.w, p: wordObj.p };
+  const m = splitMora(target.w);
+  return {
+    uid: nextUid(), id: srsIdSpecial(unit.key, wordObj.w), kind: 'choice', choiceLayout: 'word',
+    lead: 'よく きいてね', ask: 'きこえた ことばは どっち？',
+    say: target.w, replay: target.w,
+    /* 音が とちゅうで つかえなく なったときの 逃げ道。
+       `listenPict` は **音が つかえる あいだは 出さない**（出したら
+       こたえが 見えて しまう）。音が 消えて はじめて 出し、
+       「えに あう ことばは どっち？」に なる。とけない札は 出さない。 */
+    listenPict: target.p,
+    leadNoAudio: 'えを みてね', askNoAudio: 'えに あう ことばは どっち？',
+    choices: shuffled([target, other]).map(x => ({ value: x.w, label: x.w })),
+    answer: target.w, answerText: target.w, answerSay: target.w,
+    rhythmWord: target.w,
+    why: `${m.join('・')} で おとは ${m.length}つ`,
+  };
+}
+
 /* ⑦ くっつきの ことば（は・へ・を）は 文で 出す */
 function makeJoshiQuestion(unit, sentObj) {
   return {
@@ -7677,6 +7772,20 @@ const SPECIAL_FORMATS = {
     // 1st は 1..6 のまま のこす（いちばん むずかしい 形）。手あつい ステージだけ しぼる。
     make: (unit, w, p) => makeCountQuestion(unit, w, p.maxChoices >= 3 ? 6 : 4),
     chance: (q) => 1 / (q.countChoices || COUNT_CHOICES).length,
+  },
+  listenCount: {
+    // 耳で きいて 拍を かぞえる。字を ふせるので マスを かぞえられない。
+    usable: (unit, o) => !!o.canListen,
+    fits: () => true,
+    make: (unit, w) => makeListenCountQuestion(unit, w),
+    chance: (q) => 1 / (q.countChoices || COUNT_CHOICES).length,
+  },
+  listenPair: {
+    // 最小対立ペア（ねこ／ねっこ）。音が ちがう 単元にだけ `hear` を もたせて ある。
+    usable: (unit, o) => !!o.canListen,
+    fits: (unit, w) => (w.hear || []).length > 0,
+    make: (unit, w) => makeListenPairQuestion(unit, w),
+    chance: () => 0.5,
   },
   joshi: {
     // くっつきの ことばは 文でしか れんしゅうに ならないので、この単元 せんよう。
@@ -8162,7 +8271,10 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
   }, [initialUnit]);
 
   function startUnit(key) {
-    const qs = buildSpecialQuestions(key, plan.count, skill, plan);
+    /* この 端末で 耳の もんだいを 出せるか。**出題を つくる まえに** きめる。
+       あとから 落とすと もんだいの かずが へって しまう（§17.9）。 */
+    const canListen = voiceOn && ttsAvailable();
+    const qs = buildSpecialQuestions(key, plan.count, skill, plan, { canListen });
     // 学習ログ：ユニット 1 かいぶんが 1 レコード。
     // **`ext.tier` を かならず 記録する**（§3.10.3）。えらぶ かずが 3→2 に へれば
     // あてずっぽうの 正答率が 33%→50% に 上がるため、tier を 見ずに 正答率を
@@ -8178,6 +8290,9 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
                formats: countBy(qs, q => q.format),
                choiceN: qs.map(actualChoiceCount),
                chance: Math.round(meanChance(qs) * 1000) / 1000,
+               // 日本語の こえが ある 端末か。耳の もんだいが 出たか どうかが
+               // 変わるので、これを 見ずに 正答率を ならべては いけない。
+               audio: canListen,
                ...studySkillExt(skill) } });
     }
     playPickup();
