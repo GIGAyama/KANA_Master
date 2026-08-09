@@ -733,6 +733,14 @@ const TONES = {
   sumi:     { text:'text-sumi-700',     icon:'text-sumi-600',     chip:'bg-sumi-50 text-sumi-600 border-sumi-300',        solid:'bg-sumi-600 border-sumi-700',         topRule:'border-t-sumi-600',     leftRule:'border-sumi-400 border-l-sumi-600',         markRing:'border-sumi-300 text-sumi-600',    stat:'bg-sumi-50 border-sumi-200',         statLabel:'text-sumi-600',     statValue:'text-sumi-700' },
 };
 
+/* 大きい ボタンの「したの あつみ」の 色（.kkm-primary / .kkm-solid の 影）。
+   押すと 沈む 立体に 見せるための 濃いめの 色で、TONES の solid と 対に なる。
+   Tailwind の クラス名では 指定できない（CSS 変数に わたす）ので ここに 置く。 */
+const TONE_DEEP = {
+  shu: '#93331e', ai: '#263a54', midori: '#315035',
+  fuji: '#493c60', yamabuki: '#7a5618', sumi: '#443f38',
+};
+
 /* 学習の 4 だんかい。画面のどこでも おなじ 順番・おなじ 色・おなじ しるし
    で見えるように、名まえ・色・アイコンを ここに一元化する。
    ・num   … 見出しにつける漢数字（教科書の「一 二 三 四」）
@@ -1530,7 +1538,16 @@ function playTone(freq, type, duration, vol = 0.1) {
     o.start(); o.stop(audioCtx.currentTime + duration);
   } catch (e) {}
 }
-const playPingPong = () => { initAudio(); playTone(659.25, 'sine', 0.15, 0.1); setTimeout(() => playTone(880, 'sine', 0.3, 0.1), 100); };
+/* せいかいの 音。
+   れんぞくで あたるほど 音が 半音ずつ 上がっていく（4 つぶんまで）。
+   おなじ 音を くり返すより「つづけて あてたい」が つよく なる。
+   まちがえると コンボは 0 に もどるので、音も もとの 高さに もどる。 */
+const playPingPong = (streak = 0) => {
+  initAudio();
+  const up = Math.pow(2, Math.min(streak, 4) / 12);   // 半音 × コンボ数
+  playTone(659.25 * up, 'sine', 0.15, 0.1);
+  setTimeout(() => playTone(880 * up, 'sine', 0.3, 0.1), 100);
+};
 const playBuzzer   = () => { initAudio(); playTone(150, 'square', 0.2, 0.05); };
 const playFanfare  = () => { initAudio(); [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.4, 0.15), i*150)); };
 const playPickup   = () => { initAudio(); playTone(880, 'sine', 0.1); setTimeout(() => playTone(1108, 'sine', 0.15), 80); };
@@ -2871,6 +2888,48 @@ function Hanamaru({ size = 24, className = '', draw = false, duration = 0.9, col
   );
 }
 
+/* ──────────────────────────────────────────────────────────────
+   5.5. <CorrectFx> / <WrongFx> ── こたえあわせの えんしゅつ
+
+   「あたった！」「ちがった」を、文字を 読まなくても 体で わかるように する。
+   1年生は 説明文を 読まないので、色と 形と 動きで 伝えきる。
+
+   モチーフは 先生の 赤ペン。
+     せいかい … 朱色の 花丸が どんと 押され、墨の しぶきが とびちる
+     ざんねん … 画面は ゆらさず、ふだの ほうだけ そっと 首をふる
+
+   ぜんぶ 0.9 秒いないに おわらせる。長い 演出は
+   「はやく つぎを といた」ときほど じゃまに なる。
+   ────────────────────────────────────────────────────────────── */
+/* しぶきの とび先。毎回 ランダムにすると 画面が おちつかないので 固定。 */
+const SPECK_DIRS = [
+  [-62, -46], [58, -52], [-74, 26], [70, 30], [-30, -74], [34, -70], [-46, 62], [50, 58],
+];
+function CorrectFx({ seed, size = 132 }) {
+  // seed が かわるたび 演出を やりなおす（key に つかう）
+  return (
+    <div key={seed} className="pointer-events-none fixed inset-0 z-[380] flex items-center justify-center"
+         aria-hidden="true">
+      {/* ① 画面が ほんのり 明るくなる */}
+      <span className="kkm-flash absolute inset-0 bg-shu-200/50"/>
+      {/* ② 朱色の 波紋が 2 まい ひろがる */}
+      {[0, 0.12].map((d, i) => (
+        <span key={i} className="kkm-ink-ring absolute rounded-full border-4 border-shu-500"
+              style={{ width: size, height: size, '--kkm-delay': `${d}s` }}/>
+      ))}
+      {/* ③ 墨の しぶき */}
+      {SPECK_DIRS.map((v, i) => (
+        <span key={i} className="kkm-speck absolute w-2.5 h-2.5 rounded-full bg-shu-500"
+              style={{ '--kkm-dx': `${v[0]}px`, '--kkm-dy': `${v[1]}px`, '--kkm-delay': `${0.05 + i * 0.015}s` }}/>
+      ))}
+      {/* ④ 花丸を その場で 描く */}
+      <span className="kkm-hanamaru-in relative text-shu-600 drop-shadow">
+        <Hanamaru size={size} draw duration={0.5}/>
+      </span>
+    </div>
+  );
+}
+
 /* 名まえから UI アイコンを引く（STAGE_INFO などの設定から使う） */
 const ICONS = {
   lock: IconLock, play: IconPlay, brush: IconBrush, pen: IconPen, maru: IconMaru,
@@ -2941,17 +3000,17 @@ function LevelBadge({ masteredCount, onClick }) {
   const lv = getCurrentLevel(masteredCount);
   return (
     <button onClick={onClick}
-      className={`kkm-btn hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-semibold ${lv.color}`}>
-      <Pict name={lv.icon} size={15}/><span>{lv.title}</span>
+      className={`kkm-btn hidden 2xl:flex items-center gap-2 px-3 h-12 rounded-xl border-2 text-base font-semibold ${lv.color}`}>
+      <Pict name={lv.icon} size={20}/><span>{lv.title}</span>
     </button>
   );
 }
 function StreakBadge({ streak }) {
   if (streak <= 0) return null;
   return (
-    <div className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-shu-50 text-shu-700 border border-shu-200 text-xs font-semibold tabular-nums"
+    <div className="flex items-center gap-1.5 px-3 h-12 rounded-xl bg-shu-50 text-shu-700 border-2 border-shu-200 text-base font-semibold tabular-nums"
          title={`${streak}にち れんぞくで れんしゅうちゅう`}>
-      <IconCalendar size={13}/>{streak}<span className="hidden md:inline">にち</span>
+      <IconCalendar size={18}/>{streak}にち
     </div>
   );
 }
@@ -2986,28 +3045,56 @@ function AppSeal({ size = 36 }) {
   );
 }
 
+/* ヘッダーの まるい ボタン（はんこ・おと・せってい）。
+   1年生の 指に あわせて 48px。アイコンも 大きくする。 */
+function HeaderIconButton({ onClick, label, tone, children, badge, pressed }) {
+  return (
+    <button onClick={onClick} title={label} aria-label={label} aria-pressed={pressed}
+      className={`kkm-btn relative w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl border-2 flex items-center justify-center ${tone}`}>
+      {children}
+      {badge > 0 && (
+        <span aria-hidden="true"
+          className="absolute -top-1.5 -right-1.5 bg-shu-600 text-white text-[11px] font-semibold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1 tabular-nums border border-white">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceOn, setVoiceOn, earnedCount, showInstall, installReady, onInstall }) {
   return (
-    <nav className="shrink-0 bg-white/95 backdrop-blur border-b-2 border-shu-600 px-3 md:px-5 py-1.5 md:py-2 flex justify-between items-center z-10 gap-2 relative">
-      {/* 左：しるし + アプリ名。せまい画面では名前のほうを縮める（タブは縮めない）。 */}
+    <nav className="shrink-0 bg-white/95 backdrop-blur border-b-2 border-shu-600 px-2 md:px-5 py-1.5 md:py-2 flex justify-between items-center z-10 gap-2 relative">
+      {/* 左：しるし + アプリ名。
+          せまい画面では 名まえを みじかく する。長い 見出しは 1年生には
+          読む ものではなく「じゃまな もよう」に なってしまう。 */}
       <div className="flex items-center gap-2 md:gap-2.5 min-w-0 shrink">
-        <AppSeal size={34}/>
-        <h1 className="text-[13px] md:text-lg font-semibold leading-tight truncate text-sumi-800 tracking-wide">
-          ひらがな・カタカナ<br className="md:hidden"/><span className="hidden md:inline"> </span>かきかたマスター
+        <AppSeal size={40}/>
+        <h1 className="text-base md:text-lg font-semibold leading-tight truncate text-sumi-800 tracking-wide">
+          {/* せまい画面では 朱印だけ。名まえを 出すと ボタンの ばしょが なくなる。
+              （読みあげには いつも のこす＝ sr-only） */}
+          <span className="sr-only">ひらがな・カタカナ かきかたマスター</span>
+          {/* lg（1024〜1279px）は 上の タブが ならぶので 名まえを 出さない。
+              出すと タブか ボタンが はみ出す。 */}
+          <span aria-hidden="true" className="hidden md:inline lg:hidden 2xl:inline">かきかたマスター</span>
         </h1>
       </div>
 
-      {/* 中央：ビュー切替（教科書のインデックスのように、朱の下線でいまの場所を示す） */}
-      <div className="hidden sm:flex items-end gap-1 self-stretch shrink-0 -mb-1.5 md:-mb-2">
+      {/* 中央：ビュー切替（教科書のインデックスのように、朱の下線でいまの場所を示す）。
+          ひろい画面でも 押しやすいよう、字も 当たり判定も 大きくとる。 */}
+      <div className="hidden lg:flex items-end gap-1 self-stretch shrink-0 -mb-1.5 md:-mb-2">
         {VIEW_TABS.map(t => {
           const on = view === t.key;
           return (
             <button key={t.key} onClick={() => setView(t.key)} aria-current={on ? 'page' : undefined}
-              className={`kkm-btn relative flex items-center gap-1.5 px-2.5 lg:px-4 pt-2 pb-2.5 text-sm font-semibold rounded-t-md whitespace-nowrap ${
+              className={`kkm-btn relative flex items-center gap-2 px-3 lg:px-5 pt-2.5 pb-3 text-base font-semibold rounded-t-lg whitespace-nowrap ${
                 on ? 'text-shu-700 bg-shu-50' : 'text-sumi-600 hover:text-shu-600 hover:bg-washi-100'
               }`}>
-              <t.Icon size={16}/> {t.label}
-              {on && <span aria-hidden="true" className="kkm-underline absolute left-2 right-2 bottom-0 h-[3px] rounded-full bg-shu-600"/>}
+              <span className={on ? 'kkm-nav-hop inline-flex' : 'inline-flex'} key={on ? 'on' : 'off'}>
+                <t.Icon size={20}/>
+              </span>
+              {t.label}
+              {on && <span aria-hidden="true" className="kkm-underline absolute left-2 right-2 bottom-0 h-[4px] rounded-full bg-shu-600"/>}
             </button>
           );
         })}
@@ -3018,33 +3105,27 @@ function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceO
         {showInstall && (
           <button onClick={onInstall} title="この がめんを アプリとして ついかする"
             aria-label="この がめんを アプリとして ついかする"
-            className={`kkm-btn kkm-ripple flex items-center gap-1.5 px-2.5 md:px-3 h-10 min-h-[40px] rounded-md bg-midori-600 text-white text-xs md:text-sm font-semibold border border-midori-700 ${installReady ? 'kkm-pulse-ring' : ''}`}>
-            <IconDownload size={16}/>
-            <span className="hidden sm:inline">アプリにする</span>
+            className={`kkm-btn kkm-ripple flex items-center justify-center gap-1.5 px-2.5 2xl:px-3 h-12 min-w-[48px] min-h-[48px] rounded-xl bg-midori-600 text-white text-sm font-semibold border-2 border-midori-700 ${installReady ? 'kkm-pulse-ring' : ''}`}>
+            <IconDownload size={20}/>
+            <span className="hidden 2xl:inline">アプリにする</span>
           </button>
         )}
-        <span className="hidden xl:block"><StreakBadge streak={streak}/></span>
+        <span className="hidden 2xl:block"><StreakBadge streak={streak}/></span>
         <LevelBadge masteredCount={mastered.length} onClick={onOpenBadges}/>
-        <button onClick={onOpenBadges} title="ごほうびの はんこ" aria-label="ごほうびの はんこ ずかん を ひらく"
-          className="kkm-btn relative w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-yamabuki-50 hover:bg-yamabuki-100 text-yamabuki-700 border border-yamabuki-200 flex items-center justify-center">
-          <IconTrophy size={19}/>
-          {earnedCount > 0 && (
-            <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 bg-shu-600 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 tabular-nums">{earnedCount}</span>
-          )}
-        </button>
-        <button onClick={() => setVoiceOn(v => !v)}
-          title={voiceOn ? 'おとを オフにする' : 'おとを オンにする'}
-          aria-label={voiceOn ? 'おとを オフにする' : 'おとを オンにする'}
-          aria-pressed={voiceOn}
-          className={`kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md flex items-center justify-center border ${
-            voiceOn ? 'bg-ai-50 text-ai-700 border-ai-200 hover:bg-ai-100' : 'bg-sumi-50 text-sumi-600 border-sumi-200 hover:bg-sumi-100'
-          }`}>
-          {voiceOn ? <IconVolume size={19}/> : <IconVolumeX size={19}/>}
-        </button>
-        <button onClick={onReset} title="データをリセット" aria-label="れんしゅうデータをリセット"
-          className="kkm-btn w-11 h-11 min-w-[44px] min-h-[44px] rounded-md bg-sumi-50 hover:bg-shu-50 text-sumi-600 hover:text-shu-600 border border-sumi-200 flex items-center justify-center">
-          <IconSettings size={19}/>
-        </button>
+        <HeaderIconButton onClick={onOpenBadges} label="ごほうびの はんこ ずかん を ひらく"
+          badge={earnedCount}
+          tone="bg-yamabuki-50 hover:bg-yamabuki-100 text-yamabuki-700 border-yamabuki-300">
+          <IconTrophy size={22}/>
+        </HeaderIconButton>
+        <HeaderIconButton onClick={() => setVoiceOn(v => !v)} pressed={voiceOn}
+          label={voiceOn ? 'おとを オフにする' : 'おとを オンにする'}
+          tone={voiceOn ? 'bg-ai-50 text-ai-700 border-ai-300 hover:bg-ai-100' : 'bg-sumi-50 text-sumi-600 border-sumi-300 hover:bg-sumi-100'}>
+          {voiceOn ? <IconVolume size={22}/> : <IconVolumeX size={22}/>}
+        </HeaderIconButton>
+        <HeaderIconButton onClick={onReset} label="れんしゅうデータをリセット"
+          tone="bg-sumi-50 hover:bg-shu-50 text-sumi-600 hover:text-shu-600 border-sumi-300">
+          <IconSettings size={22}/>
+        </HeaderIconButton>
       </div>
     </nav>
   );
@@ -3068,18 +3149,25 @@ function Footer() {
 /* ──────────────────────────────────────────────────────────────
    10. <ModeTabsMobile>
    ────────────────────────────────────────────────────────────── */
+/* スマホの したタブ。
+   もとは たかさ 34px・文字 10px しか なく、1年生の 指では
+   となりの タブを 押してしまう ことが 多かった。
+   アイコン 26px・文字 13px・たかさ 62px に ひろげ、
+   えらんだ ところは 朱色の 札に して ひとめで わかるようにする。 */
 function ModeTabsMobile({ view, setView }) {
   return (
-    <div className="sm:hidden flex bg-white border-b border-sumi-200 relative z-10">
+    <div className="lg:hidden flex items-stretch gap-1 bg-white border-t-2 border-shu-600 px-1 md:px-3 pt-1 pb-0.5 relative z-10">
       {VIEW_TABS.map(t => {
         const on = view === t.key;
         return (
           <button key={t.key} onClick={() => setView(t.key)} aria-current={on ? 'page' : undefined}
-            className={`kkm-btn relative flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-semibold ${
-              on ? 'text-shu-700 bg-shu-50' : 'text-sumi-600'
+            className={`kkm-btn relative flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[58px] rounded-lg text-[13px] font-semibold leading-none ${
+              on ? 'text-white bg-shu-600 shadow-sm' : 'text-sumi-600'
             }`}>
-            <t.Icon size={16}/> {t.short}
-            {on && <span aria-hidden="true" className="kkm-underline absolute left-3 right-3 bottom-0 h-[3px] rounded-full bg-shu-600"/>}
+            <span key={on ? 'on' : 'off'} className={`inline-flex ${on ? 'kkm-nav-hop' : ''}`}>
+              <t.Icon size={26}/>
+            </span>
+            {t.short}
           </button>
         );
       })}
@@ -3091,7 +3179,7 @@ function ModeTabsMobile({ view, setView }) {
 function SectionTitle({ children, right, className = '' }) {
   return (
     <div className={`flex items-center justify-between gap-2 shrink-0 ${className}`}>
-      <h2 className="kkm-heading-rule text-sm md:text-base font-semibold text-sumi-800 truncate">{children}</h2>
+      <h2 className="kkm-heading-rule text-lg font-semibold text-sumi-800 truncate">{children}</h2>
       {right}
     </div>
   );
@@ -3172,41 +3260,36 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
   const showRowLabels = table.length % 5 === 0;
 
   return (
-    <div className="kkm-sheet rounded-lg p-2 md:p-3 flex flex-col h-full min-h-0">
+    <div className="kkm-sheet rounded-xl p-2.5 md:p-3 flex flex-col h-full min-h-0">
       {/* ① どの文字を学ぶか：ひらがな／カタカナ */}
-      <div className="flex gap-1.5 mb-1.5 shrink-0">
-        <button onClick={() => setKanaMode('hiragana')} aria-pressed={kanaMode === 'hiragana'}
-          className={`kkm-btn kkm-ripple flex-1 py-1.5 md:py-2 rounded-md font-semibold text-sm md:text-base border ${
-            kanaMode === 'hiragana' ? 'bg-shu-600 text-white border-shu-700' : 'bg-washi-100 text-sumi-600 border-sumi-200 hover:bg-washi-200'
-          }`}>ひらがな</button>
-        <button onClick={() => setKanaMode('katakana')} aria-pressed={kanaMode === 'katakana'}
-          className={`kkm-btn kkm-ripple flex-1 py-1.5 md:py-2 rounded-md font-semibold text-sm md:text-base border ${
-            kanaMode === 'katakana' ? 'bg-ai-600 text-white border-ai-700' : 'bg-washi-100 text-sumi-600 border-sumi-200 hover:bg-washi-200'
-          }`}>カタカナ</button>
+      <div className="shrink-0 mb-2">
+        <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
       </div>
 
-      {/* ② どの しゅるい を学ぶか：せいおん／だくおん／はんだくおん／ようおん */}
-      <div className="grid grid-cols-4 gap-1 mb-2 shrink-0">
+      {/* ② どの しゅるい を学ぶか：せいおん／だくおん／はんだくおん／ようおん。
+          もとは 10px の 4 つならびで、どれが えらばれているか 見わけにくかった。
+          字を 大きくし、えらんだ ものは 朱色の 札に する。 */}
+      <div className="grid grid-cols-4 gap-1.5 mb-2.5 shrink-0">
         {KANA_KINDS.map(k => (
           <button key={k.key} onClick={() => setKanaKind(k.key)} aria-pressed={kanaKind === k.key} title={k.label}
-            className={`kkm-btn py-1 md:py-1.5 rounded-md font-semibold text-[10px] md:text-xs border leading-tight ${
+            className={`kkm-btn min-h-[48px] px-1 rounded-lg font-semibold text-base border-2 leading-tight ${
               kanaKind === k.key
-                ? 'bg-shu-50 text-shu-700 border-shu-400'
-                : 'bg-white text-sumi-600 border-sumi-200 hover:bg-washi-100'
+                ? 'bg-shu-600 text-white border-shu-700'
+                : 'bg-white text-sumi-600 border-sumi-300 hover:bg-washi-100'
             }`}>
-            <span className="block md:hidden">{k.short}</span>
-            <span className="hidden md:block truncate px-0.5">{k.label}</span>
+            <span className="block xl:hidden">{k.short}</span>
+            <span className="hidden xl:block truncate px-0.5">{k.mid}</span>
           </button>
         ))}
       </div>
 
       {/* ③ この表の しんちょく（花丸になった もじの かず） */}
       <div className="shrink-0 mb-2 kkm-progress-row">
-        <div className="flex items-center justify-between text-[10px] md:text-xs font-semibold text-sumi-600 mb-1">
-          <span className="flex items-center gap-1 text-shu-700"><Hanamaru size={15}/> かんぺき</span>
+        <div className="flex items-center justify-between text-base font-semibold text-sumi-700 mb-1">
+          <span className="flex items-center gap-1.5 text-shu-700"><Hanamaru size={20}/> かんぺき</span>
           <span aria-live="polite" className="tabular-nums">{doneCount} / {totalCount}{allDone ? '　ぜんぶ！' : ''}</span>
         </div>
-        <div className="h-2 rounded-full bg-washi-300 overflow-hidden"
+        <div className="h-3 rounded-full bg-washi-300 overflow-hidden"
           role="progressbar" aria-valuemin="0" aria-valuemax={totalCount} aria-valuenow={doneCount}
           aria-label={`かんぺきに なった もじ ${doneCount} / ${totalCount}`}>
           <div className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-yamabuki-400 kkm-sheen' : 'bg-shu-500'}`}
@@ -3215,17 +3298,17 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
       </div>
 
       {/* ④ 五十音表 */}
-      <div className="flex-1 min-h-0 overflow-y-auto bg-washi-100 rounded-md p-1.5 md:p-2.5 border border-sumi-200">
-        <div className="max-w-sm mx-auto flex flex-col gap-1 md:gap-1.5">
+      <div className="flex-1 min-h-0 overflow-y-auto bg-washi-100 rounded-lg p-2 md:p-2.5 border border-sumi-200">
+        <div className="max-w-md mx-auto flex flex-col gap-1.5">
           {rows.map((row, r) => (
-            <div key={r} className="flex items-center gap-1 md:gap-1.5">
+            <div key={r} className="flex items-center gap-1.5">
               {showRowLabels && (
                 <div aria-hidden="true"
-                  className="shrink-0 w-6 md:w-8 text-[9px] md:text-[11px] font-semibold text-sumi-600 text-center leading-none select-none">
+                  className="shrink-0 w-9 text-sm font-semibold text-sumi-600 text-center leading-none select-none whitespace-nowrap">
                   {rowLabelOf(row)}
                 </div>
               )}
-              <div className="flex-1 grid grid-cols-5 gap-1 md:gap-1.5">
+              <div className="flex-1 grid grid-cols-5 gap-1.5">
                 {row.map((char, i) => {
                   if (!char) return <div key={i} className="aspect-square"/>;
                   const stage = getStage(progress, char);
@@ -3242,7 +3325,7 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
                     <button key={i} onClick={() => onSelect(char)}
                       aria-label={`${char}${stage >= 4 ? '（かんぺき）' : ''}`}
                       aria-current={isCurrent ? 'true' : undefined}
-                      className={`kkm-glyph kkm-btn aspect-square rounded-md text-lg md:text-2xl border relative ${cls} ${extra}`}>
+                      className={`kkm-glyph kkm-btn aspect-square rounded-lg text-2xl md:text-3xl border-2 relative ${cls} ${extra}`}>
                       {char}
                       {!isCurrent && stage > 0 && (
                         <StageMark stage={stage} className="absolute -top-1 -right-1 leading-none"/>
@@ -3255,8 +3338,9 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
           ))}
         </div>
 
-        {/* 学習だんかいの はんれい（この色は なにを あらわすか） */}
-        <div className="mt-2.5 pt-2 border-t border-sumi-200 flex flex-wrap justify-center gap-x-2.5 gap-y-1 text-[9px] md:text-[10px] font-semibold px-1">
+        {/* 学習だんかいの はんれい（この色は なにを あらわすか）。
+            もじを えらぶ ときには 要らない ので、ひろい画面だけに 出す。 */}
+        <div className="hidden lg:flex mt-3 pt-2 border-t border-sumi-200 flex-wrap justify-center gap-x-3 gap-y-1 text-xs font-semibold px-1">
           {STAGE_INFO.slice(1).map(s => (
             <span key={s.key} className={`inline-flex items-center gap-1 ${TONES[s.tone].icon}`}>
               <StageMark stage={s.key}/>{s.label}
@@ -3266,14 +3350,14 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
       </div>
 
       {/* ⑤ まとめて れんしゅうする */}
-      <div className="flex gap-1.5 mt-2 shrink-0">
-        <button onClick={onSequence}
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-700 border border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-1.5 min-h-[40px]">
-          <IconArrow size={15}/> やさしい<span className="hidden md:inline">じゅん</span>
+      <div className="flex gap-2 mt-2.5 shrink-0">
+        <button onClick={onSequence} style={{ '--kkm-shadow-color': '#ded8cd' }}
+          className="kkm-btn kkm-ripple kkm-solid flex-1 font-semibold text-base bg-white text-sumi-700 border-2 border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-2 whitespace-nowrap">
+          <IconArrow size={20}/> じゅんばん
         </button>
-        <button onClick={onRandom}
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-700 border border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-1.5 min-h-[40px]">
-          <IconShuffle size={15}/> ばらばら
+        <button onClick={onRandom} style={{ '--kkm-shadow-color': '#ded8cd' }}
+          className="kkm-btn kkm-ripple kkm-solid flex-1 font-semibold text-base bg-white text-sumi-700 border-2 border-sumi-300 hover:border-shu-400 hover:text-shu-700 flex items-center justify-center gap-2 whitespace-nowrap">
+          <IconShuffle size={20}/> ばらばら
         </button>
       </div>
     </div>
@@ -3285,20 +3369,19 @@ function KanaTable({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, cur
    ────────────────────────────────────────────────────────────── */
 const TOLERANCE = 0.22; // 始点・終点の許容範囲（大きいほど優しい）
 
-// ステージごとの初期メッセージ
+/* ステージごとの さいしょの ひとこと。
+
+   ⚠️ ここに「あと なんかい」を 書かないこと。
+      おなじ ことが 見出し・ステップ・ふきだしの 3 か所に ならぶと、
+      1年生は どれを 読めば よいか わからなくなる。回数は ステップの
+      行（<StageStepper>）だけが 言う。ここは 声かけに 徹する。 */
 function stageMascotMessage(char, stage, so) {
   if (!char) return '';
-  if (stage === 0) return `「${char}」の かきじゅんを みてみよう！`;
-  if (stage === 1) {
-    const left = Math.max(0, TRACE_REQUIRED - (so?.traced || 0));
-    return `お手本を なぞって かこう！（あと ${left}かい）`;
-  }
-  if (stage === 2) {
-    const left = Math.max(0, FREE_REQUIRED - (so?.freeStreak || 0));
-    return `じぶんで かいてみよう！（れんぞく ${so?.freeStreak || 0}/${FREE_REQUIRED}）`;
-  }
-  if (stage === 3) return 'あと ひといき！ ことばを 1こ あつめて 花丸に しよう';
-  return '花丸！ もう いちど かいてみる？';
+  if (stage === 0) return 'まず かきじゅんを みよう';
+  if (stage === 1) return 'ゆっくりで だいじょうぶ';
+  if (stage === 2) return 'じぶんの ちからで かいて みよう';
+  if (stage === 3) return 'あと ひといき！';
+  return '花丸！ よく できました';
 }
 
 function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, onWriteAttempt, practiceCount, voiceOn, onGoToWords, onNextChar, fetchError, onRetryFetch }) {
@@ -3901,15 +3984,17 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
   }, [paths, currentStroke, isCleared, stage]);
 
   return (
-    <div className="kkm-sheet rounded-lg p-2 md:p-3 flex flex-col h-full min-h-0 kkm-practice-board">
-      <div className="flex justify-between items-center mb-1.5 shrink-0 gap-2 kkm-board-header">
-        <span className={`text-[10px] md:text-sm font-semibold px-2 md:px-2.5 py-1 rounded-md truncate border ${
-          isTraceMode ? 'text-midori-700 bg-midori-50 border-midori-200' : 'text-fuji-700 bg-fuji-50 border-fuji-200'
+    <div className="kkm-sheet rounded-xl p-2.5 md:p-3 flex flex-col h-full min-h-0 kkm-practice-board">
+      {/* いま なにを するのか。この 1 行が 画面の 見出し。
+          「なぞる」のか「じぶんで かく」のかで 色を かえる（緑／藤）。 */}
+      <div className="flex justify-between items-center mb-2 shrink-0 gap-2 kkm-board-header">
+        <span className={`text-lg font-semibold px-3 py-1.5 rounded-lg truncate border-2 ${
+          isTraceMode ? 'text-midori-700 bg-midori-50 border-midori-300' : 'text-fuji-700 bg-fuji-50 border-fuji-300'
         }`}>
-          {char ? (isTraceMode ? `「${char}」を なぞって かこう` : `「${char}」を じぶんで かこう`) : 'もじを えらんでください'}
+          {char ? (isTraceMode ? `「${char}」を なぞろう` : `「${char}」を じぶんで かこう`) : 'もじを えらんでください'}
         </span>
         {char && (
-          <span className="text-[10px] md:text-xs font-semibold text-sumi-600 bg-washi-100 border border-sumi-200 px-2 py-1 rounded-md shrink-0 tabular-nums">
+          <span className="text-base font-semibold text-sumi-600 bg-washi-100 border border-sumi-200 px-2.5 py-1.5 rounded-lg shrink-0 tabular-nums">
             {practiceCount[char] || 0} かい
           </span>
         )}
@@ -3986,36 +4071,38 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
       {/* ステージ3 → ことばで 花丸 への みちしるべ */}
       {char && stage === 3 && (
         <button onClick={onGoToWords}
-          className="kkm-cta-btn kkm-btn kkm-ripple mt-1.5 py-2 px-3 rounded-md bg-shu-50 text-shu-800 font-semibold text-xs md:text-sm border border-shu-300 flex items-center justify-center gap-2 shrink-0">
-          <Hanamaru size={17}/> ことばを 1こ あつめて 花丸に しよう
-          <IconArrow size={15}/>
+          className="kkm-cta-btn kkm-btn kkm-ripple mt-2 py-2.5 px-3 rounded-lg bg-shu-50 text-shu-800 font-semibold text-base border-2 border-shu-300 flex items-center justify-center gap-2 shrink-0 min-h-[52px]">
+          <Hanamaru size={22}/> ことばを 1こ あつめて 花丸に
+          <IconArrow size={20}/>
         </button>
       )}
 
       {/* 花丸まで いった もじは、この画面に とどまる りゆうが ない。
           「つぎの もじへ」を いつでも 押せるところに 出しておく。 */}
       {char && stage >= 4 && onNextChar && (
-        <button onClick={onNextChar}
-          className="kkm-cta-btn kkm-btn kkm-ripple mt-1.5 py-2 px-3 rounded-md bg-shu-600 text-white font-semibold text-xs md:text-sm border border-shu-700 flex items-center justify-center gap-2 shrink-0">
-          この もじは 花丸！ つぎの もじへ <IconArrow size={15}/>
+        <button onClick={onNextChar} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+          className="kkm-cta-btn kkm-btn kkm-ripple kkm-solid mt-2 px-3 bg-shu-600 text-white font-semibold text-lg border-2 border-shu-700 flex items-center justify-center gap-2 shrink-0">
+          花丸！ つぎの もじへ <IconArrow size={22}/>
         </button>
       )}
 
-      <div className="flex gap-1.5 mt-2 shrink-0 kkm-practice-buttons">
+      {/* したの 3 つは「たすけて」の ボタン。
+          いつも おなじ ばしょ・おなじ ならびに 置き、字と アイコンを 大きくする。 */}
+      <div className="flex gap-2 mt-2.5 shrink-0 kkm-practice-buttons">
         <button onClick={restart} disabled={!char}
           aria-label="ここまでの れんしゅうを やりなおす"
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-sumi-600 border border-sumi-300 hover:border-sumi-400 disabled:opacity-40 flex items-center justify-center gap-1.5 min-h-[44px]">
-          <IconRotate size={15}/> やりなおし
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-sumi-600 border-2 border-sumi-300 hover:border-sumi-400 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 min-h-[56px]">
+          <IconRotate size={22}/> やりなおし
         </button>
         <button onClick={() => char && speakText(char, voiceOn)} disabled={!char || !voiceOn}
           aria-label={char ? `${char} を よみあげる`: 'もじを よみあげる'}
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-midori-700 border border-midori-300 hover:bg-midori-50 disabled:opacity-40 flex items-center justify-center gap-1.5 min-h-[44px]">
-          <IconVolume size={15}/> よんで
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-midori-700 border-2 border-midori-300 hover:bg-midori-50 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 min-h-[56px]">
+          <IconVolume size={22}/> よんで
         </button>
         <button onClick={() => paths && paths.length > 0 && setShowAnime(true)} disabled={!char || !paths || paths.length === 0}
           aria-label="かきじゅんを みる"
-          className="kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-xs md:text-sm bg-white text-ai-700 border border-ai-300 hover:bg-ai-50 disabled:opacity-40 flex items-center justify-center gap-1.5 min-h-[44px]">
-          <IconPlay size={15}/> かきじゅん
+          className="kkm-btn kkm-ripple flex-1 py-2 rounded-lg font-semibold text-base bg-white text-ai-700 border-2 border-ai-300 hover:bg-ai-50 disabled:opacity-40 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 min-h-[56px]">
+          <IconPlay size={22}/> かきじゅん
         </button>
       </div>
 
@@ -4042,9 +4129,9 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
 function SubmitButton({ onSubmit, disabled }) {
   const guarded = useDebouncedAction(onSubmit, 350);
   return (
-    <button onClick={guarded} disabled={disabled}
-      className="kkm-cta-btn kkm-btn kkm-ripple mt-1.5 py-2.5 px-3 rounded-md bg-shu-600 text-white font-semibold text-sm md:text-base border border-shu-700 flex items-center justify-center gap-2 shrink-0 disabled:opacity-60 min-h-[44px]">
-      <IconCheck size={17}/> かけた！ さいてんする
+    <button onClick={guarded} disabled={disabled} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+      className="kkm-cta-btn kkm-btn kkm-ripple kkm-primary mt-2 px-3 bg-shu-600 text-white font-semibold border-2 border-shu-700 flex items-center justify-center gap-2.5 shrink-0 disabled:opacity-60">
+      <IconCheck size={26}/> かけた！ さいてん
     </button>
   );
 }
@@ -4057,50 +4144,64 @@ function SubmitButton({ onSubmit, disabled }) {
    いま どこに いて、あと どれだけで つぎに すすめるかが 一目でわかるように、
    だんかいの あいだを 線でつなぎ、のこり回数も その場に出す。
    ────────────────────────────────────────────────────────────── */
+/* もとは 4 だんかいを 4 まいの 札で ならべ、それぞれに 名まえと 回数を
+   そえていた。情報は 正しいが、1年生の 目には 10px の 字が 8 つ ならぶ
+   「もよう」に しか 見えず、けっきょく どれも 読まれなかった。
+
+   そこで **今いる 1 つだけを ことばで 言う**。ほかの だんかいは
+   まるい しるし（一 二 三 四）だけに して、すすんだ ところを 朱色で ぬる。
+   「あと なんかい」も ここに 1 つだけ 出す。 */
 function StageStepper({ stage, stageObj }) {
   const steps = [
-    { idx: 1, label: 'かきじゅん' },
-    { idx: 2, label: 'なぞる',   sub: `${Math.min(stageObj?.traced || 0, TRACE_REQUIRED)}/${TRACE_REQUIRED}` },
-    { idx: 3, label: 'じぶんで', sub: `${Math.min(stageObj?.freeStreak || 0, FREE_REQUIRED)}/${FREE_REQUIRED}` },
-    { idx: 4, label: 'ことば' },
+    { idx: 1, label: 'かきじゅんを みる' },
+    { idx: 2, label: 'なぞって かく', left: TRACE_REQUIRED - Math.min(stageObj?.traced || 0, TRACE_REQUIRED) },
+    { idx: 3, label: 'じぶんで かく', left: FREE_REQUIRED - Math.min(stageObj?.freeStreak || 0, FREE_REQUIRED) },
+    { idx: 4, label: 'ことばに つかう' },
   ];
+  // いま とりくんで いる だんかい（ぜんぶ おわっていれば 四）
+  const cur = steps.find(s => stage < s.idx) || steps[steps.length - 1];
+  const done = stage >= 4;
   return (
-    <ol className="flex items-stretch mb-2 shrink-0 text-[10px] md:text-xs font-semibold kkm-stepper-row"
-        aria-label="学習の ステップ">
-      {steps.map((s, i) => {
-        const info = STAGE_INFO[s.idx];
-        const done = stage >= s.idx;
-        const active = !done && (stage + 1 === s.idx);
-        const Icon = ICONS[info.icon] || IconMaru;
-        const cls = done
-          ? TONES[info.tone].chip
-          : active
-            ? 'bg-white text-sumi-700 border-shu-400 ring-1 ring-shu-200'
-            : 'bg-washi-100 text-sumi-600 border-sumi-200';
-        return (
-          <li key={i} className="flex-1 flex items-center min-w-0" aria-current={active ? 'step' : undefined}>
-            <div className={`flex-1 rounded-md border px-1 py-1 text-center min-w-0 transition-colors duration-300 ${cls}`}>
-              <div className="flex items-center justify-center gap-1 leading-none">
-                {/* opacity で うすくすると、色は じゅうぶん 濃くても 実際の 見え方が
-                    3.4:1 まで 落ちる。段階の ちがいは 色と わくで じゅうぶん
-                    つたわるので、文字は うすくしない。 */}
-                <span className="kkm-glyph text-[10px] md:text-xs">{info.num}</span>
-                {done && s.idx >= 4
-                  ? <span className="text-shu-600"><Hanamaru size={14}/></span>
-                  : done ? <IconCheck size={13}/> : <Icon size={13}/>}
-              </div>
-              <div className="leading-tight mt-0.5 truncate">{s.label}</div>
-              {s.sub && !done && active && <div className="text-[9px] tabular-nums">{s.sub}</div>}
-            </div>
-            {/* だんかいを つなぐ線（すすんだところは 朱色になる） */}
-            {i < steps.length - 1 && (
-              <span aria-hidden="true"
-                className={`w-1.5 md:w-2 h-[2px] shrink-0 transition-colors duration-300 ${stage > s.idx ? 'bg-shu-400' : 'bg-sumi-200'}`}/>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+    <div className="mb-2 shrink-0 kkm-stepper-row" aria-label="学習の ステップ">
+      <ol className="flex items-center gap-1.5">
+        {steps.map((s, i) => {
+          const info = STAGE_INFO[s.idx];
+          const cleared = stage >= s.idx;
+          const active = s.idx === cur.idx && !done;
+          return (
+            <React.Fragment key={s.idx}>
+              <li aria-current={active ? 'step' : undefined}
+                className={`shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${
+                  cleared ? 'bg-shu-600 border-shu-700 text-white'
+                  : active ? 'bg-white border-shu-500 text-shu-700 kkm-pulse-ring'
+                  : 'bg-washi-100 border-sumi-200 text-sumi-600'
+                }`}>
+                {cleared
+                  ? <IconCheck size={20}/>
+                  : <span className="kkm-glyph text-lg leading-none">{info.num}</span>}
+              </li>
+              {i < steps.length - 1 && (
+                <span aria-hidden="true"
+                  className={`flex-1 h-[3px] rounded-full transition-colors duration-300 ${stage > s.idx ? 'bg-shu-400' : 'bg-sumi-200'}`}/>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </ol>
+      {/* ことばは 1 つだけ。「あと なんかい」が 言えるなら それを 言う。
+          （見出しが すでに「なにを するか」を 言っているので、
+            ここで もう いちど くり返さない） */}
+      <div className="mt-1.5 text-center text-lg font-semibold text-sumi-700 leading-tight">
+        {done
+          ? <span className="text-shu-700">花丸！ かんぺきに なったよ</span>
+          : cur.left > 0
+            ? <>あと <span className="text-2xl tabular-nums text-shu-700">{cur.left}</span> かい</>
+            : <>
+                <span className="kkm-glyph text-shu-700">{STAGE_INFO[cur.idx].num}</span>
+                {' '}{cur.label}
+              </>}
+      </div>
+    </div>
   );
 }
 
@@ -4139,26 +4240,27 @@ function StageUpPopup({ info, onClose, onGoToWords, onNextChar }) {
       className={`fixed inset-0 z-[180] flex items-center justify-center bg-sumi-900/35 p-3 transition-opacity duration-300 ${
         show ? 'opacity-100' : 'opacity-0'
       }`}>
-      <div className={`bg-white px-5 md:px-7 py-4 md:py-5 rounded-lg shadow-xl border border-sumi-300 border-t-4 ${t.topRule} max-w-sm w-full text-center transition-transform duration-300 ${
+      <div className={`bg-white px-5 md:px-7 py-5 md:py-6 rounded-xl shadow-xl border border-sumi-300 border-t-4 ${t.topRule} max-w-sm w-full text-center transition-transform duration-300 ${
         show ? 'scale-100' : 'scale-95'
       }`}>
-        <div className="flex items-center justify-center gap-2.5">
+        <div className="flex items-center justify-center gap-3">
           {/* はんこを おした演出 */}
-          <span className={`kkm-stamp shrink-0 w-12 h-12 rounded-md border text-white flex items-center justify-center ${t.solid}`}>
-            {info.to >= 4 ? <Hanamaru size={28} color="#fff"/> : <span className="kkm-glyph text-2xl leading-none">{m.num}</span>}
+          <span className={`kkm-stamp shrink-0 w-16 h-16 rounded-lg border-2 text-white flex items-center justify-center ${t.solid}`}>
+            {info.to >= 4 ? <Hanamaru size={38} color="#fff" draw/> : <span className="kkm-glyph text-3xl leading-none">{m.num}</span>}
           </span>
           <div className="text-left">
-            <div className={`text-lg md:text-2xl font-semibold ${t.text}`}>{m.title}</div>
-            <div className="text-[11px] md:text-sm font-medium text-sumi-600 mt-0.5">{m.sub}</div>
+            <div className={`text-2xl font-semibold leading-tight ${t.text}`}>{m.title}</div>
+            <div className="text-base font-medium text-sumi-600 mt-1">{m.sub}</div>
           </div>
         </div>
         <button onClick={() => run(main.onClick)} autoFocus
-          className={`kkm-cta-btn kkm-btn kkm-ripple mt-4 w-full px-4 py-3 rounded-md text-white font-semibold text-base md:text-lg border flex items-center justify-center gap-2 min-h-[52px] ${t.solid}`}>
+          style={{ '--kkm-shadow-color': TONE_DEEP[m.tone] || TONE_DEEP.shu }}
+          className={`kkm-cta-btn kkm-btn kkm-ripple kkm-primary mt-5 w-full px-4 text-white font-semibold border-2 flex items-center justify-center gap-2.5 ${t.solid}`}>
           {main.icon} {main.label}
         </button>
         {main.onClick && (
           <button onClick={close}
-            className="kkm-btn mt-1.5 w-full px-4 py-2 rounded-md bg-white border border-sumi-300 text-sumi-700 font-semibold text-sm min-h-[44px]">
+            className="kkm-btn mt-2 w-full px-4 py-2.5 rounded-lg bg-white border-2 border-sumi-300 text-sumi-700 font-semibold text-base min-h-[52px]">
             もう いちど かく
           </button>
         )}
@@ -4255,28 +4357,35 @@ function StrokeOrderAnime({ paths, char, onClose }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-sumi-900/40 backdrop-blur-sm p-2 md:p-4 overflow-auto kkm-fade-in" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={`${char} のかきじゅん`}
-        className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-ai-600 p-3 md:p-5 max-w-md w-full my-auto kkm-pop-in" onClick={(e) => { e.stopPropagation(); }}>
-        <div className="flex justify-between items-center mb-2 md:mb-3">
-          <h3 className="kkm-heading-rule text-sm md:text-base font-semibold text-sumi-800">「{char}」の かきじゅん</h3>
+        className="bg-white rounded-xl shadow-xl border border-sumi-300 border-t-4 border-t-ai-600 p-3 md:p-5 max-w-md w-full my-auto kkm-pop-in" onClick={(e) => { e.stopPropagation(); }}>
+        <div className="flex justify-between items-center mb-2.5 gap-2">
+          <h3 className="kkm-heading-rule text-lg font-semibold text-sumi-800">「{char}」の かきじゅん</h3>
           <button onClick={onClose} aria-label="とじる"
-            className="kkm-btn w-11 h-11 rounded-md bg-sumi-50 hover:bg-sumi-100 border border-sumi-200 text-sumi-600 flex items-center justify-center min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
+            className="kkm-btn w-12 h-12 rounded-xl bg-sumi-50 hover:bg-sumi-100 border-2 border-sumi-300 text-sumi-600 flex items-center justify-center min-w-[48px] min-h-[48px]"><IconX size={24}/></button>
         </div>
-        <div className="aspect-square bg-white rounded-md border-2 border-shu-200 relative overflow-hidden mb-3 mx-auto" style={{ maxHeight: 'min(70vh, 70dvh)', maxWidth: '100%', width: 'min(70vh, 70dvh, 100%)' }}>
+        <div className="aspect-square bg-white rounded-lg border-2 border-shu-200 relative overflow-hidden mb-3 mx-auto" style={{ maxHeight: 'min(58vh, 58dvh)', maxWidth: '100%', width: 'min(58vh, 58dvh, 100%)' }}>
           <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-shu-200"/>
           <div className="absolute left-1/2 top-0 bottom-0 border-l border-dashed border-shu-200"/>
           <svg ref={svgRef} viewBox="0 0 109 109" className="w-full h-full relative z-10"/>
         </div>
+        {/* ① もういちど 見る（大きく）② はやさ ③ なぞりに すすむ の 3 つだけ。
+            1年生が まようのは「見おわった。つぎ どうする？」の ところ なので、
+            すすむ ボタンを かならず 出す。 */}
         <div className="flex gap-3 items-center">
-          <button onClick={play} disabled={playing}
-            className="kkm-btn kkm-ripple px-5 py-2.5 rounded-md font-semibold text-white bg-ai-600 border border-ai-700 disabled:opacity-50 flex items-center gap-1.5 min-h-[44px]">
-            <IconPlay size={17}/> {playing ? 'さいせいちゅう' : 'みる'}
+          <button onClick={play} disabled={playing} style={{ '--kkm-shadow-color': TONE_DEEP.ai }}
+            className="kkm-btn kkm-ripple kkm-solid px-5 font-semibold text-lg text-white bg-ai-600 border-2 border-ai-700 disabled:opacity-50 flex items-center gap-2 shrink-0">
+            <IconPlay size={24}/> {playing ? 'さいせいちゅう' : 'みる'}
           </button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="sr-only" htmlFor="kkm-anime-speed">アニメの はやさ</label>
             <input id="kkm-anime-speed" type="range" min="1" max="10" value={speed} onChange={(e) => setSpeed(+e.target.value)} className="w-full"/>
-            <div className="flex justify-between text-[10px] text-sumi-600 font-semibold mt-0.5"><span>ゆっくり</span><span>はやい</span></div>
+            <div className="flex justify-between text-sm text-sumi-600 font-semibold"><span>ゆっくり</span><span>はやい</span></div>
           </div>
         </div>
+        <button onClick={onClose} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+          className="kkm-btn kkm-ripple kkm-primary w-full mt-3 bg-shu-600 text-white font-semibold border-2 border-shu-700 flex items-center justify-center gap-2.5">
+          <IconPen size={26}/> じぶんで かいて みる
+        </button>
       </div>
     </div>
   );
@@ -4559,16 +4668,19 @@ function ScorePopup({ result, char, stageUp, actions = [], onClose }) {
       role="dialog" aria-modal="true" aria-label={`さいてんけっか ${total} てん`}
       ref={dialogRef}
     >
-      <div className={`bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 ${t.topRule} pointer-events-auto max-w-lg w-full my-auto transition-transform duration-300 ${
+      {/* 合格した ときは、画面ぜんたいに 花丸を 1 回 押す。
+          点数を 読むより さきに「できた」が 体に とどく。 */}
+      {passed && <CorrectFx seed={`score-${total}`} size={170}/>}
+      <div className={`bg-white rounded-xl shadow-xl border border-sumi-300 border-t-4 ${t.topRule} pointer-events-auto max-w-lg w-full my-auto transition-transform duration-300 ${
         show ? 'scale-100' : 'scale-95'
       }`}>
         {/* ── ステップを クリアした ときの おしらせ（区切りが いちばん 目立つ） ── */}
         {clear && (
-          <div className={`kkm-rise-in flex items-center gap-2 px-4 py-2 rounded-t-[5px] border-b ${TONES[clear.tone].chip}`}>
-            <span className={`kkm-stamp shrink-0 w-8 h-8 rounded-md border text-white flex items-center justify-center ${TONES[clear.tone].solid}`}>
-              {stageUp.to >= 4 ? <Hanamaru size={19} color="#fff"/> : <span className="kkm-glyph text-base leading-none">{clear.num}</span>}
+          <div className={`kkm-rise-in flex items-center gap-2.5 px-4 py-2.5 rounded-t-[5px] border-b-2 ${TONES[clear.tone].chip}`}>
+            <span className={`kkm-stamp shrink-0 w-11 h-11 rounded-lg border-2 text-white flex items-center justify-center ${TONES[clear.tone].solid}`}>
+              {stageUp.to >= 4 ? <Hanamaru size={26} color="#fff" draw/> : <span className="kkm-glyph text-xl leading-none">{clear.num}</span>}
             </span>
-            <span className="text-sm md:text-base font-semibold">{clear.title}</span>
+            <span className="text-lg font-semibold">{clear.title}</span>
           </div>
         )}
 
@@ -4644,14 +4756,15 @@ function ScorePopup({ result, char, stageUp, actions = [], onClose }) {
             <div className="mt-3 flex flex-col gap-1.5">
               {big.map((a, i) => (
                 <button key={a.key} onClick={() => runAction(a.onClick)}
-                  className={`kkm-cta-btn kkm-btn kkm-ripple w-full px-4 rounded-md font-semibold flex items-center justify-center gap-2 ${
+                  style={i === 0 ? { '--kkm-shadow-color': TONE_DEEP[a.tone || 'shu'] } : undefined}
+                  className={`kkm-cta-btn kkm-btn kkm-ripple w-full px-4 font-semibold flex items-center justify-center gap-2.5 ${
                     i === 0
-                      ? `py-3 text-base md:text-lg text-white border ${TONES[a.tone || 'shu'].solid} min-h-[52px]`
-                      : `py-2 text-sm md:text-base bg-white border border-sumi-300 text-sumi-700 min-h-[44px]`
+                      ? `kkm-primary text-white border-2 ${TONES[a.tone || 'shu'].solid}`
+                      : `py-2.5 rounded-lg text-base bg-white border-2 border-sumi-300 text-sumi-700 min-h-[52px]`
                   }`}>
                   {a.icon}
                   <span>{a.label}</span>
-                  {a.sub && <span className={`text-[11px] md:text-xs font-semibold ${i === 0 ? 'opacity-90' : 'text-sumi-600'}`}>{a.sub}</span>}
+                  {a.sub && <span className={`text-sm font-semibold ${i === 0 ? 'opacity-90' : 'text-sumi-600'}`}>{a.sub}</span>}
                 </button>
               ))}
             </div>
@@ -4783,12 +4896,12 @@ function AchievementsModal({ earned, mastered, words, streak, onClose }) {
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-sumi-900/50 backdrop-blur-sm p-3 kkm-fade-in" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="ごほうびの はんこずかん"
         className="bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 border-t-yamabuki-600 max-w-2xl w-full max-h-[92vh] overflow-y-auto p-4 md:p-5 kkm-pop-in" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="kkm-heading-rule text-base md:text-lg font-semibold text-sumi-800 flex items-center gap-2">
-            <IconTrophy size={20}/> ごほうびの はんこずかん
+        <div className="flex justify-between items-center mb-4 gap-2">
+          <h2 className="kkm-heading-rule text-lg font-semibold text-sumi-800 flex items-center gap-2">
+            <IconTrophy size={24}/> ごほうびの はんこずかん
           </h2>
           <button onClick={onClose} aria-label="とじる"
-            className="kkm-btn w-11 h-11 rounded-md bg-sumi-50 hover:bg-sumi-100 border border-sumi-200 text-sumi-600 flex items-center justify-center min-w-[44px] min-h-[44px]"><IconX size={18}/></button>
+            className="kkm-btn shrink-0 w-12 h-12 rounded-xl bg-sumi-50 hover:bg-sumi-100 border-2 border-sumi-300 text-sumi-600 flex items-center justify-center min-w-[48px] min-h-[48px]"><IconX size={24}/></button>
         </div>
 
         {/* いまの しょうごう */}
@@ -4825,20 +4938,27 @@ function AchievementsModal({ earned, mastered, words, streak, onClose }) {
         <div className="kkm-heading-rule text-xs font-semibold text-sumi-600 mb-2">
           もらった はんこ <span className="tabular-nums">{earned.length} / {BADGES.length}</span>
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+        {/* はんこは 1 まいずつ 横ならびに する。
+            3 れつに つめると、字を 大きくした とたん 1 文字ずつ 折れて
+            「はじめのい っぽ」のように 読めなく なる。 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {BADGES.map(b => {
             const has = earned.includes(b.id);
             return (
               <div key={b.id}
-                className={`rounded-md border p-2.5 flex flex-col items-center text-center ${
+                className={`rounded-xl border-2 p-3 flex items-center gap-3 text-left ${
                   has ? 'bg-yamabuki-50 border-yamabuki-300 kkm-lift'
                       : 'bg-washi-100 border-sumi-200'
                 }`}>
-                <div className={has ? 'text-yamabuki-700' : 'text-sumi-600'}>
+                <div className={`shrink-0 w-12 h-12 rounded-lg bg-white border-2 flex items-center justify-center ${
+                  has ? 'text-yamabuki-700 border-yamabuki-300' : 'text-sumi-600 border-sumi-200'
+                }`}>
                   {has ? <Pict name={b.icon} size={30}/> : <IconLock size={26}/>}
                 </div>
-                <div className={`text-[11px] font-semibold mt-1.5 ${has ? 'text-sumi-800' : 'text-sumi-600'}`}>{b.title}</div>
-                <div className="text-[9px] text-sumi-600 mt-0.5 leading-snug">{b.desc}</div>
+                <div className="min-w-0">
+                  <div className={`text-lg font-semibold leading-tight ${has ? 'text-sumi-800' : 'text-sumi-600'}`}>{b.title}</div>
+                  <div className="text-sm text-sumi-600 mt-0.5 leading-snug">{b.desc}</div>
+                </div>
               </div>
             );
           })}
@@ -5221,40 +5341,33 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
   const almostChars = (kanaMode === 'katakana' ? KATA_ALL_LIST : HIRA_ALL_LIST).filter(c => getStage(progress, c) === 3);
 
   return (
-    <div className="kkm-sheet rounded-lg p-3 md:p-4 flex flex-col h-full overflow-hidden">
-      <SectionTitle className="mb-3"
-        right={
-          <div className="flex rounded-md border border-sumi-200 overflow-hidden shrink-0">
-            <button onClick={() => setKanaMode('hiragana')} aria-pressed={kanaMode === 'hiragana'}
-              className={`kkm-btn px-3 py-1.5 text-xs md:text-sm font-semibold ${
-                kanaMode === 'hiragana' ? 'bg-shu-600 text-white' : 'bg-white text-sumi-600'
-              }`}>ひらがな</button>
-            <button onClick={() => setKanaMode('katakana')} aria-pressed={kanaMode === 'katakana'}
-              className={`kkm-btn px-3 py-1.5 text-xs md:text-sm font-semibold border-l border-sumi-200 ${
-                kanaMode === 'katakana' ? 'bg-ai-600 text-white' : 'bg-white text-sumi-600'
-              }`}>カタカナ</button>
-          </div>
-        }>
-        あつめた ことば
-        <span className="ml-2 text-xs font-semibold text-sumi-600 tabular-nums">{collected.length}こ</span>
-      </SectionTitle>
+    <div className="kkm-sheet rounded-xl p-3 md:p-4 flex flex-col h-full overflow-hidden">
+      {/* 見出しと きりかえは 2 だんに 分ける。1 行に つめると
+          「あつめた こ…」のように 見出しが 切れて 読めなくなる。 */}
+      <div className="shrink-0 mb-3 flex flex-col gap-2">
+        <SectionTitle>
+          あつめた ことば
+          <span className="ml-2 text-base font-semibold text-shu-700 tabular-nums">{collected.length}こ</span>
+        </SectionTitle>
+        <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
+      </div>
 
       <WordTown wordCount={words.length}/>
 
-      <div className="flex-1 overflow-y-auto bg-washi-100 rounded-md p-3 border border-sumi-200 mb-3">
+      <div className="flex-1 overflow-y-auto bg-washi-100 rounded-lg p-3 border border-sumi-200 mb-3">
         {collected.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-sumi-600 gap-3 py-10 text-center">
             <Mascot message="まだ ことばが ありません" mood="cheer"/>
-            <p className="text-xs">したの「あたらしい ことばを ふやす」から ついかしましょう</p>
+            <p className="text-base font-medium">したの「あたらしい ことばを ふやす」から ついかしよう</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-2.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
             {collected.slice().reverse().map(w => (
-              <div key={w.id} className="bg-white rounded-md border border-sumi-200 p-3 flex flex-col items-center gap-1.5 relative group kkm-lift kkm-pop-in">
-                <span className="text-shu-600 group-hover:text-shu-700 transition-colors"><Pict name={pictOf(w)} size={34}/></span>
+              <div key={w.id} className="bg-white rounded-lg border-2 border-sumi-200 p-3 flex flex-col items-center gap-1.5 relative group kkm-lift kkm-pop-in">
+                <span className="text-shu-600 group-hover:text-shu-700 transition-colors"><Pict name={pictOf(w)} size={40}/></span>
                 <button onClick={() => speakText(w.text, voiceOn)} disabled={!voiceOn}
                   aria-label={voiceOn ? `${w.text} を よみあげる` : `${w.text}`}
-                  className="kkm-glyph kkm-btn text-lg text-sumi-800 hover:text-shu-700 disabled:cursor-default">
+                  className="kkm-glyph kkm-btn text-2xl text-sumi-800 hover:text-shu-700 disabled:cursor-default">
                   {w.text}
                 </button>
                 <button onClick={() => onDelete(w.id)}
@@ -5310,9 +5423,9 @@ function WordCollection({ kanaMode, setKanaMode, progress, usableInWords, words,
         </div>
       )}
 
-      <button onClick={() => setAddOpen(true)}
-        className="kkm-btn kkm-ripple py-3 rounded-md font-semibold text-base bg-shu-600 text-white border border-shu-700 flex items-center justify-center gap-2 shrink-0 min-h-[48px]">
-        <IconPlus size={19}/> あたらしい ことばを ふやす
+      <button onClick={() => setAddOpen(true)} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+        className="kkm-btn kkm-ripple kkm-primary font-semibold bg-shu-600 text-white border-2 border-shu-700 flex items-center justify-center gap-2.5 shrink-0">
+        <IconPlus size={26}/> あたらしい ことばを ふやす
       </button>
 
       {addOpen && (
@@ -5740,13 +5853,14 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
       <div className="shrink-0 flex items-center gap-2">
         <button onClick={() => setTableOpen(true)}
           aria-haspopup="dialog" aria-expanded={tableOpen}
-          className="kkm-btn kkm-ripple flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md font-semibold text-base bg-shu-600 text-white border border-shu-700 min-h-[48px]">
-          <IconGrid size={18}/>
-          {currentChar ? 'べつの もじを えらぶ' : 'もじを えらぶ'}
+          style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+          className="kkm-btn kkm-ripple kkm-solid flex-1 flex items-center justify-center gap-2.5 font-semibold text-lg bg-shu-600 text-white border-2 border-shu-700">
+          <IconGrid size={24}/>
+          {currentChar ? 'べつの もじ' : 'もじを えらぶ'}
         </button>
         {currentChar && (
-          <div className="shrink-0 flex items-center justify-center bg-white rounded-md w-12 h-12 border border-shu-300">
-            <span className="kkm-glyph text-2xl text-shu-700">{currentChar}</span>
+          <div className="shrink-0 flex items-center justify-center bg-white rounded-lg w-14 h-14 border-2 border-shu-300">
+            <span className="kkm-glyph text-3xl text-shu-700">{currentChar}</span>
           </div>
         )}
       </div>
@@ -5778,16 +5892,19 @@ function KanaDrawer({ children, onClose }) {
     <div className="fixed inset-0 z-[300] flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="もじを えらぶ">
       <div className="absolute inset-0 bg-sumi-900/40 backdrop-blur-sm kkm-fade-in" onClick={onClose}/>
       <div ref={ref}
-        className="relative w-full max-h-[86vh] bg-washi-100 rounded-t-lg shadow-2xl border-t-4 border-shu-600 flex flex-col kkm-sheet-up"
+        className="relative w-full max-h-[88vh] bg-washi-100 rounded-t-xl shadow-2xl border-t-4 border-shu-600 flex flex-col kkm-sheet-up"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="shrink-0 flex items-center justify-between px-4 pt-2 pb-1">
-          <div className="mx-auto w-12 h-1.5 rounded-full bg-sumi-300" aria-hidden="true"/>
+        {/* 見出しの 行。とじる ボタンは かならず ここに 場所を とる
+            （中身に かさねると、中の ボタンが 大きく なった とき かくれる）。 */}
+        <div className="shrink-0 flex items-center gap-2 px-3 pt-2 pb-1.5 border-b border-sumi-200">
+          <span className="w-12 shrink-0" aria-hidden="true"/>
+          <span className="flex-1 text-center text-lg font-semibold text-sumi-700">もじを えらぶ</span>
           <button onClick={onClose} aria-label="とじる"
-            className="kkm-btn absolute right-3 top-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-md bg-white border border-sumi-200 text-sumi-600 flex items-center justify-center">
-            <IconX size={18}/>
+            className="kkm-btn shrink-0 w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl bg-white border-2 border-sumi-300 text-sumi-600 flex items-center justify-center">
+            <IconX size={24}/>
           </button>
         </div>
-        <div className="flex-1 min-h-0 overflow-hidden p-3 pt-1">
+        <div className="flex-1 min-h-0 overflow-hidden p-3 pt-2">
           {children}
         </div>
       </div>
@@ -6378,7 +6495,7 @@ function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1
    ══════════════════════════════════════════════════════════════ */
 const COUNT_CHOICES = [1, 2, 3, 4, 5, 6];
 
-function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
+function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
   const [filled, setFilled] = useState({});
   const [judged, setJudged] = useState(null);   // { correct, chosen }
   const answeredRef = useRef(false);
@@ -6400,7 +6517,7 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
     if (answeredRef.current) return;
     answeredRef.current = true;
     setJudged({ correct, chosen });
-    if (correct) { playPingPong(); hapticOk(); }
+    if (correct) { playPingPong(combo); hapticOk(); }
     else { playBuzzer(); hapticErr(); }
     if (voiceOn && q.answerSay) setTimeout(() => speakText(q.answerSay, voiceOn), 350);
     // えらんだ ものも いっしょに わたす。まちがえた ときの 中身は
@@ -6435,22 +6552,25 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 md:gap-4 px-1">
-      {/* といかけ */}
+    <div key={q.uid} className="kkm-view-in flex-1 min-h-0 flex flex-col items-center justify-center gap-3 md:gap-4 px-1">
+      {/* せいかいの えんしゅつ（花丸が どんと 出る） */}
+      {judged?.correct && <CorrectFx seed={q.uid}/>}
+
+      {/* といかけ。1年生は ここを 読んでから 手が うごく。いちばん 大きく。 */}
       <div className="text-center shrink-0">
-        <div className="text-[11px] md:text-sm font-semibold text-shu-700">{q.lead}</div>
-        <div className="text-sm md:text-lg font-semibold text-sumi-800 mt-0.5">{q.ask}</div>
+        <div className="text-sm font-semibold text-shu-700">{q.lead}</div>
+        <div className="text-xl md:text-2xl font-semibold text-sumi-800 mt-1 leading-snug">{q.ask}</div>
       </div>
 
       {/* もんだいの ほんたい */}
-      <div className="shrink-0 flex flex-col items-center gap-2">
+      <div className={`shrink-0 flex flex-col items-center gap-2 ${judged && !judged.correct ? 'kkm-wobble' : ''}`}>
         {q.pict && (
-          <div className="flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-lg bg-washi-100 border border-sumi-200 text-sumi-700">
-            <Pict name={q.pict} size={54}/>
+          <div className="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-xl bg-washi-100 border-2 border-sumi-200 text-sumi-700">
+            <Pict name={q.pict} size={64}/>
           </div>
         )}
         {q.glyph && (
-          <div className="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-lg bg-white border-2 border-shu-400">
+          <div className="flex items-center justify-center w-28 h-28 md:w-32 md:h-32 rounded-xl bg-white border-4 border-shu-400 shadow-sm">
             <span className="kkm-glyph text-6xl md:text-7xl text-shu-700 leading-none">{q.glyph}</span>
           </div>
         )}
@@ -6460,7 +6580,7 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
               <React.Fragment key={i}>
                 {part}
                 {i === 0 && (
-                  <span className={`inline-flex items-center justify-center align-middle mx-1 w-9 h-9 md:w-12 md:h-12 rounded-md border-2 ${
+                  <span className={`inline-flex items-center justify-center align-middle mx-1 w-12 h-12 md:w-14 md:h-14 rounded-lg border-4 ${
                     judged ? (judged.correct ? 'border-midori-500 bg-midori-50 text-midori-700' : 'border-shu-500 bg-shu-50 text-shu-700')
                            : 'border-dashed border-shu-500 bg-shu-50 text-shu-700'
                   }`}>
@@ -6478,7 +6598,7 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
             /* MIM：2nd・3rd ステージでは ドットを つねに 出しておく。
                1st ステージでは こたえあわせの ときだけ 出す。 */
             showMora={!!support?.dots || (!!judged && q.kind === 'count')}
-            size={splitCells(q.word).length > 5 ? 40 : 52}/>
+            size={splitCells(q.word).length > 5 ? 46 : 64}/>
         )}
         {/* MIM の 動作化：3rd ステージでは といた あとに かならず
             リズムで もう いちど 体に 入れてから つぎへ すすむ。 */}
@@ -6489,9 +6609,11 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
         )}
       </div>
 
-      {/* こたえの えらびかた */}
+      {/* こたえの えらびかた。
+          指でも まちがえないよう、えらぶ ボタンは 大きく（さいてい 92px）、
+          字も 大きく する。押した ときは カードが 沈む。 */}
       {!judged && (
-        <div className={`shrink-0 w-full max-w-lg grid gap-2 ${
+        <div className={`shrink-0 w-full max-w-xl grid gap-2.5 ${
           q.kind === 'count' ? 'grid-cols-3 md:grid-cols-6'
           : q.choiceLayout === 'word' ? 'grid-cols-2'
           : q.choices.length <= 2 ? 'grid-cols-2'
@@ -6499,21 +6621,23 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
           : 'grid-cols-4'
         }`}>
           {q.kind === 'count'
-            ? COUNT_CHOICES.map(n => (
+            ? COUNT_CHOICES.map((n, i) => (
                 <button key={n} onClick={() => tapChoice(n)}
-                  className="kkm-btn kkm-ripple aspect-square md:aspect-auto md:py-4 rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 text-2xl md:text-3xl font-semibold text-sumi-800 tabular-nums">
+                  style={{ '--kkm-i': i, '--kkm-shadow-color': '#ded8cd' }}
+                  className="kkm-btn kkm-ripple kkm-solid kkm-stagger aspect-square md:aspect-auto md:py-5 rounded-xl bg-white border-2 border-sumi-300 hover:border-shu-400 text-3xl font-semibold text-sumi-800 tabular-nums">
                   {n}
                 </button>
               ))
             : q.choices.map((c, i) => (
                 <button key={i} onClick={() => tapChoice(c.value)}
-                  className="kkm-btn kkm-ripple rounded-lg bg-white border-2 border-sumi-300 hover:border-shu-400 flex flex-col items-center justify-center gap-1 p-2 min-h-[64px]">
-                  {c.pict && <Pict name={c.pict} size={30}/>}
-                  <span className={`kkm-glyph leading-none text-sumi-800 ${c.pict ? 'text-base md:text-lg' : 'text-3xl md:text-4xl'}`}>{c.label}</span>
+                  style={{ '--kkm-i': i, '--kkm-shadow-color': '#ded8cd' }}
+                  className="kkm-btn kkm-ripple kkm-solid kkm-stagger rounded-xl bg-white border-2 border-sumi-300 hover:border-shu-400 flex flex-col items-center justify-center gap-1 p-2 min-h-[92px]">
+                  {c.pict && <Pict name={c.pict} size={38}/>}
+                  <span className={`kkm-glyph leading-none text-sumi-800 ${c.pict ? 'text-lg' : 'text-4xl md:text-5xl'}`}>{c.label}</span>
                   {/* ちいさい字と おおきい字は 形が おなじで 大きさだけ ちがう。
                       見た目だけでは まよいやすいので、ことばでも 言いきる。 */}
                   {showSizeHint && !c.pict && c.label.length === 1 && (isSmallKana(c.label) || KANA_SMALL_BIG_REV[c.label]) && (
-                    <span className={`text-[10px] font-semibold leading-none ${isSmallKana(c.label) ? 'text-shu-600' : 'text-sumi-600'}`}>
+                    <span className={`text-xs font-semibold leading-none ${isSmallKana(c.label) ? 'text-shu-600' : 'text-sumi-600'}`}>
                       {isSmallKana(c.label) ? 'ちいさい' : 'おおきい'}
                     </span>
                   )}
@@ -6525,30 +6649,32 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null }) {
       {/* あなを 1 つ もどす */}
       {!judged && q.kind === 'cells' && blanks.length > 1 && Object.keys(filled).length > 0 && (
         <button onClick={undo}
-          className="kkm-btn shrink-0 px-3 py-1.5 rounded-md bg-white border border-sumi-300 text-xs font-semibold text-sumi-600 flex items-center gap-1.5">
-          <IconRotate size={14}/> ひとつ もどす
+          className="kkm-btn shrink-0 px-4 py-2.5 rounded-lg bg-white border-2 border-sumi-300 text-base font-semibold text-sumi-600 flex items-center gap-2 min-h-[48px]">
+          <IconRotate size={18}/> ひとつ もどす
         </button>
       )}
 
-      {/* こたえあわせ */}
+      {/* こたえあわせ。
+          「あたった／ちがった」が 字を 読まなくても わかるよう、
+          色・大きな しるし・ひとことの 順に 目に 入る ならびにする。 */}
       {judged && (
-        <div className={`shrink-0 w-full max-w-lg rounded-lg border-2 p-3 text-center kkm-pop-in ${
+        <div className={`shrink-0 w-full max-w-xl rounded-xl border-4 p-4 text-center kkm-pop-in ${
           judged.correct ? 'bg-midori-50 border-midori-400' : 'bg-shu-50 border-shu-400'
         }`}>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-3">
             {judged.correct
-              ? <span className="text-shu-600"><Hanamaru size={30} draw/></span>
-              : <span className="text-shu-600"><IconX size={26}/></span>}
-            <span className={`text-lg md:text-xl font-semibold ${judged.correct ? 'text-midori-700' : 'text-shu-700'}`}>
+              ? <span className="text-shu-600"><Hanamaru size={44} draw/></span>
+              : <span className="text-shu-600"><IconX size={36}/></span>}
+            <span className={`text-2xl font-semibold ${judged.correct ? 'text-midori-700' : 'text-shu-700'}`}>
               {judged.correct ? 'せいかい！' : 'おしい！'}
             </span>
           </div>
           {!judged.correct && q.answerText && (
-            <div className="mt-1 text-sm md:text-base font-semibold text-sumi-800">
-              こたえは <span className="kkm-glyph text-shu-700">{q.answerText}</span>
+            <div className="mt-2 text-lg font-semibold text-sumi-800">
+              こたえは <span className="kkm-glyph text-2xl text-shu-700">{q.answerText}</span>
             </div>
           )}
-          {q.why && <div className="mt-1 text-xs md:text-sm font-medium text-sumi-600 leading-snug">{q.why}</div>}
+          {q.why && <div className="mt-1.5 text-base font-medium text-sumi-700 leading-snug">{q.why}</div>}
         </div>
       )}
     </div>
@@ -6563,6 +6689,9 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
   const [okCount, setOkCount] = useState(0);
   const [done, setDone] = useState(false);
   const [wrongs, setWrongs] = useState([]);
+  // れんぞく せいかい（コンボ）。2 つ つづいたら ふだを 出して、
+  // 「つづけて あてたい」を つくる。まちがえたら 0 に もどる。
+  const [combo, setCombo] = useState(0);
   const t = TONES[tone] || TONES.shu;
   const q = questions[idx];
   // この もんだいを 出した 時刻。学習ログの `item.ms`（設問ごとの 解答時間）に つかう。
@@ -6571,8 +6700,8 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
   useEffect(() => { askedAtRef.current = Date.now(); }, [idx]);
 
   const handleAnswer = useCallback((correct, chosen) => {
-    if (correct) setOkCount(c => c + 1);
-    else setWrongs(w => [...w, questions[idx]]);
+    if (correct) { setOkCount(c => c + 1); setCombo(c => c + 1); }
+    else { setWrongs(w => [...w, questions[idx]]); setCombo(0); }
     onAnswered && onAnswered(questions[idx], correct, Date.now() - askedAtRef.current, chosen);
     const last = idx + 1 >= questions.length;
     // MIM の 3rd ステージでは、こたえあわせの あとに リズム（動作化）を
@@ -6593,11 +6722,14 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
 
   if (!questions || questions.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
-        <MascotFace size={54} mood="happy"/>
-        <div className="text-base font-semibold text-sumi-700">いまは もんだいが ないよ</div>
-        <div className="text-xs font-medium text-sumi-600">もじを かく れんしゅうを すると、もんだいが ふえるよ</div>
-        <button onClick={onQuit} className="kkm-btn kkm-ripple mt-2 px-5 py-2.5 rounded-md bg-shu-600 text-white font-semibold border border-shu-700">もどる</button>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center kkm-view-in">
+        <MascotFace size={70} mood="happy"/>
+        <div className="text-xl font-semibold text-sumi-700">いまは もんだいが ないよ</div>
+        <div className="text-base font-medium text-sumi-600">もじを かく れんしゅうを すると、もんだいが ふえるよ</div>
+        <button onClick={onQuit} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+          className="kkm-btn kkm-ripple kkm-primary mt-2 px-8 bg-shu-600 text-white font-semibold border-2 border-shu-700">
+          もどる
+        </button>
       </div>
     );
   }
@@ -6606,29 +6738,29 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
     const pct = Math.round((okCount / questions.length) * 100);
     const perfect = okCount === questions.length;
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-5 text-center kkm-pop-in">
-        <span className={`kkm-stamp w-20 h-20 rounded-lg border-2 flex items-center justify-center ${t.solid} text-white`}>
-          {perfect ? <Hanamaru size={48} color="#fff" draw/> : <span className="text-3xl font-semibold tabular-nums">{pct}</span>}
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-5 text-center kkm-view-in overflow-y-auto">
+        <span className={`kkm-stamp w-28 h-28 rounded-xl border-4 flex items-center justify-center ${t.solid} text-white shrink-0`}>
+          {perfect ? <Hanamaru size={68} color="#fff" draw/> : <span className="text-4xl font-semibold tabular-nums">{pct}</span>}
         </span>
-        <div className="text-xl md:text-2xl font-semibold text-sumi-800">
+        <div className="text-2xl font-semibold text-sumi-800">
           {perfect ? 'ぜんもん せいかい！' : `${questions.length}もん ちゅう ${okCount}もん せいかい`}
         </div>
         <Mascot mood={perfect ? 'wow' : 'cheer'}
           message={perfect ? 'かんぺき！ すごいね' : wrongs.length > 0 ? 'まちがえた ところは あした もういちど 出るよ' : 'よく がんばりました'}/>
         {wrongs.length > 0 && (
-          <div className="w-full max-w-md rounded-lg border border-shu-300 bg-shu-50 p-3">
-            <div className="text-xs font-semibold text-shu-700 mb-1.5">もういちど みておこう</div>
-            <div className="flex flex-wrap justify-center gap-1.5">
+          <div className="w-full max-w-md rounded-xl border-2 border-shu-300 bg-shu-50 p-3">
+            <div className="text-base font-semibold text-shu-700 mb-2">もういちど みておこう</div>
+            <div className="flex flex-wrap justify-center gap-2">
               {wrongs.map((w, i) => (
-                <span key={i} className="kkm-glyph px-2 py-1 rounded-md bg-white border border-shu-300 text-sumi-800 text-sm">
+                <span key={i} className="kkm-glyph px-2.5 py-1.5 rounded-lg bg-white border-2 border-shu-300 text-sumi-800 text-xl">
                   {w.answerText || w.word || w.answer}
                 </span>
               ))}
             </div>
           </div>
         )}
-        <button onClick={onQuit}
-          className="kkm-btn kkm-ripple mt-1 px-6 py-3 rounded-md bg-shu-600 text-white font-semibold text-base border border-shu-700 min-h-[48px]">
+        <button onClick={onQuit} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+          className="kkm-btn kkm-ripple kkm-primary mt-1 px-10 bg-shu-600 text-white font-semibold border-2 border-shu-700 shrink-0">
           おわる
         </button>
       </div>
@@ -6637,27 +6769,40 @@ function QuizRunner({ title, tone = 'shu', questions, voiceOn, onAnswered, onFin
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      {/* すすみぐあい */}
-      <div className="shrink-0 flex items-center gap-2 px-1 pb-2">
+      {/* すすみぐあい。
+          「あと なんもん か」が ひとめで わかるよう、といた ぶんは
+          花丸の 玉で うめていく（帯の 数字より 数えやすい）。 */}
+      <div className="shrink-0 flex items-center gap-2.5 px-1 pb-2.5">
         <button onClick={onQuit} aria-label="やめる"
-          className="kkm-btn w-9 h-9 shrink-0 rounded-md bg-white border border-sumi-300 text-sumi-600 flex items-center justify-center">
-          <IconX size={16}/>
+          className="kkm-btn w-12 h-12 shrink-0 rounded-xl bg-white border-2 border-sumi-300 text-sumi-600 flex items-center justify-center">
+          <IconX size={22}/>
         </button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between text-[10px] md:text-xs font-semibold text-sumi-600 mb-1">
+          <div className="flex items-center justify-between text-base font-semibold text-sumi-700 mb-1.5">
             <span className="truncate">{title}</span>
-            <span className="tabular-nums shrink-0">{idx + 1} / {questions.length}</span>
+            <span className="tabular-nums shrink-0 text-lg">{idx + 1} / {questions.length}</span>
           </div>
-          <div className="h-2 rounded-full bg-washi-300 overflow-hidden">
-            <div className="h-full rounded-full bg-shu-500 transition-all duration-300"
-              style={{ width: `${(idx / questions.length) * 100}%` }}/>
+          <div className="flex gap-1" aria-hidden="true">
+            {questions.map((_, i) => (
+              <span key={i} className={`h-2.5 flex-1 rounded-full transition-colors duration-300 ${
+                i < idx ? 'bg-shu-500' : i === idx ? 'bg-shu-300' : 'bg-washi-300'
+              }`}/>
+            ))}
           </div>
         </div>
-        <span className="shrink-0 flex items-center gap-1 text-shu-700 text-xs font-semibold tabular-nums">
-          <Hanamaru size={15}/>{okCount}
-        </span>
+        {/* れんぞく せいかいの ふだ */}
+        {combo >= 2 ? (
+          <span key={combo}
+            className="kkm-combo-in shrink-0 flex items-center gap-1 px-2.5 h-12 rounded-xl bg-yamabuki-50 border-2 border-yamabuki-300 text-yamabuki-700 text-base font-semibold tabular-nums">
+            <IconStar size={18}/>{combo}<span className="hidden sm:inline">れんぞく</span>
+          </span>
+        ) : (
+          <span className="shrink-0 flex items-center gap-1 px-2.5 h-12 rounded-xl bg-white border-2 border-shu-200 text-shu-700 text-lg font-semibold tabular-nums">
+            <Hanamaru size={20}/>{okCount}
+          </span>
+        )}
       </div>
-      <QuestionCard q={q} onAnswer={handleAnswer} voiceOn={voiceOn} support={support}/>
+      <QuestionCard q={q} onAnswer={handleAnswer} voiceOn={voiceOn} support={support} combo={combo}/>
     </div>
   );
 }
@@ -7053,34 +7198,36 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-2 md:p-4 kkm-main-pad">
-      <div className="max-w-3xl mx-auto flex flex-col gap-3">
-        <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
-        <div className="kkm-sheet rounded-lg p-3 flex items-center gap-3">
-          <MascotFace size={44} mood="cheer"/>
+    <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 kkm-main-pad kkm-view-in">
+      <div className="max-w-3xl mx-auto flex flex-col gap-3 pb-4">
+        {/* 見出しは 1 行だけ。長い せつめいは 1年生には 読まれない。 */}
+        <div className="kkm-sheet rounded-xl p-3 flex items-center gap-3 border-l-4 border-l-shu-600">
+          <MascotFace size={54} mood="cheer"/>
           <div className="min-w-0">
-            <div className="text-sm md:text-base font-semibold text-sumi-800">よんで こたえる れんしゅう</div>
-            <div className="text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5">
-              かける だけでは よめない。おとと もじ、そして ことばの いみを むすびつけよう。
-              {dueCount > 0 && <span className="text-shu-700 font-semibold"> ふくしゅう {dueCount}こ たまってるよ</span>}
+            <div className="text-xl font-semibold text-sumi-800">どれを やる？</div>
+            <div className="text-base font-semibold text-sumi-600 mt-0.5">
+              {dueCount > 0
+                ? <span className="text-shu-700">ふくしゅうが {dueCount}こ まってるよ</span>
+                : 'すきな れんしゅうを えらんでね'}
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
-          {SOUND_COURSES.map(c => {
+        <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3">
+          {SOUND_COURSES.map((c, i) => {
             const t = TONES[c.tone];
             const Icon = ICONS[c.icon] || IconMaru;
             return (
-              <button key={c.key} onClick={() => start(c)}
-                className={`kkm-btn kkm-lift kkm-sheet rounded-lg p-3 md:p-4 text-left border-l-4 ${t.leftRule} flex items-center gap-3`}>
-                <span className={`shrink-0 w-11 h-11 rounded-md border flex items-center justify-center ${t.chip}`}>
-                  <Icon size={22}/>
+              <button key={c.key} onClick={() => start(c)} style={{ '--kkm-i': i }}
+                className={`kkm-btn kkm-lift kkm-sheet kkm-stagger rounded-xl p-4 text-left border-l-4 ${t.leftRule} flex items-center gap-3.5 min-h-[92px]`}>
+                <span className={`shrink-0 w-14 h-14 rounded-xl border-2 flex items-center justify-center ${t.chip}`}>
+                  <Icon size={28}/>
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className={`block text-sm md:text-base font-semibold ${t.text}`}>{c.title}</span>
-                  <span className="block text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5">{c.sub}</span>
+                  <span className={`block text-xl font-semibold leading-tight ${t.text}`}>{c.title}</span>
+                  <span className="block text-base font-medium text-sumi-600 mt-1">{c.sub}</span>
                 </span>
-                <IconArrow size={18} className="shrink-0 text-sumi-600"/>
+                <IconArrow size={26} className="shrink-0 text-sumi-600"/>
               </button>
             );
           })}
@@ -7092,15 +7239,18 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
 
 /* ひらがな／カタカナの 切りかえ（画面ごとに おなじ形で 出す） */
 function KanaModeSwitch({ kanaMode, setKanaMode }) {
+  const hira = kanaMode === 'hiragana';
   return (
-    <div className="flex gap-1.5 shrink-0">
-      <button onClick={() => setKanaMode('hiragana')} aria-pressed={kanaMode === 'hiragana'}
-        className={`kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-sm md:text-base border ${
-          kanaMode === 'hiragana' ? 'bg-shu-600 text-white border-shu-700' : 'bg-white text-sumi-600 border-sumi-200 hover:bg-washi-100'
+    <div className="flex gap-2 shrink-0">
+      <button onClick={() => setKanaMode('hiragana')} aria-pressed={hira}
+        style={{ '--kkm-shadow-color': hira ? TONE_DEEP.shu : '#ded8cd' }}
+        className={`kkm-btn kkm-ripple kkm-solid flex-1 font-semibold text-xl border-2 ${
+          hira ? 'bg-shu-600 text-white border-shu-700' : 'bg-white text-sumi-600 border-sumi-300 hover:bg-washi-100'
         }`}>ひらがな</button>
-      <button onClick={() => setKanaMode('katakana')} aria-pressed={kanaMode === 'katakana'}
-        className={`kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-sm md:text-base border ${
-          kanaMode === 'katakana' ? 'bg-ai-600 text-white border-ai-700' : 'bg-white text-sumi-600 border-sumi-200 hover:bg-washi-100'
+      <button onClick={() => setKanaMode('katakana')} aria-pressed={!hira}
+        style={{ '--kkm-shadow-color': !hira ? TONE_DEEP.ai : '#ded8cd' }}
+        className={`kkm-btn kkm-ripple kkm-solid flex-1 font-semibold text-xl border-2 ${
+          !hira ? 'bg-ai-600 text-white border-ai-700' : 'bg-white text-sumi-600 border-sumi-300 hover:bg-washi-100'
         }`}>カタカナ</button>
     </div>
   );
@@ -7154,74 +7304,96 @@ function UnitLesson({ unit, onStart, onBack, onWrite, voiceOn, tier = 1 }) {
   const tierInfo = MIM_TIER_INFO[tier] || MIM_TIER_INFO[1];
   // この単元で 手で 書けるように しておきたい 小さい字
   const writeChars = unit.key === 'sokuon' ? ['っ'] : unit.key === 'youon' ? ['ゃ','ゅ','ょ'] : [];
+  /* 画面の 組みたて（ここが 大事）
+     もとは「きまり → リズム → おぼえかた → 表 → かく → といてみる」を
+     ぜんぶ たてに ならべていた。1年生の 画面では 3 スクロールぶんに なり、
+     **いちばん 押してほしい「といて みる」が いつも 画面の 外**にあった。
+
+     そこで
+       ・上に のこすのは「きまり」と「リズム」の 2 つだけ
+       ・そのほかは たたんで しまう（見たい 子だけ ひらく）
+       ・「といて みる」は 画面の 下に はりつけて いつでも 押せる
+     に あらためる。 */
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
-      <div className="max-w-2xl mx-auto flex flex-col gap-3 p-1">
-        <div className="flex items-center gap-2">
-          <button onClick={onBack} aria-label="もどる"
-            className="kkm-btn w-9 h-9 shrink-0 rounded-md bg-white border border-sumi-300 text-sumi-600 flex items-center justify-center">
-            <IconX size={16}/>
-          </button>
-          <SectionTitle>{unit.title}（{unit.lead}）</SectionTitle>
-        </div>
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-2xl mx-auto flex flex-col gap-3 p-1 pb-3">
+          <div className="flex items-center gap-2.5">
+            <button onClick={onBack} aria-label="もどる"
+              className="kkm-btn w-12 h-12 shrink-0 rounded-xl bg-white border-2 border-sumi-300 text-sumi-600 flex items-center justify-center">
+              <IconX size={22}/>
+            </button>
+            <SectionTitle>{unit.title}</SectionTitle>
+          </div>
 
-        <div className={`kkm-sheet rounded-lg p-4 border-l-4 ${t.leftRule} text-center`}>
-          <div className="kkm-glyph text-5xl md:text-6xl leading-none mb-2" style={{ color: 'var(--kkm-shu)' }}>{unit.mark}</div>
-          <div className="text-sm md:text-lg font-semibold text-sumi-800 leading-snug">{unit.rule}</div>
-        </div>
+          {/* ① この おとの きまり（ひとこと） */}
+          <div className={`kkm-sheet kkm-stagger rounded-xl p-4 border-l-4 ${t.leftRule} text-center`} style={{ '--kkm-i': 0 }}>
+            <div className="kkm-glyph text-6xl md:text-7xl leading-none mb-2" style={{ color: 'var(--kkm-shu)' }}>{unit.mark}</div>
+            <div className="text-lg md:text-xl font-semibold text-sumi-800 leading-snug">{unit.rule}</div>
+          </div>
 
-        {/* MIM の 中心：おとを ● で 見せて（視覚化）、
-            手の うごきで 体に 入れる（動作化）。 */}
-        {sample && (
-          <div className="kkm-sheet rounded-lg p-3 flex flex-col items-center gap-2.5">
-            <div className="text-xs font-semibold text-sumi-600">おとを ● で 見て、手で たしかめよう</div>
-            <RhythmPlayer word={sample.w} cellSize={46} voiceOn={voiceOn}/>
-            <div className="text-[11px] md:text-xs font-medium text-sumi-600 text-center leading-snug">
-              マスは 1 もじに 1 つ。ちいさい じも かならず 1 マス つかうよ。<br/>
-              小さい ○ の ところは、口を とじて 音を 出さない ところ。
+          {/* ② MIM の 中心：おとを ● で 見せて（視覚化）、
+                 手の うごきで 体に 入れる（動作化）。 */}
+          {sample && (
+            <div className="kkm-sheet kkm-stagger rounded-xl p-3 flex flex-col items-center gap-3" style={{ '--kkm-i': 1 }}>
+              <div className="text-base font-semibold text-sumi-700">おとを ● で 見て、手で たしかめよう</div>
+              <RhythmPlayer word={sample.w} cellSize={52} voiceOn={voiceOn}/>
             </div>
-            <RhythmLegend/>
-          </div>
-        )}
+          )}
 
-        <div className="kkm-sheet rounded-lg p-3">
-          <div className="text-xs font-semibold text-shu-700 mb-2 flex items-center gap-1.5"><IconBulb size={15}/> おぼえかた</div>
-          <ul className="flex flex-col gap-1.5">
-            {unit.tips.map((tip, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs md:text-sm font-medium text-sumi-700">
-                <span className="shrink-0 mt-0.5 text-shu-600"><IconCheck size={14}/></span>
-                <span className="kkm-glyph">{tip}</span>
-              </li>
-            ))}
-          </ul>
+          {/* ③ ここから下は「もっと しりたい 子」むけ。ふだんは たたんでおく。 */}
+          <div className="kkm-stagger flex flex-col gap-2.5" style={{ '--kkm-i': 2 }}>
+            <Disclosure title="おぼえかた" tone={unit.tone} icon={<IconBulb size={20}/>}>
+              <ul className="flex flex-col gap-2 px-1">
+                {unit.tips.map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-base font-medium text-sumi-700">
+                    <span className="shrink-0 mt-1 text-shu-600"><IconCheck size={18}/></span>
+                    <span className="kkm-glyph">{tip}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="text-base font-medium text-sumi-600 leading-snug px-1">
+                マスは 1 もじに 1 つ。ちいさい じも かならず 1 マス つかうよ。<br/>
+                小さい ○ の ところは、口を とじて 音を 出さない ところ。
+              </div>
+              <RhythmLegend/>
+            </Disclosure>
+
+            {unit.key === 'youon' && (
+              <Disclosure title="ねじれる おとの いちらん" tone="fuji" icon={<IconGrid size={20}/>}>
+                <YouonTable/>
+              </Disclosure>
+            )}
+
+            {writeChars.length > 0 && onWrite && (
+              <Disclosure title="この ちいさい じを かいて みる" tone="fuji" icon={<IconPen size={20}/>}>
+                <div className="flex gap-2">
+                  {writeChars.map(c => (
+                    <button key={c} onClick={() => onWrite(c)} style={{ '--kkm-shadow-color': TONE_DEEP.fuji }}
+                      className="kkm-btn kkm-ripple kkm-solid flex-1 bg-white border-2 border-fuji-300 text-fuji-700 font-semibold flex items-center justify-center gap-2">
+                      <span className="kkm-glyph text-3xl leading-none">{c}</span>
+                      <IconPen size={20}/>
+                    </button>
+                  ))}
+                </div>
+              </Disclosure>
+            )}
+
+            {tier > 1 && (
+              <div className={`rounded-xl border-2 p-3 text-base font-medium leading-snug ${TONES[tierInfo.tone].chip}`}>
+                {tierInfo.desc}
+              </div>
+            )}
+          </div>
         </div>
+      </div>
 
-        {unit.key === 'youon' && <YouonTable/>}
-
-        {writeChars.length > 0 && onWrite && (
-          <div className="kkm-sheet rounded-lg p-3">
-            <div className="text-xs font-semibold text-sumi-600 mb-2">この ちいさい じを 手で かいて みる</div>
-            <div className="flex gap-2">
-              {writeChars.map(c => (
-                <button key={c} onClick={() => onWrite(c)}
-                  className="kkm-btn kkm-ripple flex-1 py-2.5 rounded-md bg-white border border-fuji-300 text-fuji-700 font-semibold flex items-center justify-center gap-2">
-                  <span className="kkm-glyph text-xl leading-none">{c}</span>
-                  <IconPen size={15}/>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {tier > 1 && (
-          <div className={`rounded-lg border p-2.5 text-[11px] font-medium leading-snug ${TONES[tierInfo.tone].chip}`}>
-            {tierInfo.desc}
-          </div>
-        )}
-
-        <button onClick={onStart}
-          className="kkm-btn kkm-ripple py-3.5 rounded-md bg-shu-600 text-white font-semibold text-base border border-shu-700 flex items-center justify-center gap-2 min-h-[52px]">
-          <IconPlay size={18}/> といて みる（{tierPlan(tier).count} もん）
+      {/* ④ いちばん 押してほしい ボタンは、スクロールしても いつも 見える
+             ところに 置く（画面の 下に はりつける）。 */}
+      <div className="shrink-0 pt-2 pb-1.5 max-w-2xl w-full mx-auto">
+        <button onClick={onStart} style={{ '--kkm-shadow-color': TONE_DEEP.shu }}
+          className="kkm-btn kkm-ripple kkm-primary w-full bg-shu-600 text-white font-semibold border-2 border-shu-700 flex items-center justify-center gap-2.5">
+          <IconPlay size={26}/> といて みる（{tierPlan(tier).count} もん）
         </button>
       </div>
     </div>
@@ -7284,40 +7456,39 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-2 md:p-4 kkm-main-pad">
-      <div className="max-w-3xl mx-auto flex flex-col gap-3">
-        <div className="kkm-sheet rounded-lg p-3 flex items-center gap-3">
-          <MascotFace size={44} mood="wow"/>
+    <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 kkm-main-pad kkm-view-in">
+      <div className="max-w-3xl mx-auto flex flex-col gap-3 pb-4">
+        <div className="kkm-sheet rounded-xl p-3 flex items-center gap-3 border-l-4 border-l-shu-600">
+          <MascotFace size={54} mood="wow"/>
           <div className="min-w-0">
-            <div className="text-sm md:text-base font-semibold text-sumi-800">とくべつな おと</div>
-            <div className="text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5 leading-snug">
-              「がっこう」「でんしゃ」「おとうさん」…… ここが 1ねんせいの いちばんの やま。
-              おとの かずと マスの かずを あわせて おぼえよう。
+            <div className="text-xl font-semibold text-sumi-800">とくべつな おと</div>
+            <div className="text-base font-semibold text-sumi-600 mt-0.5">
+              おとの かずと マスの かずを あわせよう
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
-          {SPECIAL_UNITS.map(u => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3">
+          {SPECIAL_UNITS.map((u, i) => {
             const t = TONES[u.tone] || TONES.shu;
             const pr = unitProgressOf(u, skill);
             return (
-              <button key={u.key} onClick={() => { playPickup(); setOpenUnit(u.key); }}
-                className={`kkm-btn kkm-lift kkm-sheet rounded-lg p-3 text-left border-l-4 ${t.leftRule}`}>
-                <div className="flex items-center gap-3">
-                  <span className={`shrink-0 w-12 h-12 rounded-md border flex items-center justify-center ${t.chip}`}>
-                    <span className="kkm-glyph text-xl leading-none">{u.mark}</span>
+              <button key={u.key} onClick={() => { playPickup(); setOpenUnit(u.key); }} style={{ '--kkm-i': i }}
+                className={`kkm-btn kkm-lift kkm-sheet kkm-stagger rounded-xl p-4 text-left border-l-4 ${t.leftRule}`}>
+                <div className="flex items-center gap-3.5">
+                  <span className={`shrink-0 w-16 h-16 rounded-xl border-2 flex items-center justify-center ${t.chip}`}>
+                    <span className="kkm-glyph text-3xl leading-none">{u.mark}</span>
                   </span>
                   <span className="flex-1 min-w-0">
-                    <span className={`block text-sm md:text-base font-semibold ${t.text}`}>{u.title}</span>
-                    <span className="block text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5 truncate">{u.lead}</span>
+                    <span className={`block text-xl font-semibold leading-tight ${t.text}`}>{u.title}</span>
+                    <span className="block text-base font-medium text-sumi-600 mt-1 truncate">{u.lead}</span>
                   </span>
                   {pr.pct >= 100
-                    ? <span className="shrink-0 text-shu-600"><Hanamaru size={24}/></span>
-                    : <span className="shrink-0 text-[11px] font-semibold text-sumi-600 tabular-nums">{pr.done}/{pr.total}</span>}
+                    ? <span className="shrink-0 text-shu-600"><Hanamaru size={34}/></span>
+                    : <span className="shrink-0 text-base font-semibold text-sumi-600 tabular-nums">{pr.done}/{pr.total}</span>}
                 </div>
-                <div className="h-1.5 rounded-full bg-washi-300 overflow-hidden mt-2">
-                  <div className="h-full rounded-full bg-shu-500 transition-all duration-500" style={{ width: `${pr.pct}%` }}/>
+                <div className="h-2.5 rounded-full bg-washi-300 overflow-hidden mt-2.5">
+                  <div className="h-full rounded-full bg-shu-500 kkm-bar-grow" style={{ width: `${pr.pct}%` }}/>
                 </div>
               </button>
             );
@@ -7439,8 +7610,11 @@ function GuardianPanel({ progress, skill, log, words, mim, tier, onCheck }) {
 
   return (
     <details className="kkm-sheet rounded-lg overflow-hidden">
-      <summary className="cursor-pointer select-none px-3 py-2.5 text-xs md:text-sm font-semibold text-sumi-600 flex items-center gap-1.5">
-        <IconSearch size={15}/> おうちの方・先生へ（学習のようす）
+      <summary className="cursor-pointer select-none px-4 py-3.5 min-h-[60px] text-base font-semibold text-sumi-700 flex items-center gap-3">
+        <span className="shrink-0 w-10 h-10 rounded-lg border-2 bg-sumi-50 text-sumi-600 border-sumi-300 flex items-center justify-center">
+          <IconSearch size={20}/>
+        </span>
+        おうちの方・先生へ（学習のようす）
       </summary>
       <div className="px-3 pb-3 pt-1 flex flex-col gap-2 text-xs md:text-sm">
         {/* 多層指導モデル MIM の考え方にならった「いまの指導の層」 */}
@@ -7501,6 +7675,56 @@ function GuardianPanel({ progress, skill, log, words, mim, tier, onCheck }) {
   );
 }
 
+/* たたんで しまっておく はこ。
+   1年生の 画面に「いま いらない もの」を 置かないための どうぐ。
+   ひらくのは 本人か おうちの方。とじている あいだは 見出し 1 行だけ。 */
+function Disclosure({ title, icon, children, defaultOpen = false, tone = 'sumi' }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const t = TONES[tone] || TONES.sumi;
+  return (
+    <div className="kkm-sheet rounded-xl overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open}
+        className="kkm-btn w-full flex items-center gap-3 px-4 py-3.5 text-left min-h-[60px]">
+        <span className={`shrink-0 w-10 h-10 rounded-lg border-2 flex items-center justify-center ${t.chip}`}>
+          {icon}
+        </span>
+        <span className="flex-1 text-base font-semibold text-sumi-800">{title}</span>
+        <span aria-hidden="true"
+          className={`shrink-0 text-sumi-600 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}>
+          <IconArrow size={22}/>
+        </span>
+      </button>
+      {open && (
+        <div className="kkm-unfold px-3 pb-3 flex flex-col gap-3 border-t border-sumi-200 pt-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ホームの「つぎは これ」＝ 画面で いちばん 大きい ボタン。
+   1年生が まよわないよう、**押す ところは 1つだけ** にする。 */
+function NextUpButton({ tone = 'shu', eyebrow, title, sub, icon, onClick, glyph }) {
+  const t = TONES[tone] || TONES.shu;
+  return (
+    <button onClick={onClick} style={{ '--kkm-shadow-color': TONE_DEEP[tone] || TONE_DEEP.shu }}
+      className={`kkm-btn kkm-ripple kkm-primary w-full ${t.solid} border-2 text-white flex items-center gap-4 px-4 py-4 text-left`}>
+      <span className="shrink-0 w-16 h-16 rounded-xl bg-white/20 border-2 border-white/45 flex items-center justify-center">
+        {glyph
+          ? <span className="kkm-glyph text-4xl leading-none">{glyph}</span>
+          : icon}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-semibold text-white/85">{eyebrow}</span>
+        <span className="block text-xl md:text-2xl font-semibold leading-tight mt-0.5">{title}</span>
+        {sub && <span className="block text-sm font-semibold text-white/85 mt-1">{sub}</span>}
+      </span>
+      <span className="shrink-0 kkm-nudge rotate-90"><IconArrow size={30}/></span>
+    </button>
+  );
+}
+
 function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, setKanaMode, onGo, words, mim, tier }) {
   const allDone = isDayComplete(todayRec);
   const nextChar = useMemo(() => {
@@ -7521,47 +7745,54 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
     };
   }, [progress, skill]);
 
-  return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-2 md:p-4 kkm-main-pad">
-      <div className="max-w-3xl mx-auto flex flex-col gap-3">
+  /* 「つぎは これ」を 1つに しぼる。
+     ①ちからだめしの 日 → ②まだ おわっていない めあての さいしょの 1つ
+     → ③ぜんぶ おわったら ことばあつめ。
+     ならべて えらばせるのでは なく、**アプリの ほうが 決める**。 */
+  const mimDue = mimCheckDue(mim);
+  const nextMission = MISSIONS.find(m => (todayRec[m.key] || 0) < m.goal);
 
-        {/* あいさつ */}
-        <div className="kkm-sheet rounded-lg p-3 flex items-center gap-3 border-l-4 border-l-shu-600">
-          <div className="shrink-0 kkm-float"><MascotFace size={50} mood={allDone ? 'wow' : 'cheer'}/></div>
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 kkm-main-pad">
+      <div className="max-w-3xl mx-auto flex flex-col gap-3 md:gap-4 pb-4">
+
+        {/* ① あいさつ。数字は ならべない（きょう やることに 目を 向けたい）。 */}
+        <div className="kkm-sheet kkm-stagger rounded-xl p-3 md:p-4 flex items-center gap-3 border-l-4 border-l-shu-600" style={{ '--kkm-i': 0 }}>
+          <div className="shrink-0 kkm-float"><MascotFace size={58} mood={allDone ? 'wow' : 'cheer'}/></div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm md:text-lg font-semibold text-sumi-800">
-              {allDone ? 'きょうの めあて、ぜんぶ おわったよ！' : 'きょうも 5ふん、いっしょに やろう'}
+            <div className="text-xl font-semibold text-sumi-800 leading-snug">
+              {allDone ? 'きょうは ぜんぶ おわったよ！' : 'きょうも 5ふん、やってみよう'}
             </div>
-            <div className="text-[11px] md:text-xs font-medium text-sumi-600 mt-0.5">
-              {streak > 0 ? `${streak}にち つづいているよ。` : 'はじめの 1ぽを ふみだそう。'}
-              {' '}かんぺきな もじ {mastered.length}こ ・ あつめた ことば {words.length}こ
+            <div className="text-sm font-semibold text-sumi-600 mt-1">
+              {streak > 0 ? `${streak}にち つづいているよ` : 'はじめの 1ぽを ふみだそう'}
             </div>
           </div>
-          {allDone && <span className="shrink-0 kkm-stamp text-shu-600"><Hanamaru size={40} draw/></span>}
+          {allDone && <span className="shrink-0 kkm-stamp text-shu-600"><Hanamaru size={52} draw/></span>}
         </div>
 
-        {/* MIM：ちからだめし（2 しゅうかんに 1 かい）。
-            のびを はかって、指導の あつさを 見なおす きっかけにする。 */}
-        {mimCheckDue(mim) && (
-          <button onClick={() => onGo('mim')}
-            className="kkm-btn kkm-ripple kkm-sheet rounded-lg p-3 flex items-center gap-3 text-left border-l-4 border-l-ai-600 kkm-pulse-ring">
-            <span className="shrink-0 w-12 h-12 rounded-md bg-ai-50 border border-ai-300 text-ai-700 flex items-center justify-center">
-              <IconClock size={24}/>
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[11px] font-semibold text-ai-700">2 ふんの ちからだめし</span>
-              <span className="block text-sm font-semibold text-sumi-800 mt-0.5">
-                {(mim?.log || []).length === 0 ? 'よみめいじんに ちょうせん してみよう' : 'まえより のびたか ためして みよう'}
-              </span>
-            </span>
-            <IconArrow size={18} className="shrink-0 text-sumi-600"/>
-          </button>
-        )}
+        {/* ② つぎに やること。画面で いちばん 大きい ボタン、1つだけ。 */}
+        <div className="kkm-stagger" style={{ '--kkm-i': 1 }}>
+          {mimDue ? (
+            <NextUpButton tone="ai" eyebrow="2 ふんの ちからだめし"
+              title={(mim?.log || []).length === 0 ? 'よみめいじんに ちょうせん！' : 'まえより のびたか ためそう'}
+              icon={<IconClock size={34}/>} onClick={() => onGo('mim')}/>
+          ) : nextMission ? (
+            <NextUpButton tone={nextMission.tone} eyebrow="つぎは これ"
+              title={nextMission.title} sub={nextMission.sub}
+              icon={React.createElement(ICONS[nextMission.icon] || IconMaru, { size: 34 })}
+              onClick={() => onGo(nextMission.view)}/>
+          ) : (
+            <NextUpButton tone="shu" eyebrow="きょうの めあては たっせい"
+              title="ことばを あつめよう" sub="あつめた ことばで しりとりも できるよ"
+              icon={<IconBook size={34}/>} onClick={() => onGo('words')}/>
+          )}
+        </div>
 
-        {/* きょうの めあて 3 つ */}
-        <div>
+        {/* ③ きょうの めあて 3 つ。
+            「あと なんかい？」だけが 読めれば よい。字を 大きく、数を 主役に する。 */}
+        <div className="kkm-stagger" style={{ '--kkm-i': 2 }}>
           <SectionTitle className="mb-2">きょうの めあて</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-3">
             {MISSIONS.map(m => {
               const t = TONES[m.tone];
               const now = Math.min(todayRec[m.key] || 0, m.goal);
@@ -7570,16 +7801,21 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
               const Icon = ICONS[m.icon] || IconMaru;
               return (
                 <button key={m.key} onClick={() => onGo(m.view)}
-                  className={`kkm-btn kkm-lift kkm-sheet rounded-lg p-3 text-left flex items-center gap-3 border-l-4 ${t.leftRule} ${cleared ? 'opacity-90' : ''}`}>
-                  <ProgressRing pct={pct} size={46}>
+                  className={`kkm-btn kkm-lift kkm-sheet rounded-xl p-3.5 text-left flex items-center gap-3 border-l-4 min-h-[84px] ${t.leftRule} ${
+                    cleared ? 'bg-shu-50/60' : ''
+                  }`}>
+                  <ProgressRing pct={pct} size={58} stroke={6}>
                     {cleared
-                      ? <span className="text-shu-600"><Hanamaru size={22}/></span>
-                      : <span className={t.icon}><Icon size={20}/></span>}
+                      ? <span className="text-shu-600 kkm-stamp"><Hanamaru size={30}/></span>
+                      : <span className={t.icon}><Icon size={26}/></span>}
                   </ProgressRing>
                   <span className="flex-1 min-w-0">
-                    <span className={`block text-sm font-semibold ${t.text}`}>{m.title}</span>
-                    <span className="block text-[11px] font-medium text-sumi-600 truncate">{m.sub}</span>
-                    <span className="block text-[11px] font-semibold text-sumi-600 tabular-nums mt-0.5">{now} / {m.goal}</span>
+                    <span className={`block text-lg font-semibold leading-tight ${t.text}`}>{m.title}</span>
+                    <span className="block text-base font-semibold text-sumi-700 mt-1">
+                      {cleared
+                        ? 'できた！'
+                        : <>のこり <span className="text-xl tabular-nums text-shu-700">{m.goal - now}</span> かい</>}
+                    </span>
                   </span>
                 </button>
               );
@@ -7587,69 +7823,72 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
           </div>
         </div>
 
-        {/* つぎの もじ（やさしい じゅんで すすめる） */}
-        <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
-        <button onClick={() => onGo('write', nextChar)}
-          className="kkm-btn kkm-ripple kkm-sheet rounded-lg p-3 flex items-center gap-3 text-left border-l-4 border-l-ai-600">
-          <div className="shrink-0 w-14 h-14 rounded-md bg-washi-100 border border-ai-300 flex items-center justify-center">
-            <span className="kkm-glyph text-3xl text-ai-700">{nextChar}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[11px] font-semibold text-ai-700 flex items-center gap-1"><IconTarget size={12}/> つぎの もじ</div>
-            <div className="text-sm font-semibold text-sumi-800 mt-0.5">かんたんな じから じゅんばんに かこう</div>
-          </div>
-          <IconArrow size={18} className="shrink-0 text-sumi-600"/>
-        </button>
-
-        {/* にがて */}
+        {/* ④ にがては 出たときだけ。ふだんは 画面に 置かない。 */}
         {weak.length > 0 && (
-          <div className="kkm-sheet rounded-lg p-3 border-l-4 border-l-shu-600">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs md:text-sm font-semibold text-shu-700 flex items-center gap-1.5">
-                <IconAlert size={15}/> にがて ボックス
+          <button onClick={() => onGo('sound')}
+            className="kkm-btn kkm-lift kkm-sheet kkm-stagger rounded-xl p-3.5 border-l-4 border-l-shu-600 text-left flex items-center gap-3"
+            style={{ '--kkm-i': 3 }}>
+            <span className="shrink-0 w-12 h-12 rounded-lg bg-shu-50 border-2 border-shu-300 text-shu-600 flex items-center justify-center">
+              <IconAlert size={24}/>
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-lg font-semibold text-shu-700">にがてを やっつける</span>
+              <span className="flex flex-wrap gap-1.5 mt-1.5">
+                {weak.slice(0, 6).map(id => (
+                  <span key={id} className="kkm-glyph px-2 py-1 rounded-md bg-white border border-shu-300 text-shu-800 text-base leading-none">
+                    {weakLabelOf(id)}
+                  </span>
+                ))}
               </span>
-              <button onClick={() => onGo('sound')}
-                className="kkm-btn text-[11px] font-semibold text-shu-700 underline">やっつける</button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {weak.map(id => {
-                const label = weakLabelOf(id);
-                return (
-                  <span key={id} className="kkm-glyph px-2 py-1 rounded-md bg-shu-50 border border-shu-200 text-shu-800 text-sm">{label}</span>
-                );
-              })}
-            </div>
-          </div>
+            </span>
+            <IconArrow size={24} className="shrink-0 text-shu-600"/>
+          </button>
         )}
 
-        {/* すすみぐあい */}
-        <div className="kkm-sheet rounded-lg p-3">
-          <div className="text-xs md:text-sm font-semibold text-sumi-700 mb-2 flex items-center gap-1.5">
-            <IconGrid size={15}/> すすみぐあい
-          </div>
-          <div className="flex flex-col gap-2">
-            {[
-              { label:'ひらがな',       v:stats.hira, bar:'bg-shu-500' },
-              { label:'カタカナ',       v:stats.kata, bar:'bg-ai-500' },
-              { label:'とくべつな おと', v:stats.sp,   bar:'bg-fuji-500' },
-            ].map(row => (
-              <div key={row.label}>
-                <div className="flex items-center justify-between text-[11px] font-semibold text-sumi-600 mb-1">
-                  <span>{row.label}</span>
-                  <span className="tabular-nums">{row.v.done} / {row.v.total}</span>
-                </div>
-                <div className="h-2 rounded-full bg-washi-300 overflow-hidden">
-                  <div className={`h-full rounded-full ${row.bar} transition-all duration-500`}
-                    style={{ width: `${row.v.total ? (row.v.done / row.v.total) * 100 : 0}%` }}/>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* ⑤ ここから下は「見たいときだけ ひらく」。
+            すすみぐあい・カレンダー・先生むけの まとめは、毎日 見る ものでは
+            ないので、ふだんは たたんでおく。ホームは 3 つの めあてだけに する。 */}
+        <div className="kkm-stagger flex flex-col gap-2.5" style={{ '--kkm-i': 4 }}>
+          <Disclosure title="つぎの もじを えらぶ" tone="ai" icon={<IconPencil size={20}/>}>
+            <KanaModeSwitch kanaMode={kanaMode} setKanaMode={setKanaMode}/>
+            <button onClick={() => onGo('write', nextChar)}
+              className="kkm-btn kkm-ripple kkm-solid w-full bg-white rounded-xl p-3 flex items-center gap-3 text-left border-2 border-ai-300">
+              <span className="shrink-0 w-16 h-16 rounded-lg bg-washi-100 border-2 border-ai-300 flex items-center justify-center">
+                <span className="kkm-glyph text-4xl text-ai-700">{nextChar}</span>
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-ai-700">つぎの もじ</span>
+                <span className="block text-lg font-semibold text-sumi-800 mt-0.5">かんたんな じから かこう</span>
+              </span>
+              <IconArrow size={24} className="shrink-0 text-ai-600"/>
+            </button>
+          </Disclosure>
 
-        <StampCalendar log={log}/>
-        <GuardianPanel progress={progress} skill={skill} log={log} words={words} mim={mim} tier={tier}
-          onCheck={() => onGo('mim')}/>
+          <Disclosure title="すすみぐあいを みる" tone="midori" icon={<IconGrid size={20}/>}>
+            <div className="flex flex-col gap-3 px-1">
+              {[
+                { label:'ひらがな',       v:stats.hira, bar:'bg-shu-500' },
+                { label:'カタカナ',       v:stats.kata, bar:'bg-ai-500' },
+                { label:'とくべつな おと', v:stats.sp,   bar:'bg-fuji-500' },
+              ].map(row => (
+                <div key={row.label}>
+                  <div className="flex items-center justify-between text-base font-semibold text-sumi-700 mb-1">
+                    <span>{row.label}</span>
+                    <span className="tabular-nums">{row.v.done} / {row.v.total}</span>
+                  </div>
+                  <div className="h-3 rounded-full bg-washi-300 overflow-hidden">
+                    <div className={`h-full rounded-full ${row.bar} kkm-bar-grow`}
+                      style={{ width: `${row.v.total ? (row.v.done / row.v.total) * 100 : 0}%` }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <StampCalendar log={log}/>
+          </Disclosure>
+
+          <GuardianPanel progress={progress} skill={skill} log={log} words={words} mim={mim} tier={tier}
+            onCheck={() => onGo('mim')}/>
+        </div>
       </div>
     </div>
   );
@@ -7669,21 +7908,22 @@ function CollectionView({ kanaMode, setKanaMode, progress, usableInWords, words,
   const [tab, setTab] = useState('words');
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="shrink-0 flex gap-1.5 px-2 md:px-4 pt-2">
+      <div className="shrink-0 flex gap-2 px-3 md:px-4 pt-2.5">
         {COLLECTION_TABS.map(t => {
           const on = tab === t.key;
           return (
             <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={on}
-              className={`kkm-btn kkm-ripple flex-1 py-2 rounded-md font-semibold text-sm border flex items-center justify-center gap-1.5 ${
-                on ? 'bg-shu-600 text-white border-shu-700' : 'bg-white text-sumi-600 border-sumi-200 hover:bg-washi-100'
+              style={{ '--kkm-shadow-color': on ? TONE_DEEP.shu : '#ded8cd' }}
+              className={`kkm-btn kkm-ripple kkm-solid flex-1 font-semibold text-lg border-2 flex items-center justify-center gap-2 ${
+                on ? 'bg-shu-600 text-white border-shu-700' : 'bg-white text-sumi-600 border-sumi-300 hover:bg-washi-100'
               }`}>
-              <t.Icon size={16}/> {t.label}
+              <t.Icon size={22}/> {t.label}
             </button>
           );
         })}
       </div>
       {tab === 'words' ? (
-        <div className="flex-1 p-2 md:p-4 min-h-0 overflow-hidden">
+        <div className="flex-1 p-3 md:p-4 min-h-0 overflow-hidden">
           <WordCollection kanaMode={kanaMode} setKanaMode={setKanaMode}
             progress={progress} usableInWords={usableInWords}
             words={words} onAdd={onAdd} onDelete={onDelete} voiceOn={voiceOn}/>
@@ -7966,7 +8206,10 @@ function App() {
         showInstall={!install.standalone} installReady={install.canPrompt}
         onInstall={handleInstall}/>
 
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      {/* key に view を 入れて、画面が かわるたび 中身を 作りなおす。
+          こうすると 紙を めくるような きりかえ（.kkm-view-in）が
+          どの 画面でも かならず 走り、「いま うつった」ことが わかる。 */}
+      <main key={view} className="kkm-view-in flex-1 flex flex-col min-h-0 overflow-hidden">
         {view === 'home' && (
           <HomeView progress={progress} mastered={mastered} skill={skill}
             todayRec={todayRec} log={dayLog} streak={streak}

@@ -152,6 +152,75 @@ input[type="range"]::-moz-range-thumb {
   font-synthesis: none;
   -webkit-font-synthesis: none;
 }
+/* =====================================================================
+   こども スケール ── 1ねんせいの 目と 指に あわせた 大きさ【ここが 原本】
+
+   ねらい
+   -----------------------------------------------------------------
+   もとの 画面は 大人の アプリと おなじ 目もりで 組んであった。
+   10px・11px の そえ書きが あちこちに あり、ボタンも 40px 前後。
+   1年生は
+     ・まだ 小さい字を 追う 目の 力が そだっていない
+     ・指が ふとく、ねらった ところを 押せない
+   ため、これでは「今なにを するのか」が 読みとれない。
+
+   そこで **文字の 最小サイズを 1か所で 底上げする**。
+   JSX の 一つ一つを 書きかえて 回ると かならず 付け忘れが 出るので、
+   Tailwind の 文字サイズ ユーティリティ そのものを ここで 定義しなおす。
+
+     もと          →  こども スケール
+     9〜11px       →  14px
+     text-xs 12px  →  15px
+     text-sm 14px  →  17px
+     text-base 16px→  19px
+     text-lg 18px  →  22px
+     text-xl 20px  →  26px
+
+   md: の ついた ものも おなじ 表で 上書きする（下の @media）。
+   そろえておかないと ひろい画面で かえって 小さくなる。
+
+   ⚠️ 画面の 高さが 足りない 端末むけの 圧縮（このファイルの 下のほう）は
+      !important で 書いてあるので、そちらが かならず 勝つ。安全網は そのまま。
+   ===================================================================== */
+.kkm-app-root .text-\[9px\],
+.kkm-app-root .text-\[10px\],
+.kkm-app-root .text-\[11px\] { font-size: 0.875rem;  line-height: 1.4; }   /* 14px */
+.kkm-app-root .text-xs       { font-size: 0.9375rem; line-height: 1.45; }  /* 15px */
+.kkm-app-root .text-sm       { font-size: 1.0625rem; line-height: 1.5; }   /* 17px */
+.kkm-app-root .text-base     { font-size: 1.1875rem; line-height: 1.55; }  /* 19px */
+.kkm-app-root .text-lg       { font-size: 1.375rem;  line-height: 1.45; }  /* 22px */
+.kkm-app-root .text-xl       { font-size: 1.625rem;  line-height: 1.4; }   /* 26px */
+.kkm-app-root .text-2xl      { font-size: 1.875rem;  line-height: 1.3; }   /* 30px */
+@media (min-width: 768px) {
+  .kkm-app-root .md\:text-\[9px\],
+  .kkm-app-root .md\:text-\[10px\],
+  .kkm-app-root .md\:text-\[11px\] { font-size: 0.875rem;  line-height: 1.4; }
+  .kkm-app-root .md\:text-xs       { font-size: 0.9375rem; line-height: 1.45; }
+  .kkm-app-root .md\:text-sm       { font-size: 1.0625rem; line-height: 1.5; }
+  .kkm-app-root .md\:text-base     { font-size: 1.1875rem; line-height: 1.55; }
+  .kkm-app-root .md\:text-lg       { font-size: 1.375rem;  line-height: 1.45; }
+  .kkm-app-root .md\:text-xl       { font-size: 1.625rem;  line-height: 1.4; }
+  .kkm-app-root .md\:text-2xl      { font-size: 1.875rem;  line-height: 1.3; }
+}
+
+/* 指の 当たり判定の 下ばり。44px は「大人の 最低ライン」なので、
+   1年生には 足りない。ふだん 押す ボタンは 52px を 下限に する。 */
+.kkm-btn::before { min-width: 52px; min-height: 52px; }
+
+/* 「いま 押す ボタン」＝ 画面で いちばん 大きい 1つ。
+   まようところを なくすため、この 見た目は 1画面に 1つだけ 使うこと。
+   （押した ときの 動きは 下の「アニメーション」の 節にまとめてある） */
+.kkm-primary {
+  min-height: 68px;
+  font-size: 1.25rem;
+  border-radius: 14px;
+}
+/* 二番手の ボタン（えらぶ・もどる など）。押した ときの 沈みこみは 同じ。 */
+.kkm-solid {
+  min-height: 56px;
+  border-radius: 12px;
+}
+
 /* user-select は誤コピー防止のため UI 要素に限って無効化（テキスト読み上げや
    コピー機能のために <body> 全体への適用はやめる）。 */
 button, canvas, [role="button"], .kkm-no-select {
@@ -257,6 +326,28 @@ button, canvas, [role="button"], .kkm-no-select {
 }
 .kkm-btn:active:not(:disabled) { transform: translateY(2px) scale(.975); }
 .kkm-btn:hover:not(:disabled)  { filter: brightness(1.03); }
+
+/* 大きい ボタンは「はんこの ような 厚み」を もたせ、押すと ほんとうに
+   沈む。指で さわった ことが 目にも 見えるので、押せたか どうかで
+   まよわない。
+   ※ この 2 つは かならず .kkm-btn:active の **あと** に 置くこと。
+      さきに 書くと 上の 一般ルールに 上書きされて 沈まなくなる
+      （どちらも 詳細度は おなじなので、うしろが 勝つ）。 */
+.kkm-primary,
+.kkm-solid {
+  transition: transform .12s cubic-bezier(.3,1.5,.5,1), box-shadow .12s ease-out,
+              background-color .18s ease-out, border-color .18s ease-out, color .18s ease-out;
+}
+.kkm-primary { box-shadow: 0 4px 0 0 var(--kkm-shadow-color, #93331e), 0 6px 14px rgba(46,42,37,.16); }
+.kkm-solid   { box-shadow: 0 3px 0 0 var(--kkm-shadow-color, #ded8cd); }
+.kkm-primary:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 0 var(--kkm-shadow-color, #93331e), 0 2px 6px rgba(46,42,37,.14);
+}
+.kkm-solid:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 0 var(--kkm-shadow-color, #ded8cd);
+}
 /* おした瞬間に 朱色の波紋がひろがる（墨がにじむイメージ） */
 .kkm-ripple { position: relative; overflow: hidden; }
 .kkm-ripple::after {
@@ -335,6 +426,135 @@ button, canvas, [role="button"], .kkm-no-select {
 .kkm-lift { transition: transform .18s cubic-bezier(.3,1.3,.5,1), box-shadow .18s ease-out; }
 .kkm-lift:hover  { transform: translateY(-2px); }
 .kkm-lift:active { transform: translateY(0) scale(.99); }
+
+/* =====================================================================
+   画面の きりかえ・正解の 演出【ここが 原本】
+
+   ゲームの 気もちよさは「押した → すぐ 何かが 起きる」の くり返しで できる。
+   ただし この アプリは 国語の 学習が 主役なので、モチーフは ぜんぶ
+   **先生の 赤ペン・はんこ・和紙**に そろえる。花や 星は 使わない。
+   ===================================================================== */
+
+/* --- 画面の きりかえ：紙を めくるように 出てくる ---
+
+   ⚠️ fill-mode は かならず `backwards` に すること（`both` に しない）。
+      `both` だと 動きが おわった あとも transform が のこる。transform の
+      ついた 要素は **position: fixed の 子の 基準（含みブロック）に なる**ので、
+      その中に ある モーダル・ボトムシート・紙吹雪が 画面いっぱいに ならず、
+      本文の わくの 中に とじこめられて 位置が ずれる。
+      （実際、この 動きを <main> に つけた とき もじ表の ボトムシートが
+        上に はみ出して とじる ボタンが 押せなくなった。）
+      `backwards` なら 始まる まえだけ 0% を あてて、おわれば transform は
+      none に もどるので、fixed は これまでどおり 画面を 基準に する。 */
+@keyframes kkm-view-in {
+  0%   { opacity: 0; transform: translateY(14px) scale(.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.kkm-view-in { animation: kkm-view-in .32s cubic-bezier(.22,1,.36,1) backwards; }
+
+/* --- ならんで 出てくる（カードの 段だん見せ） ---
+   --kkm-i に 何ばんめかを 入れる。1年生が 目で 追える 速さ（60ms きざみ）。
+   fill-mode を `backwards` に する理由は 上と おなじ。 */
+@keyframes kkm-stagger-in {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.kkm-stagger {
+  animation: kkm-stagger-in .38s cubic-bezier(.22,1,.36,1) backwards;
+  animation-delay: calc(var(--kkm-i, 0) * 60ms);
+}
+
+/* --- 正解の 演出 ---
+   ① 朱色の 波紋が 1 回 ひろがる（墨が にじむ イメージ）
+   ② 花丸が 描かれる（.kkm-draw が 線を 引く）
+   ③ 画面ぜんたいが ほんのり 明るくなる
+   にぎやかにしすぎると つぎの もんだいに 目が もどらないので、
+   ぜんぶ 0.9 秒いないに おさめる。 */
+@keyframes kkm-ink-ring {
+  0%   { transform: scale(.2); opacity: .55; }
+  70%  { opacity: .18; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.kkm-ink-ring {
+  animation: kkm-ink-ring .78s cubic-bezier(.2,.7,.3,1) both;
+  animation-delay: var(--kkm-delay, 0s);
+}
+@keyframes kkm-flash {
+  0%   { opacity: 0; }
+  25%  { opacity: .5; }
+  100% { opacity: 0; }
+}
+.kkm-flash { animation: kkm-flash .55s ease-out both; }
+
+/* 正解の 花丸が どんと 出る（はんこより 大きく、1 回だけ）。
+   さいごに そっと 消えるのが だいじ。出したまま だと 花丸が こたえを
+   かくしてしまい、「なにが 正しかったか」を 見そこねる。 */
+@keyframes kkm-hanamaru-in {
+  0%   { transform: scale(.3) rotate(-12deg); opacity: 0; }
+  25%  { transform: scale(1.12) rotate(3deg); opacity: 1; }
+  35%  { transform: scale(.97) rotate(-1deg); }
+  45%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  72%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1.25) rotate(0deg); opacity: 0; }
+}
+.kkm-hanamaru-in { animation: kkm-hanamaru-in 1.15s cubic-bezier(.3,1.4,.5,1) both; }
+
+/* 墨の しぶき（正解のとき 花丸から とびちる 小さな 点） */
+@keyframes kkm-speck {
+  0%   { transform: translate(0,0) scale(.4); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--kkm-dx,0), var(--kkm-dy,0)) scale(1); opacity: 0; }
+}
+.kkm-speck {
+  animation: kkm-speck .8s cubic-bezier(.2,.7,.3,1) both;
+  animation-delay: var(--kkm-delay, 0s);
+}
+
+/* --- まちがえた とき：やさしく 首を ふる（しかられている 感じに しない） --- */
+@keyframes kkm-wobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-2.2deg); }
+  75% { transform: rotate(2.2deg); }
+}
+.kkm-wobble { animation: kkm-wobble .42s ease-in-out both; }
+
+/* --- れんぞく せいかい（コンボ）の ふだ --- */
+@keyframes kkm-combo-in {
+  0%   { transform: scale(.4) translateY(8px); opacity: 0; }
+  50%  { transform: scale(1.18) translateY(0); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.kkm-combo-in { animation: kkm-combo-in .42s cubic-bezier(.3,1.6,.5,1) both; }
+
+/* --- したの メニュー：えらんだ ところが ぴょんと はねる --- */
+@keyframes kkm-nav-hop {
+  0%   { transform: translateY(0) scale(1); }
+  40%  { transform: translateY(-5px) scale(1.14); }
+  70%  { transform: translateY(1px) scale(.97); }
+  100% { transform: translateY(0) scale(1); }
+}
+.kkm-nav-hop { animation: kkm-nav-hop .38s cubic-bezier(.3,1.5,.5,1) both; }
+
+/* --- すすみぐあいの 帯が のびる --- */
+@keyframes kkm-bar-grow {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+.kkm-bar-grow { transform-origin: left center; animation: kkm-bar-grow .7s cubic-bezier(.22,1,.36,1) both; }
+
+/* --- 「いま これを やる」を さししめす ゆび（そっと 上下する） --- */
+@keyframes kkm-nudge {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
+}
+.kkm-nudge { animation: kkm-nudge 1.8s ease-in-out infinite; }
+
+/* --- ひらく・とじる（もっと みる） --- */
+@keyframes kkm-unfold {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.kkm-unfold { animation: kkm-unfold .28s cubic-bezier(.22,1,.36,1) both; }
 
 /* =====================================================================
    背景：国語の教科書の紙面
@@ -424,10 +644,11 @@ button, canvas, [role="button"], .kkm-no-select {
   .kkm-practice-board .kkm-board-header { margin-bottom: 0.25rem !important; }
   /* マスコットは飾り要素なので最初に隠す */
   .kkm-practice-mascot { display: none !important; }
-  /* ステッパーは小さくしてマージン縮小 */
-  .kkm-stepper-row { margin-bottom: 0.25rem !important; font-size: 10px !important; }
-  .kkm-stepper-row > div { padding: 2px 2px !important; }
-  .kkm-stepper-row > div > div:first-child { font-size: 1rem !important; line-height: 1 !important; }
+  /* ステッパーは まるを 小さくし、ことばの 行を つめる
+     （文字そのものは 小さくしない。読めなくなっては 意味がない） */
+  .kkm-stepper-row { margin-bottom: 0.25rem !important; }
+  .kkm-stepper-row li { width: 28px !important; height: 28px !important; }
+  .kkm-stepper-row > div { margin-top: 0.125rem !important; }
   /* ボタン群は必ず見える：マージンと内側パディングを縮小 */
   .kkm-practice-buttons { margin-top: 0.375rem !important; gap: 0.25rem !important; }
   .kkm-practice-buttons > button { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; font-size: 0.8125rem !important; }
@@ -439,8 +660,7 @@ button, canvas, [role="button"], .kkm-no-select {
   .kkm-daily-wrap { display: none !important; }
   .kkm-progress-row { display: none !important; }
   .kkm-practice-board { padding: 0.375rem !important; }
-  .kkm-stepper-row > div > div:nth-child(2) { font-size: 9px !important; }
-  .kkm-app-root > nav h1 { font-size: 0.875rem !important; }
+  .kkm-app-root > nav h1 { font-size: 1rem !important; }
 }
 
 /* ── 高さ ≤ 580px（小型 Chromebook、横置き低解像度タブレット）── */
