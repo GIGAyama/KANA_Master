@@ -230,6 +230,16 @@ button, canvas, [role="button"], .kkm-no-select {
   animation: kkm-draw var(--kkm-draw-dur, .7s) cubic-bezier(.5,.1,.3,1) both;
   animation-delay: var(--kkm-draw-delay, 0s);
 }
+/* --- 赤ペンの しるしを ポンと おく --- 添削の 番号・印 ---
+   SVG の <g> に かけるので、transform-origin は しるしの まんなかを
+   その場で 指定すること（既定の 0,0 のままだと 左上から とんでくる）。 */
+@keyframes kkm-mark-pop {
+  0%   { transform: scale(0.2); opacity: 0; }
+  65%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.kkm-mark-pop { animation: kkm-mark-pop .34s cubic-bezier(.3,1.4,.5,1) both; }
+
 @keyframes kkm-underline {
   0%   { transform: scaleX(0); }
   100% { transform: scaleX(1); }

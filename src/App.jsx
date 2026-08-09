@@ -746,6 +746,15 @@ const STAGE_INFO = [
   { key: 4, num: '四', icon: 'maru',   label: 'かんぺき',     tone: 'shu'    },
 ];
 
+/* ステップを ひとつ 上がった ときの ことば。
+   採点の 画面（<ScorePopup>）と おしらせ（<StageUpPopup>）の 両方で
+   おなじ 文を つかうため、ここに 一元化する。 */
+const STAGE_UP_TEXT = {
+  2: { num: '二', title: 'なぞり クリア！', sub: 'つぎは じぶんで かいてみよう', tone: 'midori' },
+  3: { num: '三', title: 'じぶんで かく クリア！', sub: 'ことばを 1こ あつめれば 花丸！', tone: 'fuji' },
+  4: { num: '四', title: '花丸！ かんぺき',     sub: 'ほんとうに じぶんの じに なったよ', tone: 'shu' },
+};
+
 function newStageObj(stage=0) {
   return { stage, traced: 0, free: 0, freeStreak: 0, sawAnime: false };
 }
@@ -1827,14 +1836,20 @@ function crossPairSet(polys) {
    ここでも数えると 1 つのミスを 3 回減点することになってしまう。
    打ち消すのは「ぜんたいの平行移動」だけなので、字のかたちが ちがう
    （ぐちゃぐちゃ・逆向き・直線ですます）ときは どう動かしても重ならず、
-   ちゃんと 0 点に近づく。 */
+   ちゃんと 0 点に近づく。
+
+   ＜戻り値＞
+   点数（score）だけでなく、画ごとの内訳（perStroke）も返す。
+   赤ペン添削（§3.6）が「どの画の どこが いちばん ずれたか」を
+   そのまま しるしに するので、ここで いちど 測ったものを 使いまわす。 */
 const SHAPE_N = 24;          // くらべる点の数（お手本のサンプル数とそろえる）
 const SHAPE_FREE = 0.03;     // これくらいのズレは 1年生なら ふつう（減点しない）
 const SHAPE_SPAN = 0.13;     // ここまで離れると 0 点（マスの 1/8 ほど）
 const SHAPE_SHIFT_CAP = 0.045; // 打ち消してよい「字ぜんたいの平行移動」の上限
-function evalShape(usrPolys, tplPolys) {
+function analyzeShape(usrPolys, tplPolys) {
+  const none = { score: 0, perStroke: [], dx: 0, dy: 0 };
   const n = Math.min(usrPolys.length, tplPolys.length);
-  if (n === 0) return 0;
+  if (n === 0) return none;
   const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
 
   // ① 画ごとに「同じ進みぐあいの場所」の点をそろえ、あわせて平行移動ぶんを出す
@@ -1846,10 +1861,10 @@ function evalShape(usrPolys, tplPolys) {
     const tp = t.length === SHAPE_N ? t : resamplePolyline(t, SHAPE_N);
     const up = resamplePolyline(usrPolys[i], SHAPE_N);
     if (!tp || !up) continue;
-    pairs.push([up, tp]);
+    pairs.push({ i, up, tp });
     for (let k = 0; k < SHAPE_N; k++) { dx += up[k].x - tp[k].x; dy += up[k].y - tp[k].y; m++; }
   }
-  if (pairs.length === 0 || m === 0) return 0;
+  if (pairs.length === 0 || m === 0) return none;
   dx /= m; dy /= m;
   // 打ち消すのは「すこしのズレ」まで。字ぜんたいが大きくずれているのは
   // かたち以前の問題なので、ここでも きちんと点が下がるようにする。
@@ -1858,26 +1873,30 @@ function evalShape(usrPolys, tplPolys) {
 
   // ② 平行移動ぶんを取りのぞいて、線どうしの離れぐあいをはかる
   const perStroke = [];
-  for (const [up, tp] of pairs) {
-    let mean = 0, worst = 0;
+  for (const pair of pairs) {
+    const { up, tp } = pair;
+    let mean = 0, worst = 0, worstIdx = 0;
     for (let k = 0; k < SHAPE_N; k++) {
       const d = Math.hypot(up[k].x - dx - tp[k].x, up[k].y - dy - tp[k].y);
       mean += d;
-      if (d > worst) worst = d;
+      if (d > worst) { worst = d; worstIdx = k; }
     }
     mean /= SHAPE_N;
     // ふだんのズレ（平均）と、いちばん外れたところ（最大）の両方を見る。
     // 平均が良くても 1 か所だけ大きく外れていれば、そのぶん下がる。
     const meanScore  = clamp01(1 - (mean  - SHAPE_FREE) / SHAPE_SPAN);
     const worstScore = clamp01(1 - (worst - SHAPE_FREE * 2) / (SHAPE_SPAN * 2.2));
-    perStroke.push(0.75 * meanScore + 0.25 * worstScore);
+    perStroke.push({
+      i: pair.i, up, tp, mean, worst, worstIdx,
+      score: 0.75 * meanScore + 0.25 * worstScore,
+    });
   }
   // 画ごとの点は「ならし」だけでなく「いちばん悪い画」も見る。
   // ならしだけだと、3画のうち 2画が上手なら 1画がまるで違っていても
   // 隠れてしまう。1画でも大きくずれていれば ちゃんと点が下がるようにする。
-  const avg = perStroke.reduce((a, b) => a + b, 0) / perStroke.length;
-  const worstStroke = Math.min(...perStroke);
-  return 0.72 * avg + 0.28 * worstStroke;
+  const avg = perStroke.reduce((a, b) => a + b.score, 0) / perStroke.length;
+  const worstStroke = Math.min(...perStroke.map(s => s.score));
+  return { score: 0.72 * avg + 0.28 * worstStroke, perStroke, dx, dy };
 }
 
 // 観点①-a：かきじゅん（純粋な順番のみ）（0..1）
@@ -2041,6 +2060,187 @@ function adviceFor(key, raw) {
   return '';
 }
 
+/* ──────────────────────────────────────────────────────────────
+   3.6. 赤ペン添削（採点の理由を 目に見える しるしに する）
+
+   なぜ 要るのか
+   --------------------------------------------------------------
+   採点の うちわけは 文字で 出していたが、1年生は まだ ひらがなを
+   おぼえている 最中なので、「はじめの ばしょ むきを みなおそう」を
+   読んで 自分の 字の どこが そうなのかを 結びつけられない。
+   （読める子でも、6 行の 表から 直すところを 選ぶのは むずかしい。）
+
+   そこで 先生が 赤ペンで ○ を つけるのと おなじことを 画面でやる。
+   ・自分が 書いた 字の うえに、直すところを 赤い しるしで 指す
+   ・しるしは **ひとつの 観点だけ**。いちばん 点の ひくい ところを 選ぶ
+   ・よく 書けた 画には 赤い チェックを つけて ほめる
+
+   しるしは すべて 0..1 の マス座標で 返し、SVG 側（<RedPenReview>）が
+   109 座標系（KanjiVG と同じ）に なおして 描く。
+   ────────────────────────────────────────────────────────────── */
+
+// 2線分の交わる点（交わらないときは null）
+function segmentCrossPoint(a1, a2, b1, b2) {
+  const d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+  if (Math.abs(d) < 1e-12) return null;
+  const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
+  const u = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / d;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return { x: a1.x + (a2.x - a1.x) * t, y: a1.y + (a2.y - a1.y) * t };
+}
+function polylinesCrossPoint(p, q) {
+  for (let i = 0; i < p.length - 1; i++) {
+    for (let j = 0; j < q.length - 1; j++) {
+      const pt = segmentCrossPoint(p[i], p[i+1], q[j], q[j+1]);
+      if (pt) return pt;
+    }
+  }
+  return null;
+}
+/* 観点ごとの「なおしかた」。
+
+   文は 短く・ひらがなだけ・「なにを どうする」の かたちで そろえる。
+   だいじなのは、**文が かならず 自分の しるしの 形を 名ざしする**こと
+   （「あかい ○ から」「あかい わくに」…）。こうしておくと、いくつ
+   ならんでも、どの文が 絵の どの しるしの ことか 迷わずに たどれる。 */
+const REVIEW_FIX_TEXT = {
+  shape:     { title: 'せんの かたち',     text: 'あかい せんの ように まげて かこう' },
+  order:     { title: 'かきじゅん',         text: 'あかい ばんごうの じゅんに かこう' },
+  startdir:  { title: 'はじめと むき',     text: 'あかい ○ から やじるしの むきに かこう' },
+  balance:   { title: 'おおきさ・いち',     text: 'あかい わくに ぴったり かこう' },
+  rooms:     { title: 'マスの つかいかた', text: 'あかい へやにも かこう' },
+  crossings: { title: 'せんの こうさ',     text: 'あかい ○ の ところで せんを かさねよう' },
+};
+
+/* いちどに 出す なおすところの 上限。
+
+   ぜんぶ 出すと 赤だらけに なって、1年生には「ぜんぶ だめだった」と
+   しか 見えない。点を いちばん 落としている ところから 3 つまでに する。 */
+const REVIEW_MAX_FIXES = 3;
+// これより 下がったら「なおすところ」に 出す
+const REVIEW_FIX_THRESHOLD = 0.8;
+
+/* 観点ひとつぶんの 赤ペンの しるしを つくる。しるしが 置けなければ null。 */
+function marksForFix(key, ctx) {
+  const { usrPolys, tplPolys, worstShape } = ctx;
+
+  if (key === 'shape') {
+    if (!worstShape) return null;
+    // お手本の その画を 赤で なぞって 見せ、いちばん ずれた ところを ○ で かこむ
+    return [
+      { kind: 'trace', pts: worstShape.tp },
+      { kind: 'ring', at: worstShape.up[worstShape.worstIdx], r: 0.11 },
+    ];
+  }
+
+  if (key === 'startdir') {
+    // 始点と 向きが いちばん あやしい 画を さがす
+    let bad = null, badScore = Infinity;
+    const n = Math.min(usrPolys.length, tplPolys.length);
+    for (let i = 0; i < n; i++) {
+      const u = usrPolys[i], t = tplPolys[i];
+      if (!u || u.length < 2 || !t || t.length < 2) continue;
+      const ds = Math.hypot(u[0].x - t[0].x, u[0].y - t[0].y);
+      const uv = { x: u[u.length-1].x - u[0].x, y: u[u.length-1].y - u[0].y };
+      const tv = { x: t[t.length-1].x - t[0].x, y: t[t.length-1].y - t[0].y };
+      const ul = Math.hypot(uv.x, uv.y), tl = Math.hypot(tv.x, tv.y);
+      const cos = (ul > 0.01 && tl > 0.01) ? (uv.x*tv.x + uv.y*tv.y) / (ul*tl) : 0.5;
+      const s = Math.max(0, cos) * Math.max(0, 1 - ds / 0.22);
+      if (s < badScore) { badScore = s; bad = t; }
+    }
+    if (!bad) return null;
+    // 矢印は 画の はじめの 4割ぶん。長すぎると 字が 見えなくなる
+    const to = bad[Math.max(1, Math.round((bad.length - 1) * 0.4))];
+    return [
+      { kind: 'ring', at: bad[0], r: 0.075 },
+      { kind: 'arrow', from: bad[0], to },
+    ];
+  }
+
+  if (key === 'order') {
+    // 正しい じゅんばんを、お手本の 書きはじめに 番号で ふる
+    const out = [];
+    tplPolys.forEach((t, i) => {
+      if (!t || t.length === 0 || i >= 6) return;
+      out.push({ kind: 'num', at: t[0], text: String(i + 1) });
+    });
+    return out.length ? out : null;
+  }
+
+  if (key === 'balance') {
+    const tb = bboxOfPolys(tplPolys);
+    if (!tb) return null;
+    /* わくは お手本の 外がわに すこし ふくらませて 引く。
+       ぴったり 引くと、たてに ながい 字では わくの たて線が 字の 線と
+       かさなり、線が 点線に なったように 見えてしまう（実際に そう見えた）。 */
+    const pad = 0.03;
+    const cl = (v) => Math.min(0.99, Math.max(0.01, v));
+    return [{ kind: 'box', style: 'target', box: {
+      x0: cl(tb.x0 - pad), y0: cl(tb.y0 - pad), x1: cl(tb.x1 + pad), y1: cl(tb.y1 + pad),
+    } }];
+  }
+
+  if (key === 'rooms') {
+    // お手本より 書けていない 部屋を ぬる（いちばん 足りない ところ ひとつ）
+    const dt = roomDensity(tplPolys), du = roomDensity(usrPolys);
+    let q = -1, gap = 0.06;
+    for (let i = 0; i < 4; i++) { if (dt[i] - du[i] > gap) { gap = dt[i] - du[i]; q = i; } }
+    return q >= 0 ? [{ kind: 'quad', q }] : null;
+  }
+
+  if (key === 'crossings') {
+    // お手本では 交わるのに 自分の字では 交わっていない ところ を ○ で 指す
+    const u = crossPairSet(usrPolys);
+    for (let i = 0; i < tplPolys.length; i++) {
+      for (let j = i + 1; j < tplPolys.length; j++) {
+        if (!polylinesCross(tplPolys[i], tplPolys[j]) || u.has(`${i},${j}`)) continue;
+        const pt = polylinesCrossPoint(tplPolys[i], tplPolys[j]);
+        if (pt) return [{ kind: 'ring', at: pt, r: 0.1 }];
+      }
+    }
+    // 交わらないはずの ところで 交わっている ＝ そこを ○ で 指す
+    const t = crossPairSet(tplPolys);
+    for (let i = 0; i < usrPolys.length; i++) {
+      for (let j = i + 1; j < usrPolys.length; j++) {
+        if (!polylinesCross(usrPolys[i], usrPolys[j]) || t.has(`${i},${j}`)) continue;
+        const pt = polylinesCrossPoint(usrPolys[i], usrPolys[j]);
+        if (pt) return [{ kind: 'ring', at: pt, r: 0.1 }];
+      }
+    }
+    return null;
+  }
+  return null;
+}
+
+/* 赤ペンの しるしを 組み立てる。
+   usrPolys / tplPolys … 0..1 の 点列。shapeInfo は analyzeShape の 戻り値。
+   items は scoreHandwriting の 観点リスト（key と raw を 見る）。 */
+function buildRedPenReview(usrPolys, tplPolys, templatePaths, items, shapeInfo) {
+  const per = shapeInfo?.perStroke || [];
+  const worstShape = per.length ? per.reduce((a, b) => (b.score < a.score ? b : a)) : null;
+  const ctx = { usrPolys, tplPolys, worstShape };
+
+  /* なおすところを えらぶ。
+
+     「点が ひくい 順」ではなく「**落とした 点が 多い 順**」で ならべる。
+     おなじ 0.5 でも 30点満点の かたちは 15点、10点満点の こうさは 5点
+     しか 落としていない。直して いちばん 効くところから 見せたい。 */
+  const ranked = items
+    .filter(it => it.raw < REVIEW_FIX_THRESHOLD)
+    .map(it => ({ ...it, lost: (1 - it.raw) * it.max }))
+    .sort((a, b) => b.lost - a.lost);
+
+  const fixes = [];
+  for (const it of ranked) {
+    if (fixes.length >= REVIEW_MAX_FIXES) break;
+    const marks = marksForFix(it.key, ctx);
+    if (!marks || marks.length === 0) continue;
+    fixes.push({ key: it.key, ...REVIEW_FIX_TEXT[it.key], marks });
+  }
+
+  return { templatePaths, user: usrPolys, fixes };
+}
+
 // 自力書きの採点：ユーザー筆跡（画ごとの点列）とお手本パスを比較
 // userStrokes: [{ points: [{x,y in 0..1}, ...] }, ...]
 // templatePaths: KanjiVG の <path d="..."> 文字列の配列
@@ -2048,8 +2248,9 @@ function scoreHandwriting(userStrokes, templatePaths) {
   if (!userStrokes || !templatePaths || templatePaths.length === 0) return null;
   const tplPolys = templatePaths.map(d => sampleSvgPath(d, 24));
   const usrPolys = userStrokes.map(s => simplifyPoints(s.points || []));
+  const shapeInfo = analyzeShape(usrPolys, tplPolys);
   const items = [
-    { key: 'shape',     label: 'せんの かたち',     max: 30, raw: evalShape(usrPolys, tplPolys) },
+    { key: 'shape',     label: 'せんの かたち',     max: 30, raw: shapeInfo.score },
     { key: 'order',     label: 'かきじゅん',         max: 15, raw: evalStrokeSequence(usrPolys, tplPolys) },
     { key: 'startdir',  label: 'はじめと むき',     max: 15, raw: evalStrokeStartAndDir(usrPolys, tplPolys) },
     { key: 'balance',   label: 'おおきさ・いち',     max: 20, raw: evalBalance(usrPolys, tplPolys) },
@@ -2075,7 +2276,12 @@ function scoreHandwriting(userStrokes, templatePaths) {
                 : total >= 70 ? 'じょうず！'
                 : total >= 50 ? 'いい かんじ！'
                 : 'もう いっかい！';
-  return { total, breakdown, comment, passed: total >= 60 };
+  let review = null;
+  // 赤ペンの しるしは 画面の 見た目だけの もの。ここで こけても
+  // 点数は 出さなければならないので、失敗しても 採点は 返す。
+  try { review = buildRedPenReview(usrPolys, tplPolys, templatePaths, items, shapeInfo); }
+  catch (e) { review = null; }
+  return { total, breakdown, comment, passed: total >= 60, review };
 }
 
 /* KanjiVG の 1 画をキャンバスに描く。呼ぶまえに ctx を 109 座標系に
@@ -3095,7 +3301,7 @@ function stageMascotMessage(char, stage, so) {
   return '花丸！ もう いちど かいてみる？';
 }
 
-function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, onWriteAttempt, practiceCount, voiceOn, onGoToWords, fetchError, onRetryFetch }) {
+function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, onWriteAttempt, practiceCount, voiceOn, onGoToWords, onNextChar, fetchError, onRetryFetch }) {
   const writeRef = useRef(null);
   const inkRef   = useRef(null);
   const guideRef = useRef(null);
@@ -3640,8 +3846,49 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
   function closeScorePopup() {
     clearResetTimer();
     setScoreInfo(null);
+    // ステップアップの おしらせは 採点の画面の 中で 出しきっているので、
+    // ここで 落とす。落とさないと 閉じた あとに もう いちど 出てくる。
+    setStageUp(null);
     setCurrentStroke(0); setMistakes(0); setHasMistaken(false);
     clearAll();
+    setMascotMsg(stageMascotMessage(char, stage, stageObj));
+    setMascotMood(stage >= 4 ? 'wow' : 'cheer');
+  }
+
+  /* つぎに 押す ボタンを 決める。
+
+     1年生が いちばん こまるのは「書けた。……で、つぎは？」の ところ。
+     とくに『じぶんで かく』を クリアしても、ことばを あつめるまでは
+     花丸に ならないので、書く画面に とどまったまま 手が 止まってしまう。
+     そこで **1 かい 書きおわるたび**に つぎの 一手を 出す。
+     まよわせないよう、いちばん 大きい ボタンは いつも 1 つだけにする。 */
+  function nextStepActions(result) {
+    const st = stage;
+    const passed = !!result?.passed;
+    const hasNext = !!onNextChar;
+    const left = Math.max(0, FREE_REQUIRED - (stageObj?.freeStreak || 0));
+    const again = { key: 'again', label: 'もう いちど かく', icon: <IconRotate size={16}/> };
+    const anime = { key: 'anime', label: 'かきじゅんを みる', icon: <IconPlay size={16}/>,
+                    onClick: () => { if (paths && paths.length > 0) setShowAnime(true); } };
+    const next  = { key: 'next', label: 'つぎの もじへ', icon: <IconArrow size={16}/>, onClick: onNextChar };
+
+    if (!passed) {
+      return [{ ...again, label: 'もう いちど かく', tone: 'shu', icon: <IconRotate size={18}/> }, anime];
+    }
+    if (st >= 4) {
+      return [hasNext ? { ...next, tone: 'shu', icon: <IconArrow size={18}/> } : { ...again, tone: 'shu' }, hasNext ? again : anime];
+    }
+    if (st === 3) {
+      return [
+        { key: 'words', label: 'ことばを あつめる', sub: 'あと 1こで 花丸！', tone: 'shu',
+          icon: <Hanamaru size={18} color="#fff"/>, onClick: onGoToWords },
+        hasNext ? next : null,
+        { ...again, plain: true },
+      ].filter(Boolean);
+    }
+    // ステージ2（じぶんで かく の れんしゅう中）
+    return [{ key: 'again', label: 'つづけて かく', sub: `あと ${left} かい`, tone: 'shu',
+              icon: <IconPen size={18}/> }];
   }
 
   /* --- 始点ヒント（赤い点滅マーカー） --- */
@@ -3745,6 +3992,15 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
         </button>
       )}
 
+      {/* 花丸まで いった もじは、この画面に とどまる りゆうが ない。
+          「つぎの もじへ」を いつでも 押せるところに 出しておく。 */}
+      {char && stage >= 4 && onNextChar && (
+        <button onClick={onNextChar}
+          className="kkm-cta-btn kkm-btn kkm-ripple mt-1.5 py-2 px-3 rounded-md bg-shu-600 text-white font-semibold text-xs md:text-sm border border-shu-700 flex items-center justify-center gap-2 shrink-0">
+          この もじは 花丸！ つぎの もじへ <IconArrow size={15}/>
+        </button>
+      )}
+
       <div className="flex gap-1.5 mt-2 shrink-0 kkm-practice-buttons">
         <button onClick={restart} disabled={!char}
           aria-label="ここまでの れんしゅうを やりなおす"
@@ -3768,8 +4024,16 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
           onClose={() => { setShowAnime(false); onAnimeViewed && onAnimeViewed(char); }}/>
       )}
       {isCleared && <ExcellentPopup/>}
-      {scoreInfo && <ScorePopup result={scoreInfo} onClose={closeScorePopup}/>}
-      {stageUp && <StageUpPopup info={stageUp} onClose={() => setStageUp(null)} onGoToWords={onGoToWords}/>}
+      {scoreInfo && (
+        <ScorePopup result={scoreInfo} char={char} stageUp={stageUp}
+          actions={nextStepActions(scoreInfo)} onClose={closeScorePopup}/>
+      )}
+      {/* 採点の画面が 出ているときは、その中で ステップアップも 知らせている。
+          二重に かさねると 1年生には どちらを 押すのか わからなくなる。 */}
+      {stageUp && !scoreInfo && (
+        <StageUpPopup info={stageUp} onClose={() => setStageUp(null)}
+          onGoToWords={onGoToWords} onNextChar={onNextChar}/>
+      )}
     </div>
   );
 }
@@ -3840,42 +4104,62 @@ function StageStepper({ stage, stageObj }) {
   );
 }
 
-function StageUpPopup({ info, onClose, onGoToWords }) {
+/* ステップを ひとつ 上がった ことを 知らせる 画面。
+
+   もとは 数秒で 勝手に 消える 帯だった。読むのに 時間の かかる 1年生には
+   「見る まえに 消えた」に なりやすく、しかも 消えたあとは もとの
+   書く画面に もどるだけなので、**学習の 区切りに ならなかった。**
+   ここは 立ちどまる ところなので、自分で タップするまで 消さない。
+   そのかわり つぎに 押す ボタンを かならず 出す。 */
+function StageUpPopup({ info, onClose, onGoToWords, onNextChar }) {
   const [show, setShow] = useState(false);
-  useEffect(() => {
-    setShow(true);
-    // ステージ3に上がったときは、ことばあつめへの導線を残すため長めに表示
-    const dur = info.to === 3 ? 5500 : 2200;
-    const t = setTimeout(() => { setShow(false); setTimeout(onClose, 400); }, dur);
-    return () => clearTimeout(t);
-  }, [onClose, info.to]);
-  const msgMap = {
-    2: { num: '二', title: 'なぞり クリア', sub: 'つぎは じぶんで かいてみよう', tone: 'midori' },
-    3: { num: '三', title: 'ほぼ マスター', sub: 'ことばを 1こ あつめれば 花丸！', tone: 'fuji' },
-    4: { num: '四', title: 'かんぺき',     sub: 'ほんとうに じぶんの じに なったよ', tone: 'shu' },
-  };
-  const m = msgMap[info.to];
+  const close = useCallback(() => {
+    setShow(false);
+    setTimeout(() => onClose && onClose(), 300);
+  }, [onClose]);
+  const dialogRef = useModal(close);
+  useEffect(() => { setShow(true); }, []);
+  const run = useCallback((fn) => {
+    setShow(false);
+    setTimeout(() => { onClose && onClose(); fn && fn(); }, 300);
+  }, [onClose]);
+
+  const m = STAGE_UP_TEXT[info.to];
   if (!m) return null;
   const t = TONES[m.tone];
+  // つぎの 一手。3（＝ことば待ち）だけは ことばあつめが 主役。
+  const main = info.to === 3 && onGoToWords
+    ? { label: 'ことばを あつめる', icon: <Hanamaru size={19} color="#fff"/>, onClick: onGoToWords }
+    : info.to >= 4 && onNextChar
+      ? { label: 'つぎの もじへ', icon: <IconArrow size={19}/>, onClick: onNextChar }
+      : { label: 'つぎへ すすむ', icon: <IconArrow size={19}/>, onClick: null };
+
   return (
-    <div className={`fixed inset-x-0 top-0 z-[180] pointer-events-none flex justify-center transition-all duration-300 pt-3 md:pt-5 ${
-      show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'
-    }`}>
-      <div className={`bg-white px-5 md:px-7 py-3 md:py-4 rounded-lg shadow-lg border border-l-4 ${t.leftRule} max-w-sm mx-3 text-center pointer-events-auto`}>
-        <div className="flex items-center justify-center gap-2">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={m.title}
+      className={`fixed inset-0 z-[180] flex items-center justify-center bg-sumi-900/35 p-3 transition-opacity duration-300 ${
+        show ? 'opacity-100' : 'opacity-0'
+      }`}>
+      <div className={`bg-white px-5 md:px-7 py-4 md:py-5 rounded-lg shadow-xl border border-sumi-300 border-t-4 ${t.topRule} max-w-sm w-full text-center transition-transform duration-300 ${
+        show ? 'scale-100' : 'scale-95'
+      }`}>
+        <div className="flex items-center justify-center gap-2.5">
           {/* はんこを おした演出 */}
-          <span className={`kkm-stamp shrink-0 w-9 h-9 rounded-md border text-white flex items-center justify-center ${t.solid}`}>
-            {info.to >= 4 ? <Hanamaru size={22} color="#fff"/> : <span className="kkm-glyph text-lg leading-none">{m.num}</span>}
+          <span className={`kkm-stamp shrink-0 w-12 h-12 rounded-md border text-white flex items-center justify-center ${t.solid}`}>
+            {info.to >= 4 ? <Hanamaru size={28} color="#fff"/> : <span className="kkm-glyph text-2xl leading-none">{m.num}</span>}
           </span>
           <div className="text-left">
-            <div className={`text-base md:text-xl font-semibold ${t.text}`}>{m.title}</div>
+            <div className={`text-lg md:text-2xl font-semibold ${t.text}`}>{m.title}</div>
             <div className="text-[11px] md:text-sm font-medium text-sumi-600 mt-0.5">{m.sub}</div>
           </div>
         </div>
-        {info.to === 3 && onGoToWords && (
-          <button onClick={onGoToWords}
-            className="kkm-btn kkm-ripple mt-2.5 w-full px-4 py-2 rounded-md bg-fuji-600 text-white font-semibold text-sm border border-fuji-700 flex items-center justify-center gap-1.5">
-            ことばずかんへ <IconArrow size={15}/>
+        <button onClick={() => run(main.onClick)} autoFocus
+          className={`kkm-cta-btn kkm-btn kkm-ripple mt-4 w-full px-4 py-3 rounded-md text-white font-semibold text-base md:text-lg border flex items-center justify-center gap-2 min-h-[52px] ${t.solid}`}>
+          {main.icon} {main.label}
+        </button>
+        {main.onClick && (
+          <button onClick={close}
+            className="kkm-btn mt-1.5 w-full px-4 py-2 rounded-md bg-white border border-sumi-300 text-sumi-700 font-semibold text-sm min-h-[44px]">
+            もう いちど かく
           </button>
         )}
       </div>
@@ -4029,83 +4313,382 @@ function ExcellentPopup() {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   15.3. <ScorePopup> ── 自力書きの採点結果
+   15.2. <RedPenReview> ── 赤ペンの 添削を そのまま 見せる
+
+   自分が 書いた 字の うえに、先生が 赤ペンで つける しるしを のせる。
+   ・うすい グレー … お手本
+   ・こい 黒       … 自分が 書いた せん
+   ・朱色         … なおすところ（○・やじるし・なぞり・わく・ばんごう）と
+                     よく できた ところ（チェック）
+
+   しるしの 中身は buildRedPenReview（§3.6）が 決める。ここは 描くだけ。
+   座標は 0..1 で 受けとり、KanjiVG と おなじ 109 の マスに 直して 描く。
    ────────────────────────────────────────────────────────────── */
-function ScorePopup({ result, onClose }) {
+const RPR_S = 109;                 // マスの 一辺（KanjiVG の 座標系）
+/* しるしを 出す ペース。
+
+   なおすところが 3 つ あっても、いちどに ぜんぶ 描いてはいけない。
+   ○ と わくと やじるしが かさなり、赤だらけで 何も 読めなくなる
+   （じっさい わくの 線が 字の 線に かさなって、書いた 線が 点線に
+   なったように 見えた）。**いちどに 見せるのは 1 か所だけ**にして、
+   先生が 1 か所ずつ 赤ペンを 入れていくように 順に 出す。 */
+const RPR_MARK_GAP = 0.3;          // おなじ なおすところの 中の しるしの 間（秒）
+const RPR_START    = 0.3;          // 字が 出てから 赤ペンが 入るまでの 間
+const RPR_STEP_MS  = 3200;         // つぎの なおすところに うつるまで
+function rprDelay(index) { return RPR_START + index * RPR_MARK_GAP; }
+
+function RedPenReview({ review, active = 0, label }) {
+  if (!review) return null;
+  const shu   = themeColor('--kkm-shu', '#b34328');
+  const guide = themeColor('--kkm-guide', '#e5ded0');
+  const sumi  = themeColor('--kkm-sumi', '#2e2a25');
+  const soft  = themeColor('--kkm-sumi-soft', '#7a7267');
+  const S = RPR_S;
+  const at = (p) => ({ x: p.x * S, y: p.y * S });
+  const polyD = (pts) => pts.map((p, i) => `${i ? 'L' : 'M'}${(p.x * S).toFixed(2)} ${(p.y * S).toFixed(2)}`).join(' ');
+  const polyLen = (pts) => {
+    let l = 0;
+    for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
+    return l * S;
+  };
+  // 線を 引いていく 演出（引ききったら そのまま のこる）
+  const drawStyle = (len, dur, delay) => ({
+    '--kkm-dash': Math.ceil(len) + 6,
+    '--kkm-draw-dur': `${dur}s`,
+    '--kkm-draw-delay': `${delay}s`,
+  });
+
+  const nodes = [];
+  {
+    const fix = (review.fixes || [])[active];
+    (fix?.marks || []).forEach((m, mi) => {
+      const delay = rprDelay(mi);
+      // active を key に まぜて、なおすところを 切りかえるたび
+      // 赤ペンの 線が また 引きなおされるようにする
+      const key = `f${active}-${mi}`;
+      if (m.kind === 'trace' && m.pts) {
+        nodes.push(
+          <path key={key} d={polyD(m.pts)} fill="none" stroke={shu} strokeWidth="5"
+                strokeLinecap="round" strokeLinejoin="round" opacity="0.75"
+                className="kkm-draw" style={drawStyle(polyLen(m.pts), 0.75, delay)}/>
+        );
+      } else if (m.kind === 'ring' && m.at) {
+        const c = at(m.at), r = (m.r || 0.1) * S;
+        nodes.push(
+          <circle key={key} cx={c.x} cy={c.y} r={r} fill="none" stroke={shu} strokeWidth="3.4"
+                  strokeLinecap="round" className="kkm-draw"
+                  style={drawStyle(2 * Math.PI * r, 0.5, delay)}/>
+        );
+      } else if (m.kind === 'arrow' && m.from && m.to) {
+        const a = at(m.from), b = at(m.to);
+        const vx = b.x - a.x, vy = b.y - a.y;
+        const len = Math.hypot(vx, vy) || 1;
+        const ux = vx / len, uy = vy / len;
+        const h = 8;   // やじりの 長さ
+        const wing = (deg) => {
+          const r = deg * Math.PI / 180;
+          return `${(b.x - (ux * Math.cos(r) - uy * Math.sin(r)) * h).toFixed(2)} ${(b.y - (ux * Math.sin(r) + uy * Math.cos(r)) * h).toFixed(2)}`;
+        };
+        nodes.push(
+          <g key={key}>
+            <path d={`M${a.x.toFixed(2)} ${a.y.toFixed(2)} L${b.x.toFixed(2)} ${b.y.toFixed(2)}`}
+                  fill="none" stroke={shu} strokeWidth="3.4" strokeLinecap="round"
+                  className="kkm-draw" style={drawStyle(len, 0.4, delay)}/>
+            <path d={`M${wing(28)} L${b.x.toFixed(2)} ${b.y.toFixed(2)} L${wing(-28)}`}
+                  fill="none" stroke={shu} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"
+                  className="kkm-draw" style={drawStyle(h * 2, 0.25, delay + 0.32)}/>
+          </g>
+        );
+      } else if (m.kind === 'num' && m.at) {
+        const c = at(m.at);
+        // 番号は 1 つずつ ポンと 出す（じゅんばんが 目で 追える）
+        nodes.push(
+          <g key={key} className="kkm-mark-pop"
+             style={{ animationDelay: `${delay + mi * 0.1}s`, transformOrigin: `${c.x}px ${c.y}px` }}>
+            <circle cx={c.x} cy={c.y} r="8.5" fill="#ffffff" stroke={shu} strokeWidth="2.6"/>
+            <text x={c.x} y={c.y} textAnchor="middle" dominantBaseline="central"
+                  fontSize="11" fontWeight="700" fill={shu}>{m.text}</text>
+          </g>
+        );
+      } else if (m.kind === 'box' && m.box) {
+        const b = m.box;
+        const target = m.style === 'target';
+        nodes.push(
+          <rect key={key} className="kkm-fade-in" style={{ animationDelay: `${delay}s` }}
+                x={(b.x0 * S).toFixed(2)} y={(b.y0 * S).toFixed(2)}
+                width={((b.x1 - b.x0) * S).toFixed(2)} height={((b.y1 - b.y0) * S).toFixed(2)}
+                fill="none" stroke={target ? shu : soft} strokeWidth={target ? 3 : 2}
+                strokeDasharray={target ? '7 5' : '3 4'} rx="3"/>
+        );
+      } else if (m.kind === 'quad') {
+        const x = (m.q & 1) ? S / 2 : 0, y = (m.q & 2) ? S / 2 : 0;
+        nodes.push(
+          <rect key={key} className="kkm-fade-in" style={{ animationDelay: `${delay}s` }}
+                x={x} y={y} width={S / 2} height={S / 2}
+                fill={shu} fillOpacity="0.12" stroke={shu} strokeWidth="2.4" strokeDasharray="7 5"/>
+        );
+      }
+    });
+  }
+
+  return (
+    <svg viewBox={`0 0 ${S} ${S}`} className="block w-full h-full" role="img"
+         aria-label={label || 'あかペンの てんさく'}>
+      {/* マス（白地・十字の点線・朱色のわく） */}
+      <rect x="0.9" y="0.9" width={S - 1.8} height={S - 1.8} rx="4" fill="#ffffff" stroke="#e3a793" strokeWidth="1.8"/>
+      <path d={`M0 ${S/2} H${S} M${S/2} 0 V${S}`} stroke="#f0cec2" strokeWidth="1" strokeDasharray="4 4"/>
+      {/* お手本（うすいグレー） */}
+      {(review.templatePaths || []).map((d, i) => (
+        <path key={`t${i}`} d={d} fill="none" stroke={guide} strokeWidth={KVG_STROKE_W}
+              strokeLinecap="round" strokeLinejoin="round"/>
+      ))}
+      {/* 自分が 書いた せん */}
+      {(review.user || []).map((poly, i) => (
+        poly && poly.length >= 2
+          ? <path key={`u${i}`} d={polyD(poly)} fill="none" stroke={sumi} strokeWidth="6"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+          : null
+      ))}
+      {/* 赤ペンの しるし */}
+      {nodes}
+    </svg>
+  );
+}
+
+/* なおすところの 一覧に そえる、しるしの 見本（ミニチュア）。
+
+   絵の 中の しるしと 文を つなぐ ための ものなので、**絵で 使ったのと
+   おなじ 形**を そのまま 小さく 描く。文字を 読まなくても
+   「この 形の しるしの こと だ」と たどれる。 */
+function ReviewMarkChip({ kind }) {
+  const shu = themeColor('--kkm-shu', '#b34328');
+  const common = { fill: 'none', stroke: shu, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  return (
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" focusable="false" className="shrink-0">
+      <rect x="1" y="1" width="24" height="24" rx="3" fill="#fff" stroke="#e3a793" strokeWidth="1"/>
+      {kind === 'shape' && <path d="M9 5c-1 5-1 9 1 12s5 3 7 1" {...common} strokeWidth="2.6"/>}
+      {kind === 'startdir' && (
+        <>
+          {/* ○ の 下に まっすぐ やじるし。くっつけると 虫めがねに 見える */}
+          <circle cx="13" cy="7" r="4" {...common} strokeWidth="2.2"/>
+          <path d="M13 13v7M9.5 16.5 13 20l3.5-3.5" {...common} strokeWidth="2.2"/>
+        </>
+      )}
+      {kind === 'order' && (
+        <>
+          <circle cx="8" cy="13" r="5" fill="#fff" stroke={shu} strokeWidth="2"/>
+          <text x="8" y="13" textAnchor="middle" dominantBaseline="central" fontSize="7" fontWeight="700" fill={shu}>1</text>
+          <circle cx="19" cy="13" r="5" fill="#fff" stroke={shu} strokeWidth="2"/>
+          <text x="19" y="13" textAnchor="middle" dominantBaseline="central" fontSize="7" fontWeight="700" fill={shu}>2</text>
+        </>
+      )}
+      {kind === 'balance' && <rect x="5" y="5" width="16" height="16" rx="2" {...common} strokeWidth="2.4" strokeDasharray="4 3"/>}
+      {kind === 'rooms' && (
+        <>
+          <rect x="4" y="4" width="18" height="18" rx="1.5" stroke="#e3a793" strokeWidth="1.4" fill="none"/>
+          <rect x="4" y="4" width="9" height="9" fill={shu} fillOpacity="0.25" stroke={shu} strokeWidth="2" strokeDasharray="4 3"/>
+        </>
+      )}
+      {kind === 'crossings' && (
+        <>
+          <path d="M6 7 20 19M20 7 6 19" stroke="#cfc7b8" strokeWidth="2" strokeLinecap="round" fill="none"/>
+          <circle cx="13" cy="13" r="5.5" {...common} strokeWidth="2.4"/>
+        </>
+      )}
+    </svg>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   15.3. <ScorePopup> ── 自力書きの採点結果＝「1 かいの おわり」の画面
+
+   ここは 点数を 出すだけの ふきだしでは ない。**1 かい 書きおえた ことの
+   区切り**として つかう画面なので、つぎの 3 つを かならず 出す。
+
+     ① 赤ペンの てんさく … どこを どう なおすかを 絵で 見せる
+     ② いま どこまで きたか … ステップと のこり回数
+     ③ つぎに 押す ボタン  … 迷わないよう **いちばん大きい ボタンが 1 つ**
+
+   自動では 閉じない。1年生は 読むのが おそいので、勝手に 消えると
+   「見る まえに なくなった」に なる。閉じるのは かならず 本人の タップ。
+   ────────────────────────────────────────────────────────────── */
+function ScorePopup({ result, char, stageUp, actions = [], onClose }) {
   const [show, setShow] = useState(false);
   const [detail, setDetail] = useState(false);
   const close = useCallback(() => {
     setShow(false);
-    setTimeout(() => onClose && onClose(), 350);
+    setTimeout(() => onClose && onClose(), 300);
   }, [onClose]);
-  useEffect(() => {
-    setShow(true);
-    if (!detail) {
-      const t = setTimeout(close, 3000);
-      return () => clearTimeout(t);
-    }
-  }, [detail, close]);
+  const dialogRef = useModal(close);
+  useEffect(() => { setShow(true); }, []);
+  // ボタンは「閉じてから 次へ」。閉じるまえに 画面を 変えると
+  // ポップアップが 出たまま 別の 画面に 残ることがある。
+  const runAction = useCallback((fn) => {
+    setShow(false);
+    setTimeout(() => { onClose && onClose(); fn && fn(); }, 300);
+  }, [onClose]);
 
-  const { total, breakdown = [], comment, passed } = result || {};
+  const { total, breakdown = [], comment, passed, review } = result || {};
+  const fixes = review?.fixes || [];
+  /* なおすところは 1 か所ずつ 見せる（かさねると 赤だらけで 読めない）。
+     ひとりでに つぎへ うつるが、いちど 自分で えらんだら 止める。 */
+  const [activeFix, setActiveFix] = useState(0);
+  const [autoStep, setAutoStep] = useState(true);
+  useEffect(() => {
+    if (!autoStep || fixes.length < 2) return;
+    const id = setInterval(() => setActiveFix(i => (i + 1) % fixes.length), RPR_STEP_MS);
+    return () => clearInterval(id);
+  }, [autoStep, fixes.length]);
   // 教科書の評価と同じ しるし。花丸 ＞ ◎ ＞ ○ ＞ △
   const rank = total >= 90 ? 'hanamaru' : total >= 70 ? '◎' : total >= 50 ? '○' : '△';
   const t = TONES[passed ? 'shu' : 'ai'];
   // うちわけの しるし（できた／もうすこし／がんばろう）
   const markFor = (s) => s === 'good' ? '◎' : s === 'ok' ? '○' : '△';
   const markToneFor = (s) => s === 'good' ? 'text-shu-600' : s === 'ok' ? 'text-midori-600' : 'text-sumi-600';
+  const fixKeys = new Set(fixes.map(f => f.key));
+  const clear = stageUp ? STAGE_UP_TEXT[stageUp.to] : null;
+
+  const big = actions.filter(a => a && !a.plain);
+  const plain = actions.filter(a => a && a.plain);
 
   return (
     <div
-      className={`fixed inset-0 z-[170] flex items-center justify-center transition-all duration-300 bg-sumi-900/25 p-3 ${
-        show ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+      className={`fixed inset-0 z-[170] flex items-center justify-center transition-opacity duration-300 bg-sumi-900/35 p-2 md:p-3 overflow-y-auto ${
+        show ? 'opacity-100' : 'opacity-0'
       } pointer-events-auto`}
-      onClick={close}
       role="dialog" aria-modal="true" aria-label={`さいてんけっか ${total} てん`}
+      ref={dialogRef}
     >
-      <div className={`bg-white px-5 md:px-8 py-4 md:py-5 rounded-lg shadow-xl border border-sumi-300 border-t-4 ${t.topRule} text-center pointer-events-auto max-w-md w-full`}
-           onClick={(e) => e.stopPropagation()}>
-        {/* 赤ペンの しるし */}
-        <div className="flex items-center justify-center h-16 md:h-20">
-          {rank === 'hanamaru'
-            ? <span className={t.icon}><Hanamaru size={72} draw duration={0.6}/></span>
-            : <span className={`kkm-stamp kkm-glyph text-6xl md:text-7xl leading-none ${t.icon}`}>{rank}</span>}
-        </div>
-        <div className={`text-base md:text-lg font-semibold mt-1 ${t.text}`}>{comment}</div>
-        <div className="mt-1 flex items-baseline justify-center gap-1 text-sumi-800">
-          <span className="text-4xl md:text-5xl font-semibold tabular-nums">{total}</span>
-          <span className="text-base md:text-lg font-semibold text-sumi-600">/ 100 てん</span>
-        </div>
-        {!detail && (
-          <div className="mt-3 flex justify-center gap-2">
-            <button onClick={(e) => { e.stopPropagation(); setDetail(true); }}
-              className="kkm-btn kkm-ripple px-4 py-2 rounded-md bg-white border border-sumi-300 text-sumi-700 text-xs md:text-sm font-semibold min-h-[44px] flex items-center gap-1.5">
-              <IconSearch size={15}/> くわしく みる
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); close(); }}
-              className={`kkm-btn kkm-ripple px-5 py-2 rounded-md border text-white text-xs md:text-sm font-semibold min-h-[44px] ${t.solid}`}>
-              とじる
-            </button>
+      <div className={`bg-white rounded-lg shadow-xl border border-sumi-300 border-t-4 ${t.topRule} pointer-events-auto max-w-lg w-full my-auto transition-transform duration-300 ${
+        show ? 'scale-100' : 'scale-95'
+      }`}>
+        {/* ── ステップを クリアした ときの おしらせ（区切りが いちばん 目立つ） ── */}
+        {clear && (
+          <div className={`kkm-rise-in flex items-center gap-2 px-4 py-2 rounded-t-[5px] border-b ${TONES[clear.tone].chip}`}>
+            <span className={`kkm-stamp shrink-0 w-8 h-8 rounded-md border text-white flex items-center justify-center ${TONES[clear.tone].solid}`}>
+              {stageUp.to >= 4 ? <Hanamaru size={19} color="#fff"/> : <span className="kkm-glyph text-base leading-none">{clear.num}</span>}
+            </span>
+            <span className="text-sm md:text-base font-semibold">{clear.title}</span>
           </div>
         )}
-        {detail && (
-          <div className="mt-3 bg-washi-100 border border-sumi-200 rounded-md p-3 text-left text-sumi-700">
-            <div className="kkm-heading-rule text-[11px] md:text-xs font-semibold mb-2">さいてんの うちわけ</div>
-            <ul className="divide-y divide-sumi-200">
-              {breakdown.map(b => (
-                <li key={b.key} className="flex items-center gap-2 text-xs md:text-sm py-1.5">
-                  <span className={`kkm-glyph text-lg md:text-xl w-6 text-center leading-none ${markToneFor(b.status)}`}>{markFor(b.status)}</span>
-                  <span className="font-semibold w-24 md:w-32 shrink-0">{b.label}</span>
-                  <span className="font-semibold tabular-nums w-10 md:w-12 shrink-0 text-right">{b.score}/{b.max}</span>
-                  <span className="text-[10px] md:text-xs text-sumi-600 flex-1">{b.advice}</span>
-                </li>
+
+        <div className="px-4 md:px-6 py-3 md:py-4">
+          {/* ── 点数（読まなくても わかるよう しるしを 大きく） ── */}
+          <div className="flex items-center justify-center gap-3 md:gap-4">
+            <span className="shrink-0 flex items-center justify-center w-14 h-14 md:w-16 md:h-16">
+              {rank === 'hanamaru'
+                ? <span className={t.icon}><Hanamaru size={58} draw duration={0.6}/></span>
+                : <span className={`kkm-stamp kkm-glyph text-5xl md:text-6xl leading-none ${t.icon}`}>{rank}</span>}
+            </span>
+            <span className="text-left">
+              <span className={`block text-base md:text-lg font-semibold ${t.text}`}>{comment}</span>
+              <span className="flex items-baseline gap-1 text-sumi-800">
+                <span className="text-4xl md:text-5xl font-semibold tabular-nums">{total}</span>
+                <span className="text-sm md:text-base font-semibold text-sumi-600">/ 100 てん</span>
+              </span>
+            </span>
+          </div>
+
+          {/* ── 赤ペンの てんさく ── */}
+          {review && (
+            <div className="mt-3 flex flex-col sm:flex-row items-center sm:items-start gap-3">
+              <div className="w-48 sm:w-52 shrink-0 aspect-square kkm-pop-in">
+                <RedPenReview review={review} active={activeFix}
+                  label={char ? `${char} の あかペン てんさく` : 'あかペン てんさく'}/>
+              </div>
+              <div className="flex-1 min-w-0 w-full">
+                {fixes.length > 0 ? (
+                  <>
+                    <div className="inline-flex items-center gap-1.5 text-[11px] md:text-xs font-semibold text-shu-700 bg-shu-50 border border-shu-300 rounded-md px-2 py-1">
+                      <IconPen size={13}/> ここを なおそう
+                      {fixes.length > 1 && <span className="tabular-nums">（{fixes.length}こ）</span>}
+                    </div>
+                    {/* いま 絵に 出ている なおすところが どれかが わかるように、
+                        えらばれている 行だけ 朱色で 立てる。押せば その場所に うつる。 */}
+                    <ul className="mt-1.5 flex flex-col gap-1.5">
+                      {fixes.map((f, i) => {
+                        const on = i === activeFix;
+                        return (
+                          <li key={f.key} className="kkm-rise-in" style={{ animationDelay: `${0.25 + i * 0.12}s` }}>
+                            <button type="button" aria-pressed={on}
+                              onClick={() => { setAutoStep(false); setActiveFix(i); }}
+                              className={`kkm-btn w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 border-l-4 border transition-colors duration-200 ${
+                                on ? 'bg-shu-50 border-shu-300 border-l-shu-600'
+                                   : 'bg-washi-100 border-sumi-200 border-l-sumi-200 opacity-70'
+                              }`}>
+                              <ReviewMarkChip kind={f.key}/>
+                              <span className="min-w-0">
+                                <span className={`block text-xs md:text-base font-semibold leading-snug ${on ? 'text-sumi-800' : 'text-sumi-700'}`}>{f.text}</span>
+                                <span className="block text-[10px] md:text-[11px] font-semibold text-sumi-600">{f.title}</span>
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                ) : (
+                  <div className="text-center sm:text-left">
+                    <div className="inline-flex items-center gap-1.5 text-[11px] md:text-xs font-semibold text-shu-700 bg-shu-50 border border-shu-300 rounded-md px-2 py-1">
+                      <Hanamaru size={13}/> なおすところ なし
+                    </div>
+                    <div className="text-sm md:text-lg font-semibold text-sumi-800 mt-1.5 leading-snug">ぜんぶ お手本どおり！</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── つぎに どうするか（いちばん大きい ボタンが 1 つだけ） ── */}
+          {big.length > 0 && (
+            <div className="mt-3 flex flex-col gap-1.5">
+              {big.map((a, i) => (
+                <button key={a.key} onClick={() => runAction(a.onClick)}
+                  className={`kkm-cta-btn kkm-btn kkm-ripple w-full px-4 rounded-md font-semibold flex items-center justify-center gap-2 ${
+                    i === 0
+                      ? `py-3 text-base md:text-lg text-white border ${TONES[a.tone || 'shu'].solid} min-h-[52px]`
+                      : `py-2 text-sm md:text-base bg-white border border-sumi-300 text-sumi-700 min-h-[44px]`
+                  }`}>
+                  {a.icon}
+                  <span>{a.label}</span>
+                  {a.sub && <span className={`text-[11px] md:text-xs font-semibold ${i === 0 ? 'opacity-90' : 'text-sumi-600'}`}>{a.sub}</span>}
+                </button>
               ))}
-            </ul>
-            <button onClick={(e) => { e.stopPropagation(); close(); }}
-              className="kkm-btn mt-3 w-full px-4 py-2 rounded-md bg-white border border-sumi-300 text-xs md:text-sm font-semibold text-sumi-600 min-h-[40px]">
-              とじる
+            </div>
+          )}
+
+          {/* ── こまかい てん（大人・先生むけ。ふだんは たたんでおく） ── */}
+          <div className="mt-2 flex items-center justify-center gap-3">
+            {plain.map(a => (
+              <button key={a.key} onClick={() => runAction(a.onClick)}
+                className="kkm-btn text-[11px] md:text-xs font-semibold text-sumi-600 underline underline-offset-2 min-h-[40px] px-2">
+                {a.label}
+              </button>
+            ))}
+            <button onClick={() => setDetail(v => !v)} aria-expanded={detail}
+              className="kkm-btn text-[11px] md:text-xs font-semibold text-sumi-600 underline underline-offset-2 min-h-[40px] px-2 flex items-center gap-1">
+              <IconSearch size={13}/> {detail ? 'てんすうを とじる' : 'てんすうを くわしく'}
             </button>
           </div>
-        )}
+
+          {detail && (
+            <div className="mt-2 bg-washi-100 border border-sumi-200 rounded-md p-3 text-left text-sumi-700 kkm-rise-in">
+              <div className="kkm-heading-rule text-[11px] md:text-xs font-semibold mb-2">さいてんの うちわけ</div>
+              <ul className="divide-y divide-sumi-200">
+                {breakdown.map(b => (
+                  <li key={b.key} className={`flex items-center gap-2 text-xs md:text-sm py-1.5 ${
+                    fixKeys.has(b.key) ? 'bg-shu-50 -mx-1 px-1 rounded' : ''
+                  }`}>
+                    <span className={`kkm-glyph text-lg md:text-xl w-6 text-center leading-none ${markToneFor(b.status)}`}>{markFor(b.status)}</span>
+                    <span className="font-semibold w-24 md:w-32 shrink-0">{b.label}</span>
+                    <span className="font-semibold tabular-nums w-10 md:w-12 shrink-0 text-right">{b.score}/{b.max}</span>
+                    <span className="text-[10px] md:text-xs text-sumi-600 flex-1">{b.advice}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -5127,6 +5710,7 @@ function MainBoard({ kanaMode, setKanaMode, kanaKind, setKanaKind, progress, mas
       onWriteAttempt={onWriteAttempt}
       practiceCount={practiceCount} voiceOn={voiceOn}
       onGoToWords={onGoToWords}
+      onNextChar={currentChar ? nextChar : null}
       fetchError={fetchError} onRetryFetch={retryFetch}/>
   );
 
