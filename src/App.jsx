@@ -1880,11 +1880,87 @@ const KVG_STROKE_W = 7;
      そちらに 書いては いけない（つぎの 生成で 消える）。 */
 const EXTRA_KANA_PATHS = { 'ー': ['M 20,54 L 89,54'] };
 
+/* ══════════════════════════════════════════════════════════════
+   3.45. ちいさい字は マスの みぎしたの へやに
+
+   1年生の ノートでは、ちいさい じ（っ ゃ ゅ ょ …）は マスを 4 つに
+   わった **みぎしたの へや**に 小さく 書く。アプリでも `KanaCell` と
+   `WriteCell` が その へやを 朱色の 点線で 見せている。
+
+   ところが お手本の もとに している KanjiVG は、ちいさい字を
+   「すこし 小さく・すこし 下」に 置いて いるだけで **よこは まん中**。
+   （実測・109 の ざひょうけい：っ は 中心 (53,73)、ゃ は (56,64)。
+     みぎしたの へやの 中心は (77,77)。）
+   その ため「かく」画面では、点線の へやと お手本が くいちがい、
+   ちいさい字を まん中に 書いても お手本どおりに なって しまっていた。
+
+   お手本・なぞりの めじるし・かきじゅんアニメ・採点は **ぜんぶ この
+   関数が 返す パスから** 出ている。だから ここで へやに 入れれば、
+   どの 画面でも 言うことが そろう。
+
+   ※ KanjiVG の パスは `M`（絶対）と `c`（相対 3 次ベジェ）しか つかって
+     いない（176 字ぜんぶ 確認ずみ）。だから 絶対の M だけ ずらし、
+     相対の c は 倍率だけ かければ よい。知らない 命令が 出てきたら
+     さわらずに もとの パスを 返す。
+   ══════════════════════════════════════════════════════════════ */
+// KanaCell / WriteCell の 点線と おなじ へや（109 の ざひょうけい）
+const SMALL_ROOM = { x0: 54.5, y0: 54.5, x1: 100.3, y1: 100.3 };
+const SMALL_ROOM_FILL = 0.92;          // へやいっぱいだと きゅうくつなので すこし あける
+
+function kvgNumFmt(v) { return String(Math.round(v * 100) / 100); }
+// パスを s 倍して (tx,ty) ずらす。あつかえない 命令が あれば null。
+function transformKvgPath(d, s, tx, ty) {
+  const tok = String(d).match(/[A-Za-z]|-?\d*\.?\d+/g);
+  if (!tok) return null;
+  const out = [];
+  let i = 0;
+  while (i < tok.length) {
+    const cmd = tok[i++];
+    if (cmd === 'M') {                                   // 絶対：倍率＋ずらし
+      if (i + 1 >= tok.length) return null;
+      out.push('M', kvgNumFmt(+tok[i++] * s + tx), kvgNumFmt(+tok[i++] * s + ty));
+    } else if (cmd === 'c') {                            // 相対：倍率だけ
+      out.push('c');
+      while (i < tok.length && !/[A-Za-z]/.test(tok[i])) out.push(kvgNumFmt(+tok[i++] * s));
+    } else {
+      return null;                                       // 知らない 命令
+    }
+  }
+  return out.join(' ');
+}
+
+const __smallKanaCache = {};
+function placeSmallKana(char, paths) {
+  if (__smallKanaCache[char]) return __smallKanaCache[char];
+  // 手本の 外わくを 測る（sampleSvgPath は 0..1 で かえす）
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const d of paths) {
+    for (const p of sampleSvgPath(d, 24)) {
+      if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+    }
+  }
+  if (!isFinite(x0) || x1 <= x0 || y1 <= y0) return paths;   // 測れないときは そのまま
+  x0 *= 109; x1 *= 109; y0 *= 109; y1 *= 109;
+  const roomW = (SMALL_ROOM.x1 - SMALL_ROOM.x0) * SMALL_ROOM_FILL;
+  const roomH = (SMALL_ROOM.y1 - SMALL_ROOM.y0) * SMALL_ROOM_FILL;
+  const s = Math.min(roomW / (x1 - x0), roomH / (y1 - y0));
+  // 字の まん中を へやの まん中に あわせる
+  const tx = (SMALL_ROOM.x0 + SMALL_ROOM.x1) / 2 - ((x0 + x1) / 2) * s;
+  const ty = (SMALL_ROOM.y0 + SMALL_ROOM.y1) / 2 - ((y0 + y1) / 2) * s;
+  const moved = paths.map(d => transformKvgPath(d, s, tx, ty));
+  if (moved.some(d => !d)) return paths;                     // 1 つでも だめなら さわらない
+  __smallKanaCache[char] = moved;
+  return moved;
+}
+
 // 字の かきじゅん（同期）。生成データ → 手で 持つ ぶん の じゅんに 引く。
 function kanaPathsOf(char) {
   const table = (typeof globalThis !== 'undefined' && globalThis.KANJIVG_KANA) || null;
   const paths = (table && table[char]) || EXTRA_KANA_PATHS[char];
-  return (paths && paths.length) ? paths : null;
+  if (!paths || !paths.length) return null;
+  // ちいさい字は みぎしたの へやへ（§3.45）
+  return isSmallKana(char) ? placeSmallKana(char, paths) : paths;
 }
 
 const kanjiPathsCache = {};
@@ -3766,6 +3842,23 @@ function stageMascotMessage(char, stage, so) {
   return '花丸！ よく できました';
 }
 
+/* ちいさい字を 書く「みぎしたの へや」の めじるし。
+
+   ことばを つかわずに 形で 見せる（1年生には「小」も「ちいさい」も
+   マスの 中では 読めない・§18.5）。すう値は §3.45 の `SMALL_ROOM` と
+   おなじ ＝ よこ・たてとも 50%〜92%。お手本の 字も そこに 入るので、
+   点線と お手本と 採点が かならず 一致する。
+
+   ⚠️ 「かく」画面・かきじゅんアニメ・マス表示（KanaCell）・とくべつの
+      かきとり（WriteCell）で かならず おなじ ものを つかうこと。
+      1 か所だけ ちがうと「どこに 書くのか」が 画面ごとに 変わる。 */
+function SmallKanaRoom({ tone = 'border-shu-300', fill = false }) {
+  return (
+    <span aria-hidden="true"
+      className={`absolute right-[8%] bottom-[8%] w-[42%] h-[42%] rounded-[3px] border-2 border-dashed pointer-events-none ${tone} ${fill ? 'bg-shu-50/50' : ''}`}/>
+  );
+}
+
 function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, onMistakeStreakReset, onStrokeCountMismatch, onWriteAttempt, practiceCount, voiceOn, onGoToWords, onNextChar, fetchError, onRetryFetch }) {
   const writeRef = useRef(null);
   const inkRef   = useRef(null);
@@ -4412,6 +4505,8 @@ function PracticeBoard({ char, paths, stageObj, onAnimeViewed, onRoundComplete, 
             }`}>
           <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-shu-200 pointer-events-none z-[5]"/>
           <div className="absolute left-1/2 top-0 bottom-0 border-l border-dashed border-shu-200 pointer-events-none z-[5]"/>
+          {/* ちいさい字は みぎしたの へやに 小さく 書く（§3.45） */}
+          {isSmallKana(char) && <span className="absolute inset-0 z-[6]"><SmallKanaRoom/></span>}
           <canvas ref={guideRef} className="absolute inset-0 w-full h-full z-[1]"/>
           <canvas ref={inkRef}   className="absolute inset-0 w-full h-full z-[10]"/>
           {/* 始点ヒント（朱色の点滅マーカー）。
@@ -4760,6 +4855,8 @@ function StrokeOrderAnime({ paths, char, onClose }) {
         <div className="aspect-square bg-white rounded-lg border-2 border-shu-200 relative overflow-hidden mb-3 mx-auto" style={{ maxHeight: 'min(58vh, 58dvh)', maxWidth: '100%', width: 'min(58vh, 58dvh, 100%)' }}>
           <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-shu-200"/>
           <div className="absolute left-1/2 top-0 bottom-0 border-l border-dashed border-shu-200"/>
+          {/* かきじゅんアニメでも おなじ へやを 見せる（§3.45） */}
+          {isSmallKana(char) && <SmallKanaRoom/>}
           <svg ref={svgRef} viewBox="0 0 109 109" className="w-full h-full relative z-10"/>
         </div>
         {/* ① もういちど 見る（大きく）② はやさ ③ なぞりに すすむ の 3 つだけ。
@@ -7145,11 +7242,9 @@ function KanaCell({ char, size = 56, state = 'plain', onClick, ariaLabel }) {
           そこで **ことばを つかわずに** 見せる。1年生の ノートと おなじ、
           マスを 4 つに わった 右下の へやを 朱色の 点線で かこむ。
           「ちいさい じは この へやに 書く」が 形で わかる。
-          字より さきに 置いて、字の うしろに 敷く。 */}
-      {isSmallKana(char) && (
-        <span aria-hidden="true"
-          className="absolute right-[8%] bottom-[8%] w-[42%] h-[42%] rounded-[3px] border-2 border-dashed border-shu-300 pointer-events-none"/>
-      )}
+          字より さきに 置いて、字の うしろに 敷く。
+          へやの 大きさは `SmallKanaRoom` に まとめてある（§3.45）。 */}
+      {isSmallKana(char) && <SmallKanaRoom/>}
       {char
         ? <span className="kkm-glyph relative leading-none" style={{ fontSize: size * 0.62 }}>{char}</span>
         : <span className="relative leading-none font-semibold" style={{ fontSize: size * 0.4 }}>?</span>}
@@ -7345,9 +7440,8 @@ function WriteCell({ char, onStrokes, showGuide = false, resetKey = 0, style }) 
       <span aria-hidden="true" className="absolute inset-0 pointer-events-none">
         <span className="absolute top-1/2 left-2 right-2 border-t-2 border-dashed border-sumi-200"/>
         <span className="absolute left-1/2 top-2 bottom-2 border-l-2 border-dashed border-sumi-200"/>
-        {isSmallKana(char) && (
-          <span className="absolute right-[6%] bottom-[6%] w-[44%] h-[44%] rounded-md border-2 border-dashed border-shu-300 bg-shu-50/50"/>
-        )}
+        {/* へやの 大きさは 「かく」画面・マス表示と おなじ（§3.45） */}
+        {isSmallKana(char) && <SmallKanaRoom tone="border-shu-400" fill/>}
       </span>
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded-lg"
         style={{ touchAction: 'none' }}
