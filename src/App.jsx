@@ -8848,13 +8848,6 @@ function KanaModeSwitch({ kanaMode, setKanaMode }) {
    っ・ゃゅょ・ん・のばす おと・てん まる・は へ を の 6 つを、
    「まなぶ → といてみる」の 2 だんかいで しっかり 身につける。
    ══════════════════════════════════════════════════════════════ */
-function unitProgressOf(unit, skill) {
-  const items = unit.sentences ? unit.sentences.map(s => s.s) : unit.words.map(w => w.w);
-  if (items.length === 0) return { done: 0, total: 0, pct: 0 };
-  const done = items.filter(x => srsIsLearned(skill?.[srsIdSpecial(unit.key, x)])).length;
-  return { done, total: items.length, pct: Math.round((done / items.length) * 100) };
-}
-
 /* 拗音（ねじれる おと）の いちらん表。
    「き＋ゃ」で 1 つの おとに なることを、表の形で いっぺんに つかむ。 */
 const YOUON_BASE = ['き','し','ち','に','ひ','み','り','ぎ','じ','び','ぴ'];
@@ -9082,10 +9075,27 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
           </div>
         </div>
 
+        {/* カードには すすみぐあいの 数字を **置かない**。
+
+            もとは 右はしに「0/28」、下に 帯を 出していた。中身は
+            「この単元の ことばの うち はこ 3 いじょう（＝3 かい 正解）に
+            なった 語の かず」だったが、
+              ・1 セットは 6 もん、1 もん 1 語。単元は 28 語
+              ・きげんの きた 語を 先に 出す（§17.9）ので、きょう 正解した 語は
+                あした期限に なり **きょうは もう 選ばれない** → つぎの セットは
+                また べつの 6 語に 散る
+              ・分子が 1 ふえるには **おなじ語で 3 かい 正解**が いる。
+                1 かい まちがえると はこ 0 に もどる
+            の 3 つが かみ合わず、1 単元を 13〜15 セット（80 もん超）といて
+            やっと 0/28 が 1/28 に なる。ホームの めあては 1 日 6 もんなので、
+            ふつうに つかうかぎり **数字は 何しゅうかんも 0 のまま**だった。
+            「やっても うごかない 数字」は はげみに ならず、
+            「じぶんは すすんでいない」という まちがった しらせに なる。
+            はこ（SRS）じたいは 出題じゅんに ひきつづき つかうので、
+            **画面から 数字を 消すだけ**に する。 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3">
           {SPECIAL_UNITS.map((u, i) => {
             const t = TONES[u.tone] || TONES.shu;
-            const pr = unitProgressOf(u, skill);
             return (
               <button key={u.key} onClick={() => { playPickup(); setOpenUnit(u.key); }} style={{ '--kkm-i': i }}
                 className={`kkm-btn kkm-lift kkm-sheet kkm-stagger rounded-xl p-4 text-left border-l-4 ${t.leftRule}`}>
@@ -9097,12 +9107,9 @@ function SpecialView({ skill, answerSkill, bumpMission, voiceOn, initialUnit, on
                     <span className={`block text-xl font-semibold leading-tight ${t.text}`}>{u.title}</span>
                     <span className="block text-base font-medium text-sumi-600 mt-1 truncate">{u.lead}</span>
                   </span>
-                  {pr.pct >= 100
-                    ? <span className="shrink-0 text-shu-600"><Hanamaru size={34}/></span>
-                    : <span className="shrink-0 text-base font-semibold text-sumi-600 tabular-nums">{pr.done}/{pr.total}</span>}
-                </div>
-                <div className="h-2.5 rounded-full bg-washi-300 overflow-hidden mt-2.5">
-                  <div className="h-full rounded-full bg-shu-500 kkm-bar-grow" style={{ width: `${pr.pct}%` }}/>
+                  {/* 右はしが 空くので、押せることが わかる 矢じるしを 置く
+                      （ホームの「つぎの もじ」と おなじ つかいかた）。 */}
+                  <IconArrow size={24} className="shrink-0 text-sumi-400"/>
                 </div>
               </button>
             );
@@ -9348,18 +9355,18 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
     return order.find(c => getStage(progress, c) < 2) || order.find(c => getStage(progress, c) < 4) || order[0];
   }, [progress, kanaMode]);
   const weak = useMemo(() => weakItems(skill, '').slice(0, 8), [skill]);
+  /* すすみぐあいは「かんぺきに なった もじの かず」だけを 出す。
+     もとは ここに「とくべつな おと」の 行も あったが、あれは ふくしゅうの
+     はこ 3 いじょうの 語かずで、ふつうに つかうかぎり 何しゅうかんも 0 のまま
+     だった（§18.9）。うごかない 帯を ならべても 何も つたわらないので やめる。 */
   const stats = useMemo(() => {
     const hira = HIRA_LIST.filter(c => getStage(progress, c) >= 4).length;
     const kata = KATA_LIST.filter(c => getStage(progress, c) >= 4).length;
-    const sp = SPECIAL_UNITS.reduce((acc, u) => {
-      const p = unitProgressOf(u, skill); return { done: acc.done + p.done, total: acc.total + p.total };
-    }, { done: 0, total: 0 });
     return {
       hira: { done: hira, total: HIRA_LIST.length },
       kata: { done: kata, total: KATA_LIST.length },
-      sp,
     };
-  }, [progress, skill]);
+  }, [progress]);
 
   /* 「つぎは これ」を 1つに しぼる。
      ①ちからだめしの 日 → ②まだ おわっていない めあての さいしょの 1つ
@@ -9487,9 +9494,8 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
           <Disclosure title="すすみぐあいを みる" tone="midori" icon={<IconGrid size={20}/>}>
             <div className="flex flex-col gap-3 px-1">
               {[
-                { label:'ひらがな',       v:stats.hira, bar:'bg-shu-500' },
-                { label:'カタカナ',       v:stats.kata, bar:'bg-ai-500' },
-                { label:'とくべつな おと', v:stats.sp,   bar:'bg-fuji-500' },
+                { label:'ひらがな', v:stats.hira, bar:'bg-shu-500' },
+                { label:'カタカナ', v:stats.kata, bar:'bg-ai-500' },
               ].map(row => (
                 <div key={row.label}>
                   <div className="flex items-center justify-between text-base font-semibold text-sumi-700 mb-1">
