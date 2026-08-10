@@ -604,7 +604,20 @@ button, canvas, [role="button"], .kkm-no-select {
    （Tailwind の .fixed とセレクタの強さが同じなので、CSS の
      読みこみ順しだいでどちらが勝つか変わる＝こわれやすい。）
    そのため position を与えるのは 実際に並べる 3 つだけにする。 */
-.kkm-app-bg > * { z-index: 1; }
+/* ⚠️ `:not(.fixed)` を 外しては いけない。
+
+   この 1 行は Tailwind の `.z-[300]` と **おなじ 強さ**（クラス 1 つ）で、
+   しかも この ファイルは Tailwind の あとに つながる（tools/build.mjs）。
+   つまり あとがちで こちらが 勝ち、`z-[300]` と 書いた モーダルまで
+   z-index が 1 に なる。<main> は 2 なので、**モーダルが <main> の
+   うしろに かくれる**。
+
+   じっさいに、トロフィーの「ごほうびの はんこずかん」を ひらくと
+   うしろの 画面（とくべつの ユニット一覧など）が モーダルの 上に
+   かぶさって 出ていた。ならべる 3 つ（nav / main / footer）と 下タブは
+   position:relative なので、`position:fixed` の ものだけ よければ
+   ならびは これまでと まったく 同じ。 */
+.kkm-app-bg > *:not(.fixed) { z-index: 1; }
 .kkm-app-bg > nav,
 .kkm-app-bg > main,
 .kkm-app-bg > footer { position: relative; }
@@ -624,7 +637,11 @@ button, canvas, [role="button"], .kkm-no-select {
    <main> と 下タブは ばしょが かさならない（<main> は overflow:hidden）ので、
    ここを 前に 出しても 見た目は かわらない。かわるのは
    「<main> の 中の モーダルが 画面ぜんたいを おおえるか」だけ。 */
-.kkm-app-bg > main { z-index: 2; }
+/* `:not(.fixed)` は 上の 1 行と そろえる こと。
+   そろえないと 上の 行（クラス 2 つぶんの 強さ）に 負けて、
+   <main> まで z-index:1 に なり、下タブと 同じ たかさに なる
+   （あとに 書いてある 下タブが 勝って、また かくれる）。 */
+.kkm-app-bg > main:not(.fixed) { z-index: 2; }
 
 /* 紙吹雪は必ず画面ぜんたいに固定（id 指定なので順序に左右されない） */
 #confettiCanvas { position: fixed; inset: 0; z-index: 400; }
