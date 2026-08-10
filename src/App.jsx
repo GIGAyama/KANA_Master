@@ -7178,7 +7178,8 @@ function KanaCell({ char, size = 56, state = 'plain', onClick, ariaLabel }) {
       ここでは 写しで 進め、**まとめるのは べつの 変更**で 行う。
       （直すときは 両方を 直すこと。むこうは §14 の doStart / doMove / doEnd）
    ══════════════════════════════════════════════════════════════ */
-function WriteCell({ char, size = 96, onStrokes, showGuide = false, resetKey = 0 }) {
+function WriteCell({ char, onStrokes, showGuide = false, resetKey = 0, style }) {
+  const boxRef = useRef(null);
   const canvasRef = useRef(null);
   const drawingRef = useRef(false);
   const lastRef = useRef({ x: 0, y: 0 });
@@ -7191,13 +7192,18 @@ function WriteCell({ char, size = 96, onStrokes, showGuide = false, resetKey = 0
   const [strokeCount, setStrokeCount] = useState(0);
   const paths = useMemo(() => kanaPathsOf(char), [char]);
 
-  // 大きさを あわせる（DPR は 2 まで。それ以上は おそくなるだけ）
+  /* 大きさは **入れものに あわせる**（DPR は 2 まで。それ以上は おそくなるだけ）。
+     はじめは 決めうちの 64px だったが、1年生の ゆびでは 小さすぎて
+     書けなかった。画面の はばと たかさから きめて、大きく とる。 */
   const fit = useCallback(() => {
-    const c = canvasRef.current; if (!c) return;
+    const c = canvasRef.current, box = boxRef.current;
+    if (!c || !box) return;
+    const cssSize = Math.max(48, Math.round(box.clientWidth));
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const px = Math.round(size * dpr);
-    if (c.width !== px || c.height !== px) { c.width = px; c.height = px; }
-  }, [size]);
+    const px = Math.round(cssSize * dpr);
+    if (c.width !== px || c.height !== px) { c.width = px; c.height = px; return true; }
+    return false;
+  }, []);
 
   const redraw = useCallback(() => {
     const c = canvasRef.current; if (!c) return;
@@ -7226,6 +7232,14 @@ function WriteCell({ char, size = 96, onStrokes, showGuide = false, resetKey = 0
   }, [showGuide, paths]);
 
   useEffect(() => { fit(); redraw(); }, [fit, redraw]);
+  // 画面の むき が かわっても マスの 大きさを 追わせる
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => { fit(); redraw(); });
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [fit, redraw]);
   // 「けす」や つぎの もんだいで まっさらに もどす
   useEffect(() => {
     strokesRef.current = []; curRef.current = []; setStrokeCount(0);
@@ -7325,35 +7339,31 @@ function WriteCell({ char, size = 96, onStrokes, showGuide = false, resetKey = 0
   }, [onStrokes]);
 
   return (
-    <span className="relative shrink-0 rounded-md border-2 border-dashed border-shu-500 bg-shu-50 kkm-pulse-ring"
-      style={{ width: size, height: size }}>
+    <div ref={boxRef} className="relative shrink-0 aspect-square rounded-lg border-4 border-dashed border-shu-400 bg-white"
+      style={style}>
       {/* 原稿用紙の 十字と、ちいさい字の へや（KanaCell と おなじ めじるし） */}
       <span aria-hidden="true" className="absolute inset-0 pointer-events-none">
-        <span className="absolute top-1/2 left-1 right-1 border-t border-dashed border-sumi-200"/>
-        <span className="absolute left-1/2 top-1 bottom-1 border-l border-dashed border-sumi-200"/>
+        <span className="absolute top-1/2 left-2 right-2 border-t-2 border-dashed border-sumi-200"/>
+        <span className="absolute left-1/2 top-2 bottom-2 border-l-2 border-dashed border-sumi-200"/>
         {isSmallKana(char) && (
-          <span className="absolute right-[8%] bottom-[8%] w-[42%] h-[42%] rounded-[3px] border-2 border-dashed border-shu-300"/>
+          <span className="absolute right-[6%] bottom-[6%] w-[44%] h-[44%] rounded-md border-2 border-dashed border-shu-300 bg-shu-50/50"/>
         )}
       </span>
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded-md"
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded-lg"
         style={{ touchAction: 'none' }}
         aria-label={`${char} を かく ところ（いま ${strokeCount} かく）`}/>
-    </span>
+    </div>
   );
 }
 
 /* ことばを マスに ならべて 見せる。あな（blanks）は こたえる ところ。 */
-function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1, judged = null, showMora = false, activeMora = -1, onTapCell, writeAt = -1, writeCell = null }) {
+function WordCells({ word, size = 56, blanks = [], filled = {}, activeBlank = -1, judged = null, showMora = false, activeMora = -1, onTapCell }) {
   const cells = splitCells(word);
   const moraNum = splitMora(word).length;
   return (
     <div className="inline-flex flex-col items-center gap-1">
       <div className="flex gap-1.5 flex-wrap justify-center">
         {cells.map((c, i) => {
-          // かきとりの もんだいでは、この マスだけ 書く ところに 入れかえる。
-          // ことばの 中の **ただしい いち** に 書かせたいので、まわりの
-          // マスは そのまま 見せておく。
-          if (i === writeAt && writeCell) return <React.Fragment key={i}>{writeCell}</React.Fragment>;
           const isBlank = blanks.includes(i);
           const put = filled[i];
           let state = 'plain', shown = c;
@@ -7424,7 +7434,13 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
      `q.word` が ない（あったら こたえが 見えて しまう）が、
      リズムは その ことばで 見せたい。 */
   const rhythmWord = q.rhythmWord || q.word;
-  const rhythmFirst = rhythmMode === 'before' && !!rhythmWord && !judged;
+  // いま かきとりの もんだいを といている ところか
+  const writing = q.kind === 'write' && !judged;
+  /* かきとりでは リズムを 先に 出さない。
+     リズムの ふだ＋ことば＋大きい マス＋3 つの ボタンを たてに ならべると
+     画面から はみ出して、いちばん 大事な 書く ところが つぶれる。
+     手を うごかす こと じたいが この もんだいの ねらいでも ある。 */
+  const rhythmFirst = rhythmMode === 'before' && !!rhythmWord && !judged && !writing;
 
   /* もしもの ときの 逃げ道。リズムの 知らせが 来なくても、
      しばらくしたら かならず ふだを 出す（画面が 止まったままに ならない）。 */
@@ -7543,7 +7559,9 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
       <div className={`shrink-0 flex flex-col items-center gap-2 ${judged && !judged.correct ? 'kkm-wobble' : ''}`}>
         {/* `listenPict` は 音が つかえなく なったときだけ 出す 逃げ道の え。
             音が 出ている あいだに 出したら こたえが 見えて しまう。 */}
-        {(q.pict || (!listening && q.listenPict)) && (
+        {/* かきとりの ときは さしえを 出さない。ことばは すぐ下の マスに
+            出ているので わかるし、そのぶん 書く ところを 大きく できる。 */}
+        {!writing && (q.pict || (!listening && q.listenPict)) && (
           <div className="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-xl bg-washi-100 border-2 border-sumi-200 text-sumi-700">
             <Pict name={q.pict || q.listenPict} size={64}/>
           </div>
@@ -7574,18 +7592,39 @@ function QuestionCard({ q, onAnswer, voiceOn, support = null, combo = 0 }) {
             字が 見えていると 拍では なく **マスを かぞえて** しまい、
             「おと と マスは ちがう」という この単元の かなめの 逆に なる。 */}
         {q.word && !(q.hideWord && listening && !judged) && (
-          <WordCells word={q.word} blanks={blanks} filled={filled}
-            writeAt={q.kind === 'write' && !judged ? q.writeAt : -1}
-            writeCell={q.kind === 'write' && !judged
-              ? <WriteCell char={q.writeChar} size={splitCells(q.word).length > 5 ? 46 : 64}
-                  showGuide={writeGuide} resetKey={writeReset} onStrokes={(s) => { writeStrokesRef.current = s; }}/>
-              : null}
-            activeBlank={activeBlank === undefined ? -1 : activeBlank}
+          <WordCells word={q.word}
+            /* かきとりでは、書く マスを あけて 見せる（どこに 書くかの 目じるし）。 */
+            blanks={writing ? [q.writeAt] : blanks}
+            filled={writing ? {} : filled}
+            activeBlank={writing ? q.writeAt : (activeBlank === undefined ? -1 : activeBlank)}
             judged={judged}
             /* MIM：2nd・3rd ステージでは ドットを つねに 出しておく。
                1st ステージでは こたえあわせの ときだけ 出す。 */
             showMora={!!support?.dots || (!!judged && q.kind === 'count')}
-            size={splitCells(q.word).length > 5 ? 46 : 64}/>
+            /* かきとりの ときは 下の 大きい マスが 主役。ことばは
+               「どこに 書くか」を 見せる ための わき役なので 小さくする。 */
+            size={writing ? 40 : (splitCells(q.word).length > 5 ? 46 : 64)}/>
+        )}
+
+        {/* かきとりの マス。
+            はじめは ことばの マスの 1 つを キャンバスに 入れかえていたが、
+            それでは 一辺 64px しか なく **1年生の ゆびでは 書けなかった**
+            （「かく」画面は スマホで 360px とっている・6c80a56）。
+            ことばは 上に 小さく のこして「どこに 書くか」を 見せ、
+            書く ところは 下に 大きく とる。紙の れんしゅうちょうと おなじ ならび。 */}
+        {writing && (
+          <div className="flex flex-col items-center gap-1">
+            {/* ⚠️ `kkm-nudge` と `rotate-90` を おなじ タグに つけない。
+                アニメの keyframes が transform を まるごと 置きかえるので
+                回転が 消えて、下むきの はずの やじるしが よこを むく。
+                ゆれ（外）と 回転（内）で タグを 分ける。 */}
+            <span className="kkm-nudge text-shu-600 leading-none">
+              <span className="block rotate-90"><IconArrow size={22}/></span>
+            </span>
+            <WriteCell char={q.writeChar} showGuide={writeGuide} resetKey={writeReset}
+              onStrokes={(s) => { writeStrokesRef.current = s; }}
+              style={{ width: 'min(70vw, 34vh, 300px)' }}/>
+          </div>
         )}
         {/* MIM の 動作化。
             3rd ステージは **こたえる まえ** に 見せる（`'before'`）。
