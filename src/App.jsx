@@ -918,6 +918,15 @@ const SPECIAL_UNITS = [
       { w:'たまご',  p:'rice',   bad:['たまこ','だまご'] },
       { w:'とんぼ',  p:'bug',    bad:['とんほ','とんぽ'] },
       { w:'げたばこ', p:'school', bad:['けたばこ','げたはこ'] },
+      // てんてん・まるが つかない ことば（こたえの かたよりを なくす・§17.9）
+      { w:'かき',   p:'fruit',  plain:true, bad:['かぎ','がき'],
+        why:'かき に てんてんは つかないよ（かぎ とは べつの ことば）' },
+      { w:'かさ',   p:'rain',   plain:true, bad:['がさ','かざ'],
+        why:'かさ に てんてんは つかないよ' },
+      { w:'はさみ', p:'tool',   plain:true, bad:['ばさみ','はざみ'],
+        why:'はさみ に てんてんは つかないよ' },
+      { w:'たいこ', p:'music',  plain:true, bad:['だいこ','たいご'],
+        why:'たいこ に てんてんは つかないよ' },
     ],
   },
   {
@@ -946,6 +955,13 @@ const SPECIAL_UNITS = [
       { w:'ふうせん', p:'ball',     bad:['ふうせ','ふせん'] },
       { w:'げんかん', p:'house',    bad:['げかん','げんか'] },
       { w:'たんじょうび', p:'sweet', bad:['たじょうび','たんじょうひ'] },
+      // 「ん」の 入らない ことば（こたえの かたよりを なくす・§17.9）
+      { w:'かば',   p:'animal', plain:true, bad:['かばん','かんば'],
+        why:'かば に「ん」は つかないよ（かばん とは べつの ことば）' },
+      { w:'しか',   p:'animal', plain:true, bad:['しかん','しんか'],
+        why:'し・か で おとは 2つ。「ん」は つかないよ' },
+      { w:'ふね',   p:'ship',   plain:true, bad:['ふねん','ふんね'],
+        why:'ふ・ね で おとは 2つ。「ん」は つかないよ' },
     ],
   },
   {
@@ -976,6 +992,13 @@ const SPECIAL_UNITS = [
       { w:'サッカー', p:'ball',   bad:['サカー','サツカー'] },
       { w:'スリッパ', p:'cloth',  bad:['スリパ','スリツパ'] },
       { w:'ロッカー', p:'school', bad:['ロカー','ロツカー'] },
+      // ちいさい「っ」の 入らない ことば（こたえの かたよりを なくす・§17.9）
+      { w:'ねこ',   p:'cat',    plain:true, bad:['ねっこ','ねつこ'],
+        why:'ね・こ で おとは 2つ。ちいさい「っ」は はいらないよ（ねっこ とは べつの ことば）' },
+      { w:'まち',   p:'shop',   plain:true, bad:['まっち','まつち'],
+        why:'ま・ち で おとは 2つ。ちいさい「っ」は はいらないよ（まっち とは べつの ことば）' },
+      { w:'ぶた',   p:'animal', plain:true, bad:['ぶった','ぶつた'],
+        why:'ぶ・た で おとは 2つ。ちいさい「っ」は はいらないよ' },
     ],
   },
   {
@@ -1006,6 +1029,13 @@ const SPECIAL_UNITS = [
       { w:'きゃく',     p:'person', bad:['きやく','きく'], hear:[{ w:'きく', p:'flower' }] },
       { w:'シャツ',     p:'cloth',  bad:['シヤツ','シツ'] },
       { w:'ジャム',     p:'sweet',  bad:['ジヤム','ジム'] },
+      // ちいさい ゃゅょ の 入らない ことば（こたえの かたよりを なくす・§17.9）
+      { w:'ひよこ',     p:'bird',   plain:true, bad:['ひょこ','ひよっこ'],
+        why:'ひ・よ・こ で おとは 3つ。おおきい「よ」だよ' },
+      { w:'たいよう',   p:'sun',    plain:true, bad:['たいょう','たいよお'],
+        why:'た・い・よ・う で おとは 4つ。おおきい「よ」だよ' },
+      { w:'びよういん', p:'shop',   plain:true, bad:['びょういん','びよいん'],
+        why:'び・よ・う・い・ん で おとは 5つ。おおきい「よ」だよ（びょういん とは べつの ことば）' },
     ],
   },
   {
@@ -1040,13 +1070,29 @@ const SPECIAL_UNITS = [
       { w:'セーター',   p:'cloth',  bad:['セエター','セター'] },
       { w:'プール',     p:'water',  bad:['プウル','プル'] },
       { w:'チーズ',     p:'rice',   bad:['チイズ','チズ'] },
+      // のばさない ことば（こたえの かたよりを なくす・§17.9）
+      { w:'おばさん',   p:'person', plain:true, bad:['おばあさん','おばーさん'],
+        why:'お・ば・さ・ん で おとは 4つ。のばさないよ（おばあさん とは べつの ことば）' },
+      { w:'おじさん',   p:'person', plain:true, bad:['おじいさん','おじーさん'],
+        why:'お・じ・さ・ん で おとは 4つ。のばさないよ（おじいさん とは べつの ことば）' },
+      { w:'ゆき',       p:'snow',   plain:true, bad:['ゆうき','ゆーき'],
+        why:'ゆ・き で おとは 2つ。のばさないよ' },
     ],
   },
   {
     key: 'joshi', title: 'くっつきの ことば', mark: 'はへを', tone: 'sumi', icon: 'book',
     lead: 'は・へ・を', rule: 'ことばと ことばを くっつける「は・へ・を」は、「わ・え・お」と よむよ。',
-    tips: ['わたしは → 「わ」と よむけど「は」と かく', 'がっこうへ → 「え」と よむけど「へ」と かく', 'ほんを → 「お」と よむけど「を」と かく'],
-    // くっつきの ことばは 文で おぼえる（? のところを えらぶ）
+    tips: ['わたしは → 「わ」と よむけど「は」と かく', 'がっこうへ → 「え」と よむけど「へ」と かく', 'ほんを → 「お」と よむけど「を」と かく',
+           'ことばの なかの わ・え・お は そのまま かく（にわとり・こうえん・おにぎり）'],
+    /* くっつきの ことばは 文で おぼえる（◯ のところを えらぶ）。
+
+       `plain: true` は **こたえが わ・え・お に なる** 文。
+       もとは どの 文も こたえが は・へ・を だったので、文を 読まずに
+       「めずらしい ほうの 字」を えらべば ぜんぶ あたって しまい、
+       この単元が いちばん 教えたい「くっつきの ことば か どうか」の
+       みわけが れんしゅうに ならなかった。
+       ことばの なかの わ・え・お（にわとり・こうえん・おにぎり）を
+       まぜて、はじめて 文を 読む 必要が 出る。 */
     sentences: [
       { s:'わたし◯ いちねんせいです。', a:'は', c:['は','わ'], p:'person' },
       { s:'ぼく◯ げんきです。',       a:'は', c:['は','わ'], p:'person' },
@@ -1070,6 +1116,25 @@ const SPECIAL_UNITS = [
       { s:'ともだち◯ てがみを かく。', a:'へ', c:['へ','え'], p:'person' },
       { s:'やま◯ のぼる。',           a:'を', c:['を','お'], p:'mountain' },
       { s:'こうえん◯ はしる。',       a:'を', c:['を','お'], p:'tree' },
+      // ここから下は こたえが わ・え・お（ことばの なかの おと）
+      { s:'に◯とりが ないた。',       a:'わ', c:['は','わ'], p:'bird',   plain:true,
+        why:'「にわとり」の わ は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'か◯で およぐ。',           a:'わ', c:['は','わ'], p:'water',  plain:true,
+        why:'「かわ」の わ は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'ひま◯りが さいた。',       a:'わ', c:['は','わ'], p:'flower', plain:true,
+        why:'「ひまわり」の わ は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'◯んぴつで かく。',         a:'え', c:['へ','え'], p:'pencil', plain:true,
+        why:'「えんぴつ」の え は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'こう◯んで あそぶ。',       a:'え', c:['へ','え'], p:'tree',   plain:true,
+        why:'「こうえん」の え は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'◯ほんが すきです。',       a:'え', c:['へ','え'], p:'book',   plain:true,
+        why:'「えほん」の え は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'◯にぎりを たべる。',       a:'お', c:['を','お'], p:'rice',   plain:true,
+        why:'「おにぎり」の お は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'◯かあさんと あるく。',     a:'お', c:['を','お'], p:'person', plain:true,
+        why:'「おかあさん」の お は ことばの なか。くっつきの ことばでは ないよ' },
+      { s:'あ◯い そらだ。',           a:'お', c:['を','お'], p:'cloud',  plain:true,
+        why:'「あおい」の お は ことばの なか。くっつきの ことばでは ないよ' },
     ],
     words: [],
   },
@@ -1106,8 +1171,8 @@ function whyFor(unit, wordObj) {
 }
 
 // ことばの なかで「とくべつな おと」に あたる マスを 見つける。
-// ここが 出題の 穴（ブランク）に なる。
-function specialCellsOf(word, unitKey) {
+// ここが 出題の 穴（ブランク）に なる。見つからなければ 空の 配列。
+function specialCellsRawOf(word, unitKey) {
   const cells = splitCells(word);
   const idx = [];
   cells.forEach((c, i) => {
@@ -1117,8 +1182,17 @@ function specialCellsOf(word, unitKey) {
     if (unitKey === 'dakuten' && (isDakuonChar(c) || HIRA_HANDAKUON_LIST.includes(c) || KATA_HANDAKUON_LIST.includes(c))) idx.push(i);
     if (unitKey === 'chouon'  && (c === CHOUON_MARK || (i > 0 && 'あいうえおアイウエオ'.indexOf(c) >= 0))) idx.push(i);
   });
-  return idx.length > 0 ? idx : [Math.max(0, cells.length - 1)];
+  return idx;
 }
+function specialCellsOf(word, unitKey) {
+  const idx = specialCellsRawOf(word, unitKey);
+  return idx.length > 0 ? idx : [Math.max(0, splitCells(word).length - 1)];
+}
+/* その ことばに、この単元の おとが じっさいに 入っているか。
+   `plain: true` の ことば（ねこ・かば・おばさん…）は 入っていない。
+   マスを 抜く／マスに 書く もんだいは 単元の おとが ないと なりたたないので、
+   ここで 出しわける（§17.9）。 */
+function hasSpecialSound(word, unitKey) { return specialCellsRawOf(word, unitKey).length > 0; }
 
 /* 穴に する マスを えらぶ。
    1 つだけ 抜くと、のこりの 字が こたえを ほとんど 決めて しまう
@@ -1667,8 +1741,19 @@ function srsIsDue(rec) { return !rec || (rec.due ?? 0) <= dayNumber(); }
 // おぼえた（もう しばらく 出さなくてよい）と 言える はこ
 const SRS_LEARNED_BOX = 3;
 function srsIsLearned(rec) { return (rec?.box || 0) >= SRS_LEARNED_BOX; }
-// にがて＝まちがえた かずが おおく、まだ はこが すすんでいない もの
-function srsIsWeak(rec) { return !!rec && (rec.ng || 0) >= 1 && (rec.box || 0) <= 1; }
+/* にがて＝まちがえた まま、まだ 1 かいも やりなおせていない もの。
+
+   もとは `box <= 1` を にがてと していた。ところが はこ 1 は
+   「きょう できた → つぎは あした」の じょうたい で、**その日は もう
+   出題されない**（`srsIsDue` が false）。つまり ふくしゅうを やりきっても
+   ホームの「にがてを やっつける」は その日じゅう 消えず、
+   「やっても へらない」画面に なっていた。
+
+   はこ 0 だけを にがてと すれば、
+     まちがえる → はこ 0（にがて・きょう また 出る）
+     できた     → はこ 1（にがて から 外れる・あした また 出る）
+   と なり、ふだの ふえかたと 画面の 見た目が そろう。 */
+function srsIsWeak(rec) { return !!rec && (rec.ng || 0) >= 1 && (rec.box || 0) === 0; }
 
 /* ──────────────────────────────────────────────────────────────
    1.95. きょうの めあて（3 つだけ）
@@ -1677,7 +1762,9 @@ function srsIsWeak(rec) { return !!rec && (rec.ng || 0) >= 1 && (rec.box || 0) <
    はじめられない。毎日 おなじ 3 つ、5 分で おわる 量にする。
    ────────────────────────────────────────────────────────────── */
 const MISSIONS = [
-  { key: 'review',  goal: 6, title: 'ふくしゅう',       sub: 'まえに やった もんだい',   view: 'sound',   tone: 'midori', icon: 'check' },
+  /* `go` は 画面に わたす おまけ。ふくしゅうは 押した とたんに
+     「ぜんぶ まぜて」が はじまる（コースを えらぶ 画面を はさまない）。 */
+  { key: 'review',  goal: 6, title: 'ふくしゅう',       sub: 'まえに やった もんだい',   view: 'sound',   go: 'mix', tone: 'midori', icon: 'check' },
   { key: 'write',   goal: 2, title: 'もじを かく',       sub: 'あたらしい じ を 1つ',     view: 'write',   tone: 'ai',     icon: 'pen' },
   { key: 'special', goal: 6, title: 'とくべつな おと',   sub: 'っ ゃゅょ ん のばす',      view: 'special', tone: 'shu',    icon: 'brush' },
 ];
@@ -8218,7 +8305,9 @@ function makeJoshiQuestion(unit, sentObj) {
     choices: shuffled(sentObj.c).map(c => ({ value: c, label: c })),
     answer: sentObj.a, answerText: sentObj.a,
     answerSay: sentObj.s.replace('◯', sentObj.a),
-    why: JOSHI_WHY[sentObj.a] || unit.rule,
+    // こたえが わ・え・お の 文（`plain`）は「くっつきの ことばでは ない」ことが
+    // こたえあわせ なので、文ごとの `why` を さきに 出す。
+    why: sentObj.why || JOSHI_WHY[sentObj.a] || unit.rule,
   };
 }
 
@@ -8305,7 +8394,8 @@ const SPECIAL_FORMATS = {
   },
   fill: {
     // マスの 中の 1 字。ちいさい字の 有無・いちを 見る。
-    fits: () => true,
+    // 単元の おとが 入っていない ことば（`plain`）は 抜く マスが ないので 出さない。
+    fits: (unit, w) => hasSpecialSound(w.w, unit.key),
     make: (unit, w, p) => makeFillQuestion(unit, w, p.maxChoices + 1, p.blanks || 1),
     // 穴が 2 つ なら、ふだの ならびから 2 つ えらぶ ことに なる（1/n × 1/n）
     chance: (q) => Math.pow(1 / Math.max(2, q.choices.length), (q.blanks || [0]).length),
@@ -8336,6 +8426,7 @@ const SPECIAL_FORMATS = {
     // ちがい、まぐれで あたる ことが ない（chance ≒ 0）。
     // 1 セットに 1 もんだけ（`buildSpecialQuestions` で かぞえる）。
     fits: (unit, w) => {
+      if (!hasSpecialSound(w.w, unit.key)) return false;   // 単元の おとが ない ことばは 書く ものが ない
       const at = specialCellsOf(w.w, unit.key)[0];
       const c = splitCells(w.w)[at];
       return !!(c && kanaPathsOf(c));          // かきじゅんデータの ない 字は 出さない
@@ -8418,6 +8509,21 @@ function buildSpecialQuestions(unitKey, n, skill, plan, opts = {}) {
   const poolSize = Math.max(2, need, Math.min(sorted.length, p.words));
   const pool = sorted.slice(0, Math.min(sorted.length, poolSize));
 
+  /* こたえの かたよりを なくす（§17.9）。
+     ふだんの ことばは ぜんぶ「その単元の おとが 入っている」ので、
+     もんだいを 読まずに **とくべつな 字が ある ほう**を えらぶだけで
+     あたって しまう。単元の おとが **入らない** ことば（`plain`：
+     ねこ・かば・おばさん、くっつきの ことばなら わ・え・お の 文）を
+     台帳に 足して あるので、1 セットに かならず 両方を 入れる。 */
+  const hasPlainItem = items.some(x => x.plain);
+  if (hasPlainItem && pool.length >= 2) {
+    [true, false].forEach(wantPlain => {
+      if (pool.some(x => !!x.plain === wantPlain)) return;
+      const add = sorted.find(x => !!x.plain === wantPlain);
+      if (add) pool[pool.length - 1] = add;
+    });
+  }
+
   const used = new Set();          // 'ことば|かたち' … 1 セットに 1 回まで
   const out = [];
   let prevKey = null;
@@ -8426,7 +8532,10 @@ function buildSpecialQuestions(unitKey, n, skill, plan, opts = {}) {
     // ① つづけて おなじ ことばに ならないよう えらぶ（1 語しか ないときは のぞく）
     const cands = pool.filter(x => keyOf(x) !== prevKey || pool.length === 1);
     // ② まだ 出していない 組みあわせが のこっている ことばを ゆうせん
-    const remain = (x) => formats.filter(f => !used.has(keyOf(x) + '|' + f)).length;
+    //    （その ことばで つくれない かたちは かぞえない。`plain` の ことばは
+    //     マス・かきとりが 出せないので、かぞえに 入れると いつまでも 先に えらばれる）
+    const remain = (x) => formats.filter(f => !used.has(keyOf(x) + '|' + f)
+      && SPECIAL_FORMATS[f].fits(unit, x, p)).length;
     const best = Math.max(...cands.map(remain));
     if (best === 0) { used.clear(); prevKey = null; continue; }   // ぜんぶ 出しきったら やりなおす
     const item = shuffled(cands.filter(x => remain(x) === best))[0];
@@ -8448,9 +8557,40 @@ function buildSpecialQuestions(unitKey, n, skill, plan, opts = {}) {
     }
     if (!q) { formats.forEach(f => used.add(keyOf(item) + '|' + f)); continue; }
     q.format = chosen;
+    q.plainItem = !!item.plain;
     used.add(keyOf(item) + '|' + chosen);
     out.push(q);
     prevKey = keyOf(item);
+  }
+
+  /* 上の えらびかたは `plain` の ことばを 後まわしに する（つかえる
+     かたちが 少ない ぶん `remain` が 小さい）。そのままだと 1 セットに
+     0〜1 もんしか 入らず、「とくべつな 字が ある ほう」を えらぶだけで
+     ほとんど あたって しまう。
+     3 もんに 1 もんを めやすに、足りないぶんを さしかえる。
+     さしかえる かたちは「ただしい かきかたは どっち？」を 先に する
+     ―― こたえの かたよりが いちばん 出るのが この かたちだから。 */
+  const plainWant = hasPlainItem ? Math.max(1, Math.round(count / 3)) : 0;
+  if (plainWant > 0 && out.length >= 2) {
+    let have = out.filter(q => q.plainItem).length;
+    const slots = shuffled(out.map((q, i) => i).filter(i => !out[i].plainItem));
+    for (const x of shuffled(items.filter(y => y.plain))) {
+      if (have >= plainWant || slots.length === 0) break;
+      const fs = shuffled(formats.filter(f => !used.has(keyOf(x) + '|' + f)
+        && SPECIAL_FORMATS[f].fits(unit, x, p)))
+        .sort((a, b) => (b === 'spell' ? 1 : 0) - (a === 'spell' ? 1 : 0));
+      let made = null, madeFormat = null;
+      for (const f of fs) {
+        made = SPECIAL_FORMATS[f].make(unit, x, p, opts);
+        if (made) { madeFormat = f; break; }
+      }
+      if (!made) continue;
+      made.format = madeFormat;
+      made.plainItem = true;
+      used.add(keyOf(x) + '|' + madeFormat);
+      out[slots.pop()] = made;
+      have++;
+    }
   }
   return out.slice(0, count);
 }
@@ -8508,8 +8648,11 @@ function buildWordMeaningQuestions(n, skill, kanaMode) {
 /* ふくしゅう：きげんの きた ものを 種類を まぜて 出す */
 function buildReviewQuestions(n, progress, skill, kanaMode) {
   const due = Object.keys(skill || {}).filter(id => srsIsDue(skill[id]));
-  // まちがえた ものから 先に
-  due.sort((a, b) => (skill[b].ng || 0) - (skill[a].ng || 0));
+  /* にがて（まちがえた まま はこ 0 の もの）を いちばん 先に。
+     ホームの「にがてを やっつける」は ここへ 来るので、この なかに
+     にがてが 入っていないと、押しても にがてが へらない。 */
+  due.sort((a, b) => (srsIsWeak(skill[b]) ? 1 : 0) - (srsIsWeak(skill[a]) ? 1 : 0)
+    || (skill[b].ng || 0) - (skill[a].ng || 0));
   const out = [];
   for (const id of due) {
     if (out.length >= n) break;
@@ -8527,7 +8670,18 @@ function buildReviewQuestions(n, progress, skill, kanaMode) {
           if (s) q = makeJoshiQuestion(unit, s);
         } else {
           const w = unit.words.find(x => x.w === b);
-          if (w) q = [makeSpellingQuestion, makeFillQuestion, makeCountQuestion][Math.floor(Math.random() * 3)](unit, w);
+          /* かたちは 台帳（`SPECIAL_FORMATS`）から えらぶ。
+             3 つを 決めうちで まわしていたので、単元の おとが 入らない
+             ことば（`plain`：ねこ・かば…）に「あいた マスに はいる もじは？」が
+             出て しまって いた。`fits` を 見れば その ことばで なりたつ
+             かたちだけに なる。 */
+          const plan1 = tierPlan(1);
+          if (w) {
+            for (const f of shuffled(['spell', 'fill', 'count'].filter(k => SPECIAL_FORMATS[k].fits(unit, w, plan1)))) {
+              q = SPECIAL_FORMATS[f].make(unit, w, plan1);
+              if (q) break;
+            }
+          }
         }
       }
     }
@@ -8556,7 +8710,7 @@ const SOUND_COURSES = [
   { key:'opposite',title:'はんたいの ことば', sub:'おおきい ⇔ ちいさい',              tone:'ai',     icon:'rotate'},
   { key:'mix',     title:'ぜんぶ まぜて',    sub:'ふくしゅうも いっしょに',          tone:'shu',    icon:'check' },
 ];
-function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMission, voiceOn }) {
+function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMission, voiceOn, initialCourse, onConsumeInitial }) {
   const [running, setRunning] = useState(null);   // { key, title, tone, questions }
   const dueCount = useMemo(() => countDue(skill, ''), [skill]);
 
@@ -8594,6 +8748,20 @@ function SoundView({ kanaMode, setKanaMode, progress, skill, answerSkill, bumpMi
     playPickup();
     setRunning({ ...course, questions: qs });
   }
+
+  /* ホームの「ふくしゅう」「にがてを やっつける」から 来たときは、
+     コースを えらぶ 画面を 見せずに その場で はじめる。
+     もとは かならず 一覧に とまっていたので、「ふくしゅうを する」と
+     きめて 押した 子が もう一度 えらばされ、しかも どれが ふくしゅうなのか
+     （＝「ぜんぶ まぜて」）が 名前から わからなかった。 */
+  const startRef = useRef(start);
+  startRef.current = start;
+  useEffect(() => {
+    if (!initialCourse) return;
+    onConsumeInitial && onConsumeInitial();
+    const course = SOUND_COURSES.find(c => c.key === initialCourse);
+    if (course) startRef.current(course);
+  }, [initialCourse]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   if (running) {
     return (
@@ -9228,7 +9396,7 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
             <NextUpButton tone={nextMission.tone} eyebrow="つぎは これ"
               title={nextMission.title} sub={nextMission.sub}
               icon={React.createElement(ICONS[nextMission.icon] || IconMaru, { size: 34 })}
-              onClick={() => onGo(nextMission.view)}/>
+              onClick={() => onGo(nextMission.view, nextMission.go)}/>
           ) : (
             <NextUpButton tone="shu" eyebrow="きょうの めあては たっせい"
               title="ことばを あつめよう" sub="あつめた ことばで しりとりも できるよ"
@@ -9250,7 +9418,7 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
               const cleared = now >= goal;
               const Icon = ICONS[m.icon] || IconMaru;
               return (
-                <button key={m.key} onClick={() => onGo(m.view)}
+                <button key={m.key} onClick={() => onGo(m.view, m.go)}
                   className={`kkm-btn kkm-lift kkm-sheet rounded-xl p-3.5 text-left flex items-center gap-3 border-l-4 min-h-[84px] ${t.leftRule} ${
                     cleared ? 'bg-shu-50/60' : ''
                   }`}>
@@ -9273,9 +9441,11 @@ function HomeView({ progress, mastered, skill, todayRec, log, streak, kanaMode, 
           </div>
         </div>
 
-        {/* ④ にがては 出たときだけ。ふだんは 画面に 置かない。 */}
+        {/* ④ にがては 出たときだけ。ふだんは 画面に 置かない。
+            押したら コースを えらばせず、その場で「ぜんぶ まぜて」を はじめる。
+            にがては `buildReviewQuestions` が いちばん 先に 出す。 */}
         {weak.length > 0 && (
-          <button onClick={() => onGo('sound')}
+          <button onClick={() => onGo('sound', 'mix')}
             className="kkm-btn kkm-lift kkm-sheet kkm-stagger rounded-xl p-3.5 border-l-4 border-l-shu-600 text-left flex items-center gap-3"
             style={{ '--kkm-i': 3 }}>
             <span className="shrink-0 w-12 h-12 rounded-lg bg-shu-50 border-2 border-shu-300 text-shu-600 flex items-center justify-center">
@@ -9432,6 +9602,7 @@ function App() {
   // ホームから「この もじを かこう」と とんでくるときの うけわたし
   const [requestedChar, setRequestedChar] = useState(null);
   const [requestedUnit, setRequestedUnit] = useState(null);
+  const [requestedCourse, setRequestedCourse] = useState(null);   // 「よむ」を すぐ はじめる コース
   const [dayDonePopup, setDayDonePopup] = useState(false);
   const dayDoneRef = useRef(null);
 
@@ -9627,6 +9798,7 @@ function App() {
   const goTo = useCallback((v, payload) => {
     if (v === 'write' && payload) setRequestedChar(payload);
     if (v === 'special' && payload) setRequestedUnit(payload);
+    if (v === 'sound' && payload) setRequestedCourse(payload);
     setView(v);
   }, []);
 
@@ -9697,7 +9869,8 @@ function App() {
         {view === 'sound' && (
           <SoundView kanaMode={kanaMode} setKanaMode={setKanaMode}
             progress={progress} skill={skill} answerSkill={answerSkill}
-            bumpMission={bumpMission} voiceOn={voiceOn}/>
+            bumpMission={bumpMission} voiceOn={voiceOn}
+            initialCourse={requestedCourse} onConsumeInitial={() => setRequestedCourse(null)}/>
         )}
         {view === 'special' && (
           <SpecialView skill={skill} answerSkill={answerSkill}
