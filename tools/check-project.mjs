@@ -267,6 +267,82 @@ const CHECKS = [
       return dirty.length ? [`原本を 直したのに npm run build を 走らせていない:\n${dirty.join('\n')}`] : [];
     } },
 
+  /* ことばずかんの 手あつさを まもる 検査。
+
+     この アプリの もんだいは ぜんぶ WORD_BANK / WORD_BANK_KATA から
+     つくる（あたまの おと・にた もじ さがし・なかまの ことば・
+     ことばあつめの ヒント・しりとり）。ある字の ことばが 少ないと、
+     その字の もんだいだけ **おなじ ことばが 何度も 出る**。
+     だから「どの字にも 10 語いじょう」を 数で まもる。
+
+     を・ヲ・ぢ・ヂ・ヅ は 日本語の しくみじょう ことばの 中に
+     ほとんど 出てこない（を／ヲ は 助詞だけ、ぢ／づ は 現代かなづかいで
+     つかえる ことばが かぎられ、カタカナ語には まず 出ない）。
+     この 5 字だけは **いまの 数を 下限**に して、へったら 落とす。 */
+  { id: 'WORD_COVERAGE', title: 'どの字にも ことばが 10語いじょう ある',
+    files: ['src/App.jsx'],
+    test: (src, f) => {
+      const MIN = 10;
+      // 日本語の しくみじょう 10 語に とどかない字。数字は「いまの 実数」＝下限。
+      const FLOOR = { 'を': 0, 'ヲ': 0, 'ぢ': 5, 'ヂ': 0, 'ヅ': 4 };
+      const block = (name, open, close) => {
+        const i = src.indexOf(`const ${name} = ${open}`);
+        if (i < 0) return null;
+        let d = 0, j = i + `const ${name} = `.length;
+        for (; j < src.length; j++) {
+          if (src[j] === open) d++;
+          if (src[j] === close) { d--; if (d === 0) return src.slice(i, j); }
+        }
+        return null;
+      };
+      const words = (name) => {
+        const b = block(name, '[', ']');
+        return b === null ? null : [...b.matchAll(/\{w:'([^']+)',p:'([^']+)',g:'([^']+)'\}/g)]
+          .map((m) => ({ w: m[1], p: m[2], g: m[3] }));
+      };
+      const chars = (name) => {
+        const b = block(name, '[', ']');
+        return b === null ? null : [...b.matchAll(/'([^']*)'/g)].map((m) => m[1]).filter(Boolean);
+      };
+      const bad = [];
+      const hira = words('WORD_BANK'), kata = words('WORD_BANK_KATA');
+      if (!hira || !kata) return [`${f}: WORD_BANK / WORD_BANK_KATA が 読めない`];
+
+      // ① なかま と さしえの 名まえが じっさいに ある か
+      const pictBlock = block('PICTS', '{', '}');
+      const groupBlock = block('WORD_GROUPS', '[', ']');
+      const picts = new Set(pictBlock ? [...pictBlock.matchAll(/^\s{2}([a-zA-Z][a-zA-Z0-9]*)\s*:/gm)].map((m) => m[1]) : []);
+      const groups = new Set(groupBlock ? [...groupBlock.matchAll(/key:\s*'([a-z]+)'/g)].map((m) => m[1]) : []);
+      const seen = new Set();
+      for (const x of [...hira, ...kata]) {
+        if (picts.size && !picts.has(x.p)) bad.push(`${x.w}: さしえ '${x.p}' が PICTS に ない`);
+        if (groups.size && !groups.has(x.g)) bad.push(`${x.w}: なかま '${x.g}' が WORD_GROUPS に ない`);
+        if (seen.has(x.w)) bad.push(`${x.w}: おなじ ことばが 2 か所に ある`);
+        seen.add(x.w);
+      }
+
+      // ② どの字にも 10 語いじょう あるか
+      const tables = [
+        ['ひらがな', ['HIRA_TABLE', 'HIRA_DAKUON_TABLE', 'HIRA_HANDAKUON_TABLE', 'HIRA_YOUON_TABLE'], hira],
+        ['カタカナ', ['KATA_TABLE', 'KATA_DAKUON_TABLE', 'KATA_HANDAKUON_TABLE', 'KATA_YOUON_TABLE'], kata],
+      ];
+      for (const [label, names, bank] of tables) {
+        const list = names.flatMap((n) => chars(n) || []);
+        if (!list.length) { bad.push(`${label}の 50音表が 読めない`); continue; }
+        const count = {};
+        list.forEach((c) => { count[c] = 0; });
+        bank.forEach((x) => {
+          const once = new Set();
+          for (const c of x.w) if (c in count && !once.has(c)) { once.add(c); count[c]++; }
+        });
+        const thin = list.filter((c) => count[c] < (c in FLOOR ? FLOOR[c] : MIN));
+        thin.forEach((c) => bad.push(
+          `${label}「${c}」の ことばが ${count[c]} 語（${c in FLOOR ? `下限 ${FLOOR[c]}` : `${MIN} 語いる`}）`));
+      }
+      return bad.slice(0, 20);
+    },
+    broken: "const WORD_BANK = [{w:'あい',p:'heart',g:'other'},];\nconst WORD_BANK_KATA = [{w:'アイ',p:'heart',g:'other'},];\nconst HIRA_TABLE = ['あ','い'];\nconst KATA_TABLE = ['ア','イ'];\n" },
+
   { id: 'FILE_SIZE', title: '1ファイルが 5,000行 / 400KB を こえていない',
     /* ⚠️ ここだけ 警告あつかい。
        巨大ファイルの 分割は 自動で やってはいけない（分割案を 出して
