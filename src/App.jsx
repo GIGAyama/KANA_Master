@@ -2393,6 +2393,94 @@ function placeSmallKana(char, paths) {
   return moved;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   3.46. 画面に 出す ちいさい字も みぎしたの へやへ
+
+   §3.45 で なおしたのは **お手本の パス**（かきじゅんアニメ・なぞり・
+   採点）。けれど もんだいの マス（`KanaCell`）が 出しているのは
+   フォントの 字 そのもので、そこは 手つかずの ままだった。
+
+   書体は ちいさい字を「すこし 小さく・すこし 下」に 置くだけで、
+   よこは ほぼ まん中。その ため マスの 中では
+     ・朱色の 点線の へや（みぎした）は 空のまま
+     ・字は へやの 外（まん中）
+   と なり、「ちいさい じは この へやに 書く」と 教えている そばから
+   お手本の ならびが そう なっていなかった。
+
+   ずらす 量を 数で 書いておくことは できない。この アプリの 書体は
+   端末に あるものを つかう ならび（UD デジタル教科書体／游教科書体／
+   Klee One／ゴシック・§index.html）で、どれが 当たるかで 字の
+   すみずみが かわるから。そこで **その 場で 字を 測って** へやに
+   合わせる。measureText の actualBoundingBox は 字の インクの
+   すみずみを かえすので、書体が かわっても ずれない。
+
+   ⚠️ Klee One は あとから とどく Web フォント。とどいた ところで
+      測りなおす（`document.fonts.ready`）。測れない ブラウザでは
+      これまでどおり まん中に 出す（字が 消えるより ましなので）。
+   ══════════════════════════════════════════════════════════════ */
+const KVG_UNIT = 109;            // KanjiVG の ざひょうけい（マス 1 つぶん）
+const GLYPH_INK_EM = 100;        // 測るときの フォントサイズ
+
+// 1em を 1 とした 字の インクの すみずみ。測れないときは null。
+const __glyphInkCache = new Map();
+function measureGlyphInk(char) {
+  if (__glyphInkCache.has(char)) return __glyphInkCache.get(char);
+  let ink = null;
+  try {
+    const ctx = document.createElement('canvas').getContext('2d');
+    const stack = getComputedStyle(document.documentElement)
+      .getPropertyValue('--kkm-font-kyokasho').trim();
+    ctx.font = `400 ${GLYPH_INK_EM}px ${stack || 'sans-serif'}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    const m = ctx.measureText(char);
+    // actualBoundingBoxLeft / Ascent は「置いた ところから 左／上へ 何 px」
+    const x0 = -m.actualBoundingBoxLeft,  x1 = m.actualBoundingBoxRight;
+    const y0 = -m.actualBoundingBoxAscent, y1 = m.actualBoundingBoxDescent;
+    if ([x0, x1, y0, y1].every(Number.isFinite) && x1 > x0 && y1 > y0) {
+      ink = { x0: x0 / GLYPH_INK_EM, y0: y0 / GLYPH_INK_EM,
+              x1: x1 / GLYPH_INK_EM, y1: y1 / GLYPH_INK_EM };
+    }
+  } catch { ink = null; }
+  __glyphInkCache.set(char, ink);
+  return ink;
+}
+
+// Web フォントが とどいたら 測りなおす（それまでは 代わりの 書体の 数）
+let __glyphFontsReady = typeof document === 'undefined' || !document.fonts;
+const __glyphInkWaiters = new Set();
+if (!__glyphFontsReady) {
+  document.fonts.ready.then(() => {
+    __glyphFontsReady = true;
+    __glyphInkCache.clear();
+    const fns = [...__glyphInkWaiters];
+    __glyphInkWaiters.clear();
+    fns.forEach(fn => fn());
+  }).catch(() => { __glyphFontsReady = true; });
+}
+function useGlyphInk(char) {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    if (__glyphFontsReady) return;
+    const fn = () => bump(n => n + 1);
+    __glyphInkWaiters.add(fn);
+    return () => { __glyphInkWaiters.delete(fn); };
+  }, []);
+  return char ? measureGlyphInk(char) : null;
+}
+
+// 字の インクを へやの まん中に そろえる（かえすのは KanjiVG と おなじ 109 の ざひょう）
+function fitInkToSmallRoom(ink) {
+  const roomW = (SMALL_ROOM.x1 - SMALL_ROOM.x0) * SMALL_ROOM_FILL;
+  const roomH = (SMALL_ROOM.y1 - SMALL_ROOM.y0) * SMALL_ROOM_FILL;
+  const inkW = ink.x1 - ink.x0, inkH = ink.y1 - ink.y0;
+  const fontSize = Math.min(roomW / inkW, roomH / inkH);
+  // ベースラインの 置きどころ（インクの まん中が へやの まん中に くるように）
+  const x = (SMALL_ROOM.x0 + SMALL_ROOM.x1) / 2 - (ink.x0 + inkW / 2) * fontSize;
+  const y = (SMALL_ROOM.y0 + SMALL_ROOM.y1) / 2 - (ink.y0 + inkH / 2) * fontSize;
+  return { fontSize, x, y };
+}
+
 // 字の かきじゅん（同期）。生成データ → 手で 持つ ぶん の じゅんに 引く。
 function kanaPathsOf(char) {
   const table = (typeof globalThis !== 'undefined' && globalThis.KANJIVG_KANA) || null;
@@ -4295,6 +4383,36 @@ function SmallKanaRoom({ tone = 'border-shu-300', fill = false }) {
   return (
     <span aria-hidden="true"
       className={`absolute right-[8%] bottom-[8%] w-[42%] h-[42%] rounded-[3px] border-2 border-dashed pointer-events-none ${tone} ${fill ? 'bg-shu-50/50' : ''}`}/>
+  );
+}
+
+/* ちいさい字（っ ゃ ゅ ょ …）を、その へやの 中に そろえて 出す（§3.46）。
+
+   マスと おなじ 109 の ざひょうけいの SVG に 置くので、マスが
+   何 px でも ずれない。大きさ・いちは お手本（`placeSmallKana`）と
+   おなじ きまりから 出しているので、画面の 字と お手本と 採点が そろう。
+
+   色は `fill="currentColor"`。マスの 状態（ok / ng / hint …）の
+   文字色を そのまま つぐ。
+
+   ⚠️ 字が 測れない ブラウザでは、これまでどおり マスの まん中に 出す。
+      いちが そろわないのは こまるが、字が 消えるよりは ましなので。
+      `size` は その ときに つかう マスの 一辺（px）。 */
+function SmallKanaGlyph({ char, size }) {
+  const ink = useGlyphInk(char);
+  if (!ink) {
+    return <span className="kkm-glyph relative leading-none" style={{ fontSize: size * 0.62 }}>{char}</span>;
+  }
+  const { fontSize, x, y } = fitInkToSmallRoom(ink);
+  return (
+    <>
+      <svg aria-hidden="true" viewBox={`0 0 ${KVG_UNIT} ${KVG_UNIT}`}
+        className="absolute inset-0 w-full h-full pointer-events-none">
+        <text className="kkm-glyph" x={x} y={y} fontSize={fontSize} fill="currentColor">{char}</text>
+      </svg>
+      {/* 字は SVG の 中に 入るので、読みあげ用に 本文としても 置いておく */}
+      <span className="sr-only">{char}</span>
+    </>
   );
 }
 
@@ -7684,8 +7802,15 @@ function KanaCell({ char, size = 56, state = 'plain', onClick, ariaLabel }) {
           字より さきに 置いて、字の うしろに 敷く。
           へやの 大きさは `SmallKanaRoom` に まとめてある（§3.45）。 */}
       {isSmallKana(char) && <SmallKanaRoom/>}
+      {/* ちいさい字は **へやの 中**に 出す（§3.46）。
+          書体は ちいさい字を まん中に 置くので、そのまま ならべると
+          点線の へやが 空のまま 字だけ 外に 出て、この アプリが
+          教えている「みぎしたの へやに 書く」と 食いちがっていた。
+          測れない ブラウザでは これまでどおり まん中に 出す。 */}
       {char
-        ? <span className="kkm-glyph relative leading-none" style={{ fontSize: size * 0.62 }}>{char}</span>
+        ? (isSmallKana(char)
+            ? <SmallKanaGlyph char={char} size={size}/>
+            : <span className="kkm-glyph relative leading-none" style={{ fontSize: size * 0.62 }}>{char}</span>)
         : <span className="relative leading-none font-semibold" style={{ fontSize: size * 0.4 }}>?</span>}
     </Tag>
   );
