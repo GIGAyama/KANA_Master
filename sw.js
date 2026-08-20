@@ -15,7 +15,7 @@
 
 // 原本を直して npm run build を走らせたら、かならず この数字を 上げること
 // （上げ忘れると 古いキャッシュが 残り、更新が 反映されない）
-const APP_VERSION = 'v14';
+const APP_VERSION = 'v15';
 
 // このアプリ専用の 目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io という サイト全体で
@@ -95,18 +95,33 @@ self.addEventListener('fetch', (event) => {
   /* 1) 画面遷移（HTML）：ネットワーク優先。
         更新を すぐ 届け、圏外なら 保存してある 本体を 出す。
         本体も まだ 無い（はじめから 圏外だった）ときは、ブラウザの
-        「接続できません」画面ではなく アプリと同じ配色の offline.html。 */
+        「接続できません」画面ではなく アプリと同じ配色の offline.html。
+
+        【重要】200 で かえってきた ときだけ 保存し、200 の ときだけ 通す。
+          fetch は 404 でも 500 でも「成功」として かえってくる。ここを
+          見ないと、サーバーの エラー画面（GitHub Pages の まっ白な 404）を
+          **アプリ本体として 保存**してしまい、いちど そうなると 圏外でも
+          その 404 が 出つづける。
+          これは 空想の 話ではない。公開 URL（リポジトリ名）を 変えると、
+          すでに ホーム画面に 入れてある アプリは 古い URL を たたきに いき、
+          そこは もう 無いので 404 が かえる。ホーム画面から ひらいた
+          子どもには、アドレスバーの ない まっ白な 404 だけが 見える。
+          手元に 本体が 残っていれば、それを 出して アプリを 生かす。 */
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
+      const cache = await caches.open(CACHE_STATIC);
+      const saved = async () => (await cache.match('./index.html'))
+                             || (await cache.match('./'));
       try {
         const fresh = await fetch(req);
-        const cache = await caches.open(CACHE_STATIC);
+        if (!fresh || !fresh.ok) {
+          // 404 / 500 …… 保存してある 本体で しのぐ（エラー画面は 保存しない）
+          return (await saved()) || fresh;
+        }
         cache.put('./index.html', fresh.clone()).catch(() => {});
         return fresh;
       } catch (e) {
-        const cache = await caches.open(CACHE_STATIC);
-        return (await cache.match('./index.html'))
-            || (await cache.match('./'))
+        return (await saved())
             || (await cache.match('./offline.html'))
             || Response.error();
       }

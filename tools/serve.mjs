@@ -59,8 +59,17 @@ http.createServer(async (req, res) => {
     });
     res.end(body);
   } catch (e) {
-    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('404');
+    /* 本番（GitHub Pages）は 見つからない URL に リポジトリの 404.html を
+       **404 のまま** かえす。手元でも 同じにしておかないと、Service Worker が
+       404 を どう あつかうかを 測っても 本番と 話が 合わない。 */
+    let body = '404';
+    let type = 'text/plain; charset=utf-8';
+    try {
+      body = await readFile(join(ROOT, '404.html'));
+      type = TYPES['.html'];
+    } catch (e2) { /* 404.html が 無ければ そのまま */ }
+    res.writeHead(404, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+    res.end(body);
   }
 }).listen(PORT, () => {
   console.log(`http://127.0.0.1:${PORT}${BASE}`);

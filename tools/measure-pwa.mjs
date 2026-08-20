@@ -14,7 +14,8 @@
      4. 押したら 切りかわるか
      5. 同じサイトの 他のアプリの キャッシュを 巻きぞえに していないか
      6. 圏外で 起動するか
-     7. 本体が 無ければ offline.html が 出るか
+     7. サーバーが 404 を かえしても アプリが 出るか（エラー画面を 保存しないか）
+     8. 本体が 無ければ offline.html が 出るか
    ============================================================== */
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -115,7 +116,37 @@ await page.waitForTimeout(2500);
 const offlineText = (await page.locator('#root').innerText().catch(() => '')).trim();
 say('圏外でも起動する', offlineText.length > 100, `#root の文字数 ${offlineText.length}`);
 
-/* ── 7. 本体が 無ければ offline.html が 出るか ─────────── */
+/* ── 7. サーバーが 404 を かえしても アプリが 出るか ────
+   fetch は 404 でも「成功」で かえる。navigate で それを そのまま
+   cache.put すると、サーバーの エラー画面が **アプリ本体として** 保存され、
+   圏外でも ずっと 404 が 出る。公開 URL（リポジトリ名）を 変えた 直後は、
+   入れてある アプリが 古い URL を たたいて 必ず これを 踏む。
+   手元のサーバーも 本番と 同じく 404.html を 404 で かえす。 */
+await ctx.setOffline(false);
+await page.goto(`${URL_BASE}nai-page-for-test.html`, { waitUntil: 'load' }).catch(() => {});
+await page.waitForTimeout(2500);
+const after404 = (await page.locator('#root').innerText().catch(() => '')).trim();
+say('404 でも アプリが 出る', after404.length > 100, `#root の文字数 ${after404.length}`);
+
+const shell404 = await page.evaluate(async () => {
+  for (const name of await caches.keys()) {
+    if (!name.startsWith('kkm-')) continue;
+    const c = await caches.open(name);
+    const r = await c.match('./index.html');
+    if (r) return await r.text();
+  }
+  return '';
+});
+// 404.html だけが 持っている 文字を さがす（title に 入っているので 先頭ちかく）
+const poisoned = /ページが みつかりません/.test(shell404);
+say('404 を 本体として 保存しない', shell404.length > 0 && !poisoned,
+  !shell404.length ? 'index.html が 保存されていない'
+  : poisoned ? '**404.html が 本体として 保存された**'
+  : '保存してある index.html は アプリ本体のまま');
+
+/* ── 8. 本体が 無ければ offline.html が 出るか ─────────── */
+await page.goto(URL_BASE, { waitUntil: 'load' });
+await page.waitForTimeout(1500);
 await ctx.setOffline(false);
 await page.evaluate(async () => {
   // 本体（index.html / ./）だけ 消して、圏外に する

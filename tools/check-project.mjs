@@ -203,6 +203,33 @@ const CHECKS = [
     },
     broken: `navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());` },
 
+  { id: 'SW_NAVIGATE_OK_ONLY', title: 'sw.js が エラー画面を アプリ本体として 保存していない',
+    files: ['sw.js'],
+    test: (src, f) => {
+      const code = stripComments(src);
+      const m = code.match(/req\.mode\s*===\s*['"]navigate['"][\s\S]*?\n  \}/);
+      if (!m) return [`${f}: 画面遷移（navigate）の あつかいが 見あたらない`];
+      if (!/\.ok\b/.test(m[0])) {
+        return [`${f}: navigate の 返事を .ok で 見ていない … fetch は 404 でも 成功で かえる。`
+              + ' サーバーの エラー画面を アプリ本体として 保存し、圏外でも 404 が 出つづける'];
+      }
+      return [];
+    },
+    broken: `  if (req.mode === 'navigate') {\n    const fresh = await fetch(req);\n    cache.put('./index.html', fresh.clone());\n    return fresh;\n  }` },
+
+  { id: 'PAGES_404', title: '404.html が あって リンクが 絶対パス',
+    run: () => {
+      const src = read('404.html');
+      if (!src) return ['404.html が ない … GitHub の 英語の 404（File not found）が そのまま 子どもに 出る'];
+      const bad = [];
+      /* この1枚は いろいろな URL の 代わりに 出される。相対パスだと
+         行き先が たたかれた URL しだいで ずれる。 */
+      const rels = [...stripHtmlComments(src).matchAll(/(?:href|src)\s*=\s*"(?!https?:|\/|#|data:)([^"]*)"/g)];
+      if (rels.length) bad.push(`404.html: 相対パスの リンクが ある（${rels.map((r) => r[1]).join(', ')}） … /KANA_Master/ から はじまる 絶対パスに すること`);
+      if (!/href\s*=\s*"\/KANA_Master\/"/.test(src)) bad.push('404.html: アプリに もどる リンク（/KANA_Master/）が ない');
+      return bad;
+    } },
+
   { id: 'MANIFEST_ID', title: 'manifest の id/scope/start_url が リポジトリ名の 絶対パス',
     run: () => {
       const src = read('manifest.webmanifest');
