@@ -15,7 +15,7 @@
 
 // 原本を直して npm run build を走らせたら、かならず この数字を 上げること
 // （上げ忘れると 古いキャッシュが 残り、更新が 反映されない）
-const APP_VERSION = 'v15';
+const APP_VERSION = 'v16';
 
 // このアプリ専用の 目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io という サイト全体で
@@ -42,6 +42,7 @@ const PRECACHE_URLS = [
   './studySession.js',
   './js/app.js',
   './js/install-hook.js',
+  './js/watchdog.js',
   './js/boot.js',
   './favicon.png',
   './icon-192.png',

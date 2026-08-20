@@ -48,6 +48,14 @@
        小さな外部ファイルにして 同期読みこみする。 -->
   <script src="./js/install-hook.js"></script>
 
+  <!-- ===== 「よみこみちゅう…」で 止まったままに しない =====
+       おそい 回線や こわれた キャッシュで App が 出てこないとき、
+       声を かけ、直す ボタンを 出す 見張り。
+       **defer に しないこと。** ねらいは 時計を 先に うごかすことなので、
+       380KB の js/app.js の ダウンロードを 待ってからでは 意味が ない
+       （いちばん 助けが 要る その間、動かなくなる）。 -->
+  <script src="./js/watchdog.js"></script>
+
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#b34328" />
   <meta name="color-scheme" content="light" />
