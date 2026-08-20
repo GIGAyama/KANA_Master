@@ -86,12 +86,55 @@ Chromium での実測）。実測の結果は `AUDIT.md` にあります。
 
 **公開 URL： https://gigayama.github.io/KANA_Master/**
 
-> **リポジトリ名を変えたときは URL も変わります。**
-> GitHub Pages の URL は `https://<ユーザー名>.github.io/<リポジトリ名>/` なので、
-> リポジトリ名を変更したら `manifest.webmanifest` の
-> `id` / `scope` / `start_url` も 新しいリポジトリ名に 書きかえてください。
-> 古いままだと アプリとしてインストールしたときに 存在しない URL を開こうとして
-> 404（ここには GitHub Pages サイトはありません）になります。
+### ⚠️ リポジトリ名（URL）を 変えたら、**すでに入れてあるアプリは 入れ直しが要る**
+
+GitHub Pages の URL は `https://<ユーザー名>.github.io/<リポジトリ名>/` です。
+リポジトリ名を変えると URL が変わり、**古い URL は 転送されず 404 になります**
+（GitHub は github.com のページは転送しますが、Pages の中身は転送しません）。
+
+このリポジトリは実際に
+`hiragana_katakan_kakikatamaster` → `KANA_Master` と 改名しています。
+そのため、改名より前に ホーム画面へ入れた アプリは 今も
+`/hiragana_katakan_kakikatamaster/index.html` を開きにいきます。
+
+**症状**：ホーム画面のアイコンから開くと、アドレスバーのない画面に
+GitHub の英語の 404（`File not found`）だけが出る。ブラウザで
+新しい URL を開けば ふつうに動くのに、アイコンからは 動かない。
+
+**これは デプロイでは 直せません。** インストール済みのアプリは
+`start_url` を 端末側に 覚えているので、リポジトリを何度 直しても
+その端末は 古い URL を たたきつづけます。直し方は 端末ごとの入れ直しです。
+
+1. ホーム画面（Chromebook はランチャー）の アイコンを 長おし →「削除」
+2. ブラウザで **https://gigayama.github.io/KANA_Master/** を開く
+3. メニューの「アプリをインストール／ホーム画面に追加」を もう一度
+4. Chromebook で 古いアプリが残って じゃまをするときは、
+   `chrome://apps` から 古い方を 削除する
+
+**記録（がんばりの ほし・ことば）は 消えません。** `localStorage` は
+`gigayama.github.io` という**サイト単位**で 保存されるので、URL のフォルダ名が
+変わっても 同じ端末・同じブラウザなら そのまま 引きつがれます。
+（消えるのは 端末を変えたときと、ブラウザの閲覧履歴データを消したときだけ）
+
+改名するときに 直すもの：
+
+| 直す場所 | 何を |
+| --- | --- |
+| `manifest.webmanifest` | `id` / `scope` / `start_url` を 新しい名前の絶対パスに |
+| `tools/check-project.mjs` | `MANIFEST_ID` / `PAGES_404` ゲートの `/KANA_Master/` |
+| `tools/serve.mjs` | `BASE` |
+| `404.html` | アプリへ もどる 絶対パスの リンク |
+| README・`docs/` | 公開 URL の 記載 |
+
+そのうえで、**改名の前後で 少なくとも しばらくは 古い名前のリポジトリを
+作り直して 転送用の `index.html` を置く**のが いちばん親切です
+（`<meta http-equiv="refresh" content="0; url=https://gigayama.github.io/KANA_Master/">`）。
+すでに配ってしまった端末を 一台ずつ 触りに行かずに 済みます。
+
+なお、`sw.js` は 404 が かえってきたときに **それをアプリ本体として
+保存しない**ようにしてあります（`.ok` を見てから `cache.put`）。
+これが無いと、いちど 404 を踏んだ端末は 圏外でも 404 を出しつづけます。
+手元に本体が残っていれば、404 のときは そちらを出して アプリを生かします。
 
 ---
 
