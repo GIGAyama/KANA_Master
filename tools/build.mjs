@@ -28,6 +28,7 @@
    src/extra.css             ┐
    tailwind.config.js        ┴→ css/app.css
    src/install-hook.js       →  js/install-hook.js
+   src/watchdog.js           →  js/watchdog.js
    src/boot.js               →  js/boot.js
    node_modules/react*       →  vendor/react.js
    （かきじゅんデータ は npm run kanjivg で data/kanjivg-kana.js）
@@ -106,11 +107,11 @@ await esbuild.build({
 });
 
 /* ── 4. そのままコピーするもの ─────────────────────────────── */
-for (const name of ['install-hook.js', 'boot.js']) {
+for (const name of ['install-hook.js', 'boot.js', 'watchdog.js']) {
   writeFileSync(p('js', name), GENERATED + readFileSync(p('src', name), 'utf8'), 'utf8');
 }
 
 console.log('✔ ビルド完了');
-for (const f of ['vendor/react.js', 'css/app.css', 'js/app.js', 'js/install-hook.js', 'js/boot.js', 'data/kanjivg-kana.js']) {
+for (const f of ['vendor/react.js', 'css/app.css', 'js/app.js', 'js/install-hook.js', 'js/watchdog.js', 'js/boot.js', 'data/kanjivg-kana.js']) {
   console.log(`   ${f.padEnd(24)} ${kb(p(f))}`);
 }

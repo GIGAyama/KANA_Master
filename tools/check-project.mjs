@@ -230,6 +230,19 @@ const CHECKS = [
       return bad;
     } },
 
+  { id: 'WATCHDOG_NOT_DEFER', title: '「よみこみちゅう」の 見張りを 先に 読んでいる',
+    files: ['index.html'],
+    test: (src, f) => {
+      const m = stripHtmlComments(src).match(/<script[^>]*watchdog\.js[^>]*>/i);
+      if (!m) return [`${f}: js/watchdog.js を 読んでいない … 止まったときに 逃げ道が 出ない`];
+      if (/\sdefer|\sasync/i.test(m[0])) {
+        return [`${f}: watchdog.js に defer/async が ついている … 380KB の app.js を 待ってからでは、`
+              + 'いちばん 助けが 要る その間 見張りが 動かない'];
+      }
+      return [];
+    },
+    broken: '<script defer src="./js/watchdog.js"></script>' },
+
   { id: 'MANIFEST_ID', title: 'manifest の id/scope/start_url が リポジトリ名の 絶対パス',
     run: () => {
       const src = read('manifest.webmanifest');

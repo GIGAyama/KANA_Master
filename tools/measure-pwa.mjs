@@ -16,6 +16,8 @@
      6. 圏外で 起動するか
      7. サーバーが 404 を かえしても アプリが 出るか（エラー画面を 保存しないか）
      8. 本体が 無ければ offline.html が 出るか
+     9. App が 出てこないとき「なおす」ボタンが 出るか
+    10. 「なおす」が 他のアプリの キャッシュを 巻きぞえに しないか
    ============================================================== */
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -163,6 +165,39 @@ await page.reload({ waitUntil: 'load' }).catch(() => {});
 await page.waitForTimeout(1500);
 const body = await page.locator('body').innerText().catch(() => '');
 say('offline.html が出る', /インターネット/.test(body), JSON.stringify(body.replace(/\s+/g, ' ').slice(0, 40)));
+
+/* ── 9〜10. App が 出てこないときの 逃げ道 ────────────────
+   index.html は 出たのに js/app.js が 来ない、という 止まり方を つくる。
+   児童からは「よみこみちゅう… のまま」に しか 見えない やつ。
+   まっさらな 文脈（Service Worker も キャッシュも 無い）で 見る。
+   ここが 動かないと、おそい 回線の 教室は 手の うちようが なくなる。 */
+{
+  const ctx2 = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+  const p2 = await ctx2.newPage();
+  await p2.route('**/js/app.js', (route) => route.abort());
+  await p2.goto(URL_BASE, { waitUntil: 'domcontentloaded' }).catch(() => {});
+
+  // 同じサイトの 他のアプリの 保存を 置いておく（巻きぞえの 検査用）
+  await p2.evaluate(async () => {
+    await caches.open('keisan-card-static-v1').then((c) => c.put('/other-app-a', new Response('a')));
+    await caches.open('kkm-shell-vTEST').then((c) => c.put('/mine', new Response('m')));
+  });
+
+  const fix = p2.locator('button', { hasText: 'アプリを なおす' });
+  const appeared = await fix.waitFor({ state: 'visible', timeout: 45000 }).then(() => true).catch(() => false);
+  say('止まったら「なおす」が出る', appeared, appeared ? '25秒で ボタンが 出た' : '出ないまま');
+
+  if (appeared) {
+    await fix.click();
+    await p2.waitForTimeout(3000);
+    const keys = await p2.evaluate(() => caches.keys()).catch(() => []);
+    const otherAlive = keys.includes('keisan-card-static-v1');
+    const mineGone = !keys.includes('kkm-shell-vTEST');
+    say('「なおす」は自分の分だけ消す', otherAlive && mineGone,
+      `他アプリ ${otherAlive ? 'のこった' : '**消えた**'} / 自分 ${mineGone ? '消えた' : 'のこった'}`);
+  }
+  await ctx2.close();
+}
 
 await browser.close();
 console.log(`\n合格 ${out.filter((o) => o.pass).length} / ${out.length}`);
