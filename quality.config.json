@@ -1,0 +1,24 @@
+{
+  "standard": {
+    "repoName": "KANA_Master",
+    "sw": "static",
+    "allowedRemoteScripts": [
+      "^https://fonts\\.googleapis\\.com(/|$)",
+      "^https://fonts\\.gstatic\\.com(/|$)"
+    ],
+    "skips": [
+      {
+        "id": "C_PAGEHIDE",
+        "reason": "記録は発生時に同期で localStorage へ書く設計で、ため書きが無い"
+      },
+      {
+        "id": "D_FLUID_TYPE",
+        "reason": "css は Tailwind の生成物。文字サイズはユーティリティ側で段階指定しており clamp を使わない"
+      },
+      {
+        "id": "D_DVH",
+        "reason": "css は Tailwind の生成物で 100vh は min-h-screen 由来。dvh 化はビルド設定の変更を伴う別課題"
+      }
+    ]
+  }
+}

@@ -225,8 +225,11 @@ const CHECKS = [
       /* この1枚は いろいろな URL の 代わりに 出される。相対パスだと
          行き先が たたかれた URL しだいで ずれる。 */
       const rels = [...stripHtmlComments(src).matchAll(/(?:href|src)\s*=\s*"(?!https?:|\/|#|data:)([^"]*)"/g)];
-      if (rels.length) bad.push(`404.html: 相対パスの リンクが ある（${rels.map((r) => r[1]).join(', ')}） … /KANA_Master/ から はじまる 絶対パスに すること`);
-      if (!/href\s*=\s*"\/KANA_Master\/"/.test(src)) bad.push('404.html: アプリに もどる リンク（/KANA_Master/）が ない');
+      if (rels.length) bad.push(`404.html: 相対パスの リンクが ある（${rels.map((r) => r[1]).join(', ')}） … ルートからの 絶対パスに すること`);
+      /* 独自ドメインでは アプリは サブドメイン直下。もどる リンクは "/"。
+         /KANA_Master/ の ままだと、404 の 中から さらに 404 へ 飛ぶ。 */
+      const home = existsSync(p('CNAME')) ? '/' : '/KANA_Master/';
+      if (!src.includes(`href="${home}"`)) bad.push(`404.html: アプリに もどる リンク（${home}）が ない`);
       return bad;
     } },
 
@@ -243,15 +246,26 @@ const CHECKS = [
     },
     broken: '<script defer src="./js/watchdog.js"></script>' },
 
-  { id: 'MANIFEST_ID', title: 'manifest の id/scope/start_url が リポジトリ名の 絶対パス',
+  { id: 'MANIFEST_ID', title: 'manifest の id/scope/start_url が 配信場所と 合っている',
     run: () => {
       const src = read('manifest.webmanifest');
       if (!src) return ['manifest.webmanifest が ない'];
       const m = JSON.parse(src);
-      const want = '/KANA_Master/';
+      /* 正しい 値は「どこで 配信するか」で 変わる。
+         独自ドメイン（CNAME あり）では アプリは kana-master.giga-school.com の
+         直下に 置かれる。/KANA_Master/ の ままだと scope が ページの URL を
+         含まなくなり、manifest ごと 無視されて インストールできなくなる
+         （実際に この形で 残っていて、正本ゲートが 見つけた）。
+         相対パス "./" は どちらの 配信でも 正しく 解決される。 */
+      const hasCname = existsSync(p('CNAME'));
+      const okPath = (v) => {
+        const bare = String(v).replace(/[?#].*$/, '');
+        return bare === './' || (hasCname ? bare === '/' : bare.startsWith('/KANA_Master/'));
+      };
+      const want = hasCname ? '"./"（相対パス）' : '"/KANA_Master/" から はじまる 絶対パス';
       return ['id', 'scope', 'start_url']
-        .filter((k) => !m[k] || !String(m[k]).startsWith(want))
-        .map((k) => `manifest.webmanifest: ${k} = ${JSON.stringify(m[k])} … "${want}" から はじまる 絶対パスに すること`);
+        .filter((k) => !m[k] || !okPath(m[k]))
+        .map((k) => `manifest.webmanifest: ${k} = ${JSON.stringify(m[k])} … ${want}に すること`);
     } },
 
   { id: 'APPLE_TOUCH_ICON_OPAQUE', title: 'apple-touch-icon に 透明が ない',
