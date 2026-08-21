@@ -4109,7 +4109,7 @@ function Footer() {
       ©2026 ひらがな・カタカナかきかたマスター ・
       {/* このリンクは 既定で 42×14px しか なく 指では 押せない。
           見た目は そのままに、tap-44 で 当たり判定だけ ひろげる。 */}
-      <a href="https://note.com/cute_borage86" target="_blank" rel="noopener noreferrer"
+      <a href="https://giga-school.com" target="_blank" rel="noopener noreferrer"
          className="tap-44 inline-block text-shu-700 hover:text-shu-800 hover:underline ml-1">GIGA山</a>
     </footer>
   );
