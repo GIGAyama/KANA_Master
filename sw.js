@@ -15,7 +15,7 @@
 
 // この数字は 手で 上げません。`npm run build` の 最後に build-sw が
 // 先読みファイルの中身から 自動で 決めます（上げ忘れが 起きない 形）。
-const APP_VERSION = 'vd0e617c7'; /* __APP_VERSION__ */
+const APP_VERSION = 'v307b06ca'; /* __APP_VERSION__ */
 
 // このアプリ専用の 目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io という サイト全体で
@@ -44,6 +44,9 @@ const PRECACHE_URLS = [
   './js/install-hook.js',
   './js/watchdog.js',
   './js/boot.js',
+  './records-export.html',
+  './js/records-export.js',
+  './js/records-hub-client.js',
   './favicon.png',
   './icon-192.png',
   './icon-512.png',

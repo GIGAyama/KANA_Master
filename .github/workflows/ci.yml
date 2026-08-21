@@ -29,6 +29,10 @@ jobs:
       - name: SW の版が中身と一致しているか
         run: node tools/build-sw.mjs --check
 
+      # 学習ログの受け渡し口（誰に渡してよいか）の検査
+      - name: 受け渡し口のテスト
+        run: node --test tests/*.test.mjs
+
       - name: 品質ゲート（静的）
         # 生成物が 原本と そろっているか（npm run build の 走らせ忘れ）も ここで 見る
         run: node tools/check-project.mjs

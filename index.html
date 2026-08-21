@@ -17,6 +17,8 @@
          書く インラインスタイルを 使っているため。
        ・connect-src 'self' … かきじゅんデータを アプリの中に 持ったので、
          外へ 通信する 必要が まったく ない。
+       ・frame-src の gamification は、学習ログを まなびクエストの
+         記録ボックスへ 写す iframe（records-hub-client.js）のため。
 
        ⚠️ frame-ancestors は ここには 書かない。
           <meta> 経由では **無視され**、読みこむたび コンソールに 警告が出るだけ。
@@ -30,6 +32,7 @@
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: blob:;
     connect-src 'self';
+    frame-src 'self' https://gamification.giga-school.com;
     worker-src 'self';
     manifest-src 'self';
     object-src 'none';
@@ -126,5 +129,7 @@
   <div id="root">
     <div class="kkm-loading">よみこみちゅう…</div>
   </div>
+  <!-- 学習ログを記録ハブ（まなびクエスト）へ写す。読むだけで、このアプリの記録には触れない -->
+  <script src="./js/records-hub-client.js" defer></script>
 </body>
 </html>
