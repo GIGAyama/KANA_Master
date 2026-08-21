@@ -69,7 +69,7 @@ const before = await page.evaluate(() => caches.keys());
 
 /* ── 3. 版を 上げて、押すまで 切りかわらないことを 見る ── */
 const swSrc = readFileSync(SW, 'utf8');
-const bumped = swSrc.replace(/const APP_VERSION = '(v\d+)'/, (m, v) => `const APP_VERSION = '${v}-test'`);
+const bumped = swSrc.replace(/const APP_VERSION = '(v[^']+)'/, (m, v) => `const APP_VERSION = '${v}-test'`);
 if (bumped === swSrc) { console.error('APP_VERSION を書きかえられませんでした'); process.exit(2); }
 writeFileSync(SW, bumped, 'utf8');
 try {

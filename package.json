@@ -5,10 +5,11 @@
   "description": "ひらがな・カタカナ かきかたマスター（小学1年生むけ 学習アプリ）のビルド定義",
   "license": "MIT",
   "scripts": {
-    "build": "node tools/build.mjs",
+    "build": "node tools/build.mjs && node tools/build-sw.mjs",
     "kanjivg": "node tools/fetch-kanjivg.mjs",
-    "check": "node tools/check-project.mjs && node tools/check-study.js",
-    "check:study": "node tools/check-study.js"
+    "check": "node tools/build-sw.mjs --check && node tools/check-project.mjs && node tools/check-study.js",
+    "check:study": "node tools/check-study.js",
+    "build:sw": "node tools/build-sw.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.1",
