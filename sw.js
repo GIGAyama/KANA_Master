@@ -15,7 +15,7 @@
 
 // 原本を直して npm run build を走らせたら、かならず この数字を 上げること
 // （上げ忘れると 古いキャッシュが 残り、更新が 反映されない）
-const APP_VERSION = 'v16';
+const APP_VERSION = 'v17';
 
 // このアプリ専用の 目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io という サイト全体で
