@@ -25,6 +25,10 @@ jobs:
       - name: 依存を入れる
         run: npm ci
 
+      # 版の自動生成がずれていないか（手で上げる運用は 2026-08-21 の上げ忘れ事故のもと）
+      - name: SW の版が中身と一致しているか
+        run: node tools/build-sw.mjs --check
+
       - name: 品質ゲート（静的）
         # 生成物が 原本と そろっているか（npm run build の 走らせ忘れ）も ここで 見る
         run: node tools/check-project.mjs
@@ -68,3 +72,15 @@ jobs:
 
       - name: PWA の ふるまいを 測る
         run: node tools/measure-pwa.mjs
+
+  # 正本（GIGAyama.github.io/standards/）との一致。コピーだけ直すと他リポジトリに修正が届かないため。
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: GIGAyama/GIGAyama.github.io
+          path: .standards-src
+      - name: 正本とのずれ検知
+        run: node .standards-src/standards/check-drift.mjs --standards .standards-src/standards
