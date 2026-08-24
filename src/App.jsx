@@ -4111,6 +4111,10 @@ function Footer() {
           見た目は そのままに、tap-44 で 当たり判定だけ ひろげる。 */}
       <a href="https://giga-school.com" target="_blank" rel="noopener noreferrer"
          className="tap-44 inline-block text-shu-700 hover:text-shu-800 hover:underline ml-1">GIGA山</a>
+      {/* 紹介記事は 先生に むけて 書いて ある。
+          クレジットの 行に 置いて、子どもの 画面の じゃまに ならない ように する。 */}
+      <a href="https://giga-school.com/apps/kana-master/" target="_blank" rel="noopener noreferrer"
+         className="tap-44 inline-block text-shu-700 hover:text-shu-800 hover:underline ml-2">使い方を読む</a>
     </footer>
   );
 }
