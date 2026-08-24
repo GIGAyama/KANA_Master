@@ -12,7 +12,7 @@
 
 インストールも 登録も いりません。ブラウザで ひらけば そのまま つかえます。
 
-https://gigayama.github.io/KANA_Master/
+https://kana-master.giga-school.com/
 
 ![ホーム画面](images/01-home.png)
 
@@ -202,7 +202,7 @@ https://gigayama.github.io/KANA_Master/
 
 情報担当の 先生に 聞かれそうな ことを、先に まとめておきます。
 
-1. 校内の フィルタリングで、gigayama.github.io を 許可してください。アプリの 中身は すべて ここから 配られます。
+1. 校内の フィルタリングで、kana-master.giga-school.com を 許可してください。アプリの 中身は すべて ここから 配られます。
 2. できれば fonts.googleapis.com と fonts.gstatic.com も 許可してください。教科書体が 入っていない 端末のための 予備の 書体を ここから 読みます。ふさがれていても、字の 形が すこし 変わるだけで アプリは そのまま 動きます。
 3. 端末に 入れる ときは、画面 右上の「アプリにする」を おします。Chromebook と Windows の Chrome や Edge、Android は そのまま 入ります。iPad と iPhone は 手順の 案内が 出るので、画面の 共有ボタンから「ホーム画面に追加」を えらんでください。
 4. 一度 ひらいた 端末は、インターネットに つながっていなくても つかえます。アプリに 必要なものを ぜんぶ 中に 持っているためです。かきじゅんの データも 中に あります。
