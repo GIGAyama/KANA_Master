@@ -15,7 +15,7 @@
 
 // この数字は 手で 上げません。`npm run build` の 最後に build-sw が
 // 先読みファイルの中身から 自動で 決めます（上げ忘れが 起きない 形）。
-const APP_VERSION = 'vb035ddf6'; /* __APP_VERSION__ */
+const APP_VERSION = 'vbab1710c'; /* __APP_VERSION__ */
 
 // このアプリ専用の 目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io という サイト全体で
@@ -31,6 +31,10 @@ const CACHE_RUNTIME = `${CACHE_PREFIX}runtime-${APP_VERSION}`;
    CDN から とってくる 実行コードは もう 1 バイトも 無い。
    React も かきじゅんデータも この一覧の 中に 入っている。 */
 const PRECACHE_URLS = [
+  // 書体そのもの（woff2）は先読みに入れない。入れると先読みが 1MB を超え、
+  // 校内 Wi-Fi で 40 台が同時に開いたときに初回表示が止まる。
+  // 画面が出れば必ず取りにいくので、その 1 回で下の実行時キャッシュに入る。
+  './fonts.css',
   './',
   './index.html',
   './offline.html',

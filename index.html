@@ -28,8 +28,8 @@
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self';
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    font-src 'self' https://fonts.gstatic.com;
+    style-src 'self' 'unsafe-inline';
+    font-src 'self';
     img-src 'self' data: blob:;
     connect-src 'self';
     frame-src 'self' https://gamification.giga-school.com;
@@ -104,9 +104,10 @@
        Google Fonts は「見た目だけ」の依存なので、学校で ふさがれても
        字の形が かわるだけで アプリは そのまま 動く。だから CDN のままでよい。
        （実行コード＝React などは ふさがれると 起動しないので 自己ホストした） -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+  <!-- 書体は自分のところから配る（生成物。node tools/fonts/build-fonts.mjs で作り直す）。
+       ここに Google Fonts への link を戻さないこと。学校のフィルタが
+       塞ぐと書体が当たらず、塞ぎ方によっては画面そのものが出ない。 -->
+  <link rel="stylesheet" href="./fonts.css" />
 
   <!-- ===== 実行コード（すべて 自分のフォルダの中） =====
        defer なので 読みこみは 並行、実行は この順番。
