@@ -25,25 +25,25 @@ jobs:
       - name: 依存を入れる
         run: npm ci
 
-      # 版の自動生成がずれていないか（手で上げる運用は 2026-08-21 の上げ忘れ事故のもと）
-      - name: SW の版が中身と一致しているか
-        run: node tools/build-sw.mjs --check
-
-      # 学習ログの受け渡し口（誰に渡してよいか）の検査
-      - name: 受け渡し口のテスト
-        run: node --test tests/*.test.mjs
-
-      - name: 品質ゲート（静的）
-        # 生成物が 原本と そろっているか（npm run build の 走らせ忘れ）も ここで 見る
-        run: node tools/check-project.mjs
+      # ⚠️ 検査を 1 つずつ 書き写さないこと。package.json の check を そのまま 呼ぶ。
+      #    ここには もともと build-sw --check / tests / check-project の 3 つが
+      #    書き写してあったが、check の 先頭にある 正本ゲート
+      #    scripts/check-standard.mjs が 写し漏れていて、共通検査 38 件
+      #    （CSP・localStorage の 接頭辞・100dvh・セーフエリア・タップ 44px・
+      #    画像の 大きさ など）が 一度も 動いていなかった。
+      #
+      #    check = node scripts/check-standard.mjs
+      #         && node tools/build-sw.mjs --check   … 版の自動生成が ずれていないか
+      #         && node tools/check-project.mjs      … 生成物が 原本と そろっているか
+      #         && node tools/check-study.js         … 学習ログ（study.v1）
+      #         && node --test tests/*.test.mjs      … 受け渡し口
+      - name: 品質ゲート（package.json の check をそのまま）
+        run: npm run check
 
       - name: 検査そのものが 動いているかを たしかめる
         # 「0件でした」だけでは 検査が 何も 見ていない 場合と 区別が つかない。
         # わざと 壊した 入力を 与えて、ちゃんと 落ちることを 見る。
         run: node tools/check-project.mjs --self-test
-
-      - name: 学習ログ（study.v1）のテスト
-        run: node tools/check-study.js
 
   measure:
     # 実ブラウザでの 計測（コントラスト・タップ領域・Service Worker）。
