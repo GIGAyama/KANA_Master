@@ -15,7 +15,7 @@
 
 // この数字は 手で 上げません。`npm run build` の 最後に build-sw が
 // 先読みファイルの中身から 自動で 決めます（上げ忘れが 起きない 形）。
-const APP_VERSION = 'v5af2da22'; /* __APP_VERSION__ */
+const APP_VERSION = 'vb035ddf6'; /* __APP_VERSION__ */
 
 // このアプリ専用の 目じるし。
 // キャッシュ置き場（CacheStorage）は gigayama.github.io という サイト全体で
