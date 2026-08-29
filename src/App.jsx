@@ -4104,17 +4104,28 @@ function Header({ view, setView, mastered, onReset, onOpenBadges, streak, voiceO
    9. <Footer>
    ────────────────────────────────────────────────────────────── */
 function Footer() {
+  /* ⚠️ 1 行に 収める。flex-wrap: nowrap と min-w-0 の 2 つが 要る。
+     nowrap だけだと、クレジットの 文字列が 縮まずに 列を 押し広げて
+     横スクロールに なる。狭い 画面では クレジットが … で 切れる。
+     もとは 行き先の リンクが 下へ 落ちて、スマホで フッターが
+     2 行 55px に なっていた。 */
   return (
-    <footer className="shrink-0 w-full bg-white border-t border-sumi-200 py-1 text-center text-[10px] md:text-xs text-sumi-600 font-medium">
-      ©2026 ひらがな・カタカナかきかたマスター ・
-      {/* このリンクは 既定で 42×14px しか なく 指では 押せない。
-          見た目は そのままに、tap-44 で 当たり判定だけ ひろげる。 */}
-      <a href="https://giga-school.com" target="_blank" rel="noopener noreferrer"
-         className="tap-44 inline-block text-shu-700 hover:text-shu-800 hover:underline ml-1">GIGA山</a>
-      {/* 紹介記事は 先生に むけて 書いて ある。
-          クレジットの 行に 置いて、子どもの 画面の じゃまに ならない ように する。 */}
-      <a href="https://giga-school.com/apps/kana-master/" target="_blank" rel="noopener noreferrer"
-         className="tap-44 inline-block text-shu-700 hover:text-shu-800 hover:underline ml-2">使い方を読む</a>
+    <footer className="shrink-0 w-full flex flex-nowrap items-center justify-center gap-1 bg-white border-t border-sumi-200 py-1 text-center text-[10px] md:text-xs text-sumi-600 font-medium">
+      <span className="min-w-0 truncate">
+        ©2026 ひらがな・カタカナかきかたマスター ・
+        {/* このリンクは 既定で 42×14px しか なく 指では 押せない。
+            見た目は そのままに、tap-44 で 当たり判定だけ ひろげる。 */}
+        <a href="https://giga-school.com" target="_blank" rel="noopener noreferrer"
+           className="tap-44 inline-block text-shu-700 hover:text-shu-800 hover:underline ml-1">GIGA山</a>
+      </span>
+      {/* ⚠️ 行き先の リンクを 手で 書かない こと。中身は 正本の 部品
+          standards/web/giga-app-links.js（配布物 web/giga-app-links.js）が
+          この 中に 出す。文言も 並びも 行き先も、あちらで 決まって いる。
+
+          ⚠️ data-links で「つかいかた」を 外して ある。この アプリには まだ
+             docs/manual/ が 無く、既定の まま 出すと 行き止まりの リンクに なる。
+             マニュアルを 書いたら、この 属性ごと 消す こと。 */}
+      <span data-giga-links data-links="terms,privacy" />
     </footer>
   );
 }
